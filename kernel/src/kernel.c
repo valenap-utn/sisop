@@ -1,6 +1,6 @@
 #include <kernel.h>
 
 int main(int argc, char* argv[]) {
-    printf("hola kernel\n");
+    test2();
     return 0;
 }
