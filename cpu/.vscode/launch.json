@@ -27,7 +27,7 @@
       "preLaunchTask": "build-test"
     }, 
     {
-      "name": "run",
+      "name": "RUN",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/${workspaceFolderBasename}",
