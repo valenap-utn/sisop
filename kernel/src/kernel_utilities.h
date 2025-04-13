@@ -3,5 +3,7 @@
 
 #include <kernel.h>
 
+void inicializarKernel();
+void levantarConfig();
 
 #endif
