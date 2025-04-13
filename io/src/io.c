@@ -1,9 +1,12 @@
 #include <io.h>
 
+//variables globales
+t_log *logger;
+t_config *config;
+t_log_level current_log_level;
+//variables globales
+
 int main(int argc, char* argv[]) {
-    //printf(argv[argc-1]); // ejemplo de ultimo argumento, o nombre del dispositivo
-    if(argc == 1){
-        return 0;
-    }
+    inicializarIo();
     return 0;
 }
