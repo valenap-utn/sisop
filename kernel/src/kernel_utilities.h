@@ -4,6 +4,9 @@
 #include <kernel.h>
 
 void inicializarKernel();
+void *server_mh_cpu(void *args);
+void inicializarSemaforos();
+void inicializarListasKernel();
 void levantarConfig();
 
 #endif

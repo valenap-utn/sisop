@@ -1,4 +1,5 @@
 #include <utils/utils.h>
+#include "utils.h"
 
 
 //socket
@@ -197,4 +198,13 @@ void terminar_programa(int conexion, t_log* logger, t_config* config)
 
 void iterator(char* value) {
 	log_info(logger,"%s", value);
+}
+
+void inicializarLista(list_struct_t *lista){
+
+    lista->lista = list_create();
+
+    lista->mutex = malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(lista->mutex, NULL);
+
 }

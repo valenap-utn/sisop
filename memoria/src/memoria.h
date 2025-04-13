@@ -2,7 +2,7 @@
 #define MEMORIA_MAIN_
 
 #include <memoria_utilities.h>
-#include <utils.h>
+#include <utils/utils.h>
 #include <commons/log.h>
 #include <commons/config.h>
 

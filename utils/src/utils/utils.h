@@ -37,6 +37,10 @@ typedef struct arg_struct {
     char * ip;
 }argumentos_thread;
 
+typedef struct list_struct{
+    t_list *lista;
+    pthread_mutex_t *mutex;
+}list_struct_t
 
 typedef enum
 {
@@ -76,5 +80,7 @@ extern t_log* logger;
     void leer_consola(void);
     void terminar_programa(int conexion, t_log* logger, t_config* config);
     void iterator(char* value);
+
+    void inicializarLista(list_struct_t *lista);
 
 #endif
