@@ -40,7 +40,7 @@ typedef struct arg_struct {
 typedef struct list_struct{
     t_list *lista;
     pthread_mutex_t *mutex;
-}list_struct_t
+}list_struct_t;
 
 enum protocolo_socket
 {

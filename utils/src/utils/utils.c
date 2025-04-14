@@ -103,7 +103,9 @@
         t_list_iterator *iterator = list_iterator_create(valores);
         char *valor_recibido;
         while(list_iterator_has_next(iterator)){
-            valor_recibido = list_iterator_remove(iterator);
+            valor_recibido = list_iterator_next(iterator);
+            list_iterator_remove(iterator);
+            
             free(valor_recibido);
         }
         list_iterator_destroy(iterator);
@@ -253,9 +255,12 @@ void iterator(char* value) {
 
 void inicializarLista(list_struct_t *lista){
 
+    lista = malloc(sizeof(list_struct_t));
     lista->lista = list_create();
 
     lista->mutex = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(lista->mutex, NULL);
+
+    log_debug(logger, "Se creo un list_struct nuevo");
 
 }

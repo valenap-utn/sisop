@@ -13,7 +13,7 @@ void inicializarKernel(){
     logger = log_create("kernel.log", "Kernel", 1, current_log_level);
 
     inicializarSemaforos();
-    inicializarListas();
+    inicializarListasKernel();
 
 }
 void levantarConfig(){
@@ -36,7 +36,9 @@ void *server_mh_cpu(void *args){
 
     while(*socket_nuevo = esperar_cliente(server)){
         
+        pthread_mutex_lock(lista_sockets_cpu->mutex);
         list_add(lista_sockets_cpu->lista, socket_nuevo);
+        pthread_mutex_unlock(lista_sockets_cpu->mutex);
 
         socket_nuevo = malloc(sizeof(int));
 
