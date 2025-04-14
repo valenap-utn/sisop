@@ -85,6 +85,33 @@
         return valores;
     }
 
+
+    /// @brief Recibe un paquete de OK, en casos donde no se envie informacion valiosa. Limpia la lista para evitar errores
+    /// @param socket_cliente 
+    /// @return 0->ok, cod_op si es distinto de OK
+    int recibir_paquete_ok(int socket_cliente)
+    { 
+        //limpia la lista y devuelve ok = 0 si cod_op == OK
+        protocolo_socket cod_op = recibir_operacion(socket_cliente); //limpia el codigo de operacion
+        
+        if (cod_op != OK){
+            log_error(logger, "Se recibio cod_op distinto de OK");
+            return cod_op;
+        }
+        t_list* valores = recibir_paquete(socket_cliente);
+
+        t_list_iterator *iterator = list_iterator_create(valores);
+        char *valor_recibido;
+        while(list_iterator_has_next(iterator)){
+            valor_recibido = list_iterator_remove(iterator);
+            free(valor_recibido);
+        }
+        list_iterator_destroy(iterator);
+        list_destroy(valores);
+        return 0;
+        //
+    }
+
     void* serializar_paquete(t_paquete* paquete, int bytes)
     {
         void * magic = malloc(bytes);
@@ -143,6 +170,15 @@
         return paquete;
     }
 
+    t_paquete* crear_paquete_ok()
+    {
+        t_paquete* paquete = malloc(sizeof(t_paquete));
+        paquete->codigo_operacion = OK;
+        crear_buffer(paquete);
+        agregar_a_paquete(paquete, "OK", sizeof("OK"+1));
+        return paquete;
+    }
+
     void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio)
     {
         paquete->buffer->stream = realloc(paquete->buffer->stream, paquete->buffer->size + tamanio + sizeof(int));
@@ -161,6 +197,21 @@
         send(socket_cliente, a_enviar, bytes, 0);
 
         free(a_enviar);
+    }
+
+    /// @brief Maneja todo lo necesario para enviar un paquete de OK. Solo se necesita llamar a la funcion con el socket para que se cree y envie
+    /// @param socket_cliente 
+    void enviar_paquete_ok(int socket_cliente)
+    {
+        t_paquete * paquete;
+        paquete = crear_paquete_ok(); // crea un paquete, le inserta ok y lo envia por socket
+        int bytes = paquete->buffer->size + 2*sizeof(int);
+        void* a_enviar = serializar_paquete(paquete, bytes);
+
+        send(socket_cliente, a_enviar, bytes, 0);
+
+        free(a_enviar);
+        eliminar_paquete(paquete);
     }
 
     void eliminar_paquete(t_paquete* paquete)

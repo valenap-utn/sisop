@@ -42,10 +42,11 @@ typedef struct list_struct{
     pthread_mutex_t *mutex;
 }list_struct_t
 
-typedef enum
+enum protocolo_socket
 {
-  A
-}protocolo_socket;
+    OK,
+};
+typedef enum protocolo_socket protocolo_socket;
 
 typedef struct
 {
@@ -71,6 +72,7 @@ extern t_log* logger;
     int crear_conexion(char* ip, char* puerto);
     void crear_buffer(t_paquete* paquete);
     t_paquete* crear_paquete(protocolo_socket cod_op); 
+    t_paquete* crear_paquete_ok(void); 
     void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio);
     void enviar_paquete(t_paquete* paquete, int socket_cliente);
     void eliminar_paquete(t_paquete* paquete);
