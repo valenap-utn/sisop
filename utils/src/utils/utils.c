@@ -21,6 +21,11 @@
             servinfo->ai_socktype,
             servinfo->ai_protocol);
 
+        
+        int opt = 1;
+        setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+        setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        
         bind(socket_servidor, servinfo->ai_addr, servinfo->ai_addrlen);
         listen(socket_servidor, SOMAXCONN);
 
@@ -138,7 +143,6 @@
         hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags = AI_PASSIVE;
-        hints.ai_flags |= SO_REUSEPORT;
 
         getaddrinfo(ip, puerto, &hints, &server_info);
 
@@ -150,6 +154,9 @@
         if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen)==-1){
             return -1;
         }else log_info(logger, "Conectado al servidor");
+
+        int opt = 1;
+
 
         freeaddrinfo(server_info);
 
@@ -253,14 +260,15 @@ void iterator(char* value) {
 	log_info(logger,"%s", value);
 }
 
-void inicializarLista(list_struct_t *lista){
+list_struct_t * inicializarLista(){
 
-    lista = malloc(sizeof(list_struct_t));
+    list_struct_t *lista = malloc(sizeof(list_struct_t));
     lista->lista = list_create();
 
     lista->mutex = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(lista->mutex, NULL);
 
     log_debug(logger, "Se creo un list_struct nuevo");
+    return lista;
 
 }

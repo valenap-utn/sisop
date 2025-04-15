@@ -60,6 +60,12 @@ typedef struct
 	t_buffer* buffer;
 } t_paquete;
 
+typedef struct{
+    int dispatch;
+    int interrupt;
+    int flag_libre;
+}t_socket_cpu;
+
 extern t_log* logger;
 
 //socket
@@ -83,6 +89,6 @@ extern t_log* logger;
     void terminar_programa(int conexion, t_log* logger, t_config* config);
     void iterator(char* value);
 
-    void inicializarLista(list_struct_t *lista);
+    list_struct_t * inicializarLista();
 
 #endif
