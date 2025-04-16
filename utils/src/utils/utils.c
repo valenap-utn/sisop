@@ -6,7 +6,6 @@
     int iniciar_servidor(char *puerto)
     {
         int socket_servidor;
-
         struct addrinfo hints, *servinfo;
 
         memset(&hints, 0, sizeof(hints));
