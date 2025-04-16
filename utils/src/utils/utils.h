@@ -19,10 +19,10 @@
 
 //Conexiones
 //Cliente -> Server
-//Kernel -> CPU
+//CPU -> Kernel
 //Kernel -> Memoria
 //CPU -> Memoria
-//Memoria -> Filesystem
+//IO -> Kernel
 
 
 //colas planificador
