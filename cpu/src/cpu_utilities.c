@@ -28,7 +28,6 @@ void levantarConfig(){
 
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
-    printf("%d", current_log_level);
 
     ip_kernel = config_get_string_value(config, "IP_KERNEL");
     puerto_dispatch = config_get_string_value(config, "PUERTO_KERNEL_DISPATCH");
@@ -56,6 +55,5 @@ void *conexion_cliente_kernel(void *args){
 	}while(socket_interrupt == -1);
     log_info(logger, "Se realizó la conexion con CPU INTERRUPT");
     //semaforo aca?
-    while(1); //sacar, test only
     return (void *)EXIT_SUCCESS;
 }

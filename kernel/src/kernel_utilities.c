@@ -32,7 +32,6 @@ void levantarConfig(){
     
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
-    printf("%d", current_log_level);
 
     puerto_dispatch = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
