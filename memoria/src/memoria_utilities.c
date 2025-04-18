@@ -5,21 +5,21 @@ extern t_config *config;
 extern t_log_level current_log_level;
 char * puerto_cpu;
 int socket_cliente_cpu;
-pthread_t tid_cpu;
-argumentos_thread arg_cpu;
-void *ret_value;
 
 void inicializarMemoria(){
     
     config = config_create("./memoria.config");
     levantarConfig();
     logger = log_create("memoria.log", "Memoria", 1, current_log_level);
-    pthread_create(&tid_cpu, NULL, conexion_server_cpu, (void *)&arg_cpu);
     
-    pthread_join(tid_cpu, ret_value);
+    pthread_t tid_cpu;
+
+    pthread_create(&tid_cpu, NULL, conexion_server_cpu, NULL);
+    
+    pthread_join(tid_cpu, NULL);
 }
 void levantarConfig(){
-    puerto_cpu = config_get_string_value(config, "PUERTO_ESCUCHA");
+    puerto_cpu = config_get_string_value(config, "PUERTO_ESCUCHA_CPU");
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
     printf("%d", current_log_level);

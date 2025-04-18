@@ -34,6 +34,7 @@ void levantarConfig(){
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
     ip_memoria = config_get_string_value(config, "IP_MEMORIA");
+    puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
     ip_kernel = config_get_string_value(config, "IP_KERNEL");
     puerto_dispatch = config_get_string_value(config, "PUERTO_KERNEL_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_KERNEL_INTERRUPT");
