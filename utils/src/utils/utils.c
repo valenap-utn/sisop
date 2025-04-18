@@ -154,9 +154,6 @@
             return -1;
         }else log_info(logger, "Conectado al servidor");
 
-        int opt = 1;
-
-
         freeaddrinfo(server_info);
 
         return socket_cliente;

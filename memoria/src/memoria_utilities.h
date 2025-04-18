@@ -7,4 +7,6 @@ void inicializarMemoria();
 void levantarConfig();
 void *conexion_server_cpu(void *args);
 
+void inicializarListasMemoria();
+
 #endif
