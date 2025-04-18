@@ -37,6 +37,7 @@ void levantarConfig(){
     ip_kernel = config_get_string_value(config, "IP_KERNEL");
     puerto_dispatch = config_get_string_value(config, "PUERTO_KERNEL_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_KERNEL_INTERRUPT");
+    puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
 
 }
 void *conexion_cliente_kernel(void *args){
