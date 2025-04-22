@@ -38,6 +38,7 @@ typedef struct list_struct{
 enum protocolo_socket
 {
     OK,
+    NOMBRE_IO,
 };
 typedef enum protocolo_socket protocolo_socket;
 
@@ -58,6 +59,11 @@ typedef struct{
     int interrupt;
     int flag_libre;
 }t_socket_cpu;
+
+typedef struct{
+    int socket;
+    char nombre[20];
+}t_socket_io;
 
 extern t_log* logger;
 
