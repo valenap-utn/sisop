@@ -6,4 +6,6 @@
 void inicializarIo();
 void levantarConfig();
 
+void *conexion_cliente_kernel(void *);
+
 #endif

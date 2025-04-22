@@ -11,6 +11,7 @@ extern list_struct_t *lista_sockets_io;
 t_log_level current_log_level;
 char * puerto_dispatch;
 char * puerto_interrupt;
+char * puerto_io;
 
 void inicializarKernel(){
 
@@ -41,6 +42,7 @@ void levantarConfig(){
 
     puerto_dispatch = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
+    puerto_io = config_get_string_value(config, "PUERTO_ESCUCHA_IO");
 
 }
 /// @brief Thread que espera conexiones de CPU nuevas y las agrega a la lista de sockets. Nunca para de esperar y aceptar nuevos
@@ -67,7 +69,7 @@ void *server_mh_cpu(void *args){
 }
 void *server_mh_io(void *args){
 
-    int server = iniciar_servidor(puerto_dispatch);
+    int server = iniciar_servidor(puerto_io);
 
     t_socket_io *socket_nuevo = malloc(sizeof(t_socket_io));
     t_list *paquete_recv;
@@ -89,11 +91,13 @@ void *server_mh_io(void *args){
 
         nombre_io = list_remove(paquete_recv, 0);
         // socket_nuevo->nombre = nombre_io;
-        strcpy(socket_nuevo->nombre, nombre_io);
+        socket_nuevo->nombre = nombre_io;
         
         pthread_mutex_lock(lista_sockets_io->mutex);
         list_add(lista_sockets_io->lista, socket_nuevo);
         pthread_mutex_unlock(lista_sockets_io->mutex);
+
+        log_debug(logger, socket_nuevo->nombre);
 
         socket_nuevo = malloc(sizeof(t_socket_io));
 

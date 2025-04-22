@@ -62,7 +62,7 @@ typedef struct{
 
 typedef struct{
     int socket;
-    char nombre[20];
+    char *nombre;
 }t_socket_io;
 
 extern t_log* logger;
