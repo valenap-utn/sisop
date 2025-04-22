@@ -4,6 +4,8 @@ extern t_log *logger;
 extern t_config *config;
 
 extern list_struct_t *lista_sockets_cpu;
+extern list_struct_t *lista_sockets_io;
+
 
 //configs
 t_log_level current_log_level;
@@ -20,13 +22,17 @@ void inicializarKernel(){
     inicializarSemaforos();
     inicializarListasKernel();
 
-    pthread_t tid_server_mh;
+    pthread_t tid_server_mh_cpu;
+    pthread_t tid_server_mh_io;
 
-    pthread_create(&tid_server_mh, NULL, server_mh_cpu, NULL);
-    pthread_join(tid_server_mh, NULL);
+    pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
+    pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
+    pthread_join(tid_server_mh_cpu, NULL);
+    pthread_join(tid_server_mh_io, NULL);
 
 
 }
+
 void levantarConfig(){
 
     
@@ -59,10 +65,45 @@ void *server_mh_cpu(void *args){
 
     }
 }
+void *server_mh_io(void *args){
+
+    int server = iniciar_servidor(puerto_dispatch);
+
+    t_socket_io *socket_nuevo = malloc(sizeof(t_socket_io));
+    t_list *paquete_recv;
+
+    char *nombre_io;
+
+    protocolo_socket cod_op;
+
+    while(socket_nuevo->socket = esperar_cliente(server)){
+
+        cod_op = recibir_operacion(socket_nuevo->socket);
+
+        if(cod_op != NOMBRE_IO){
+            log_error(logger, "Se recibio un protocolo inesperado de IO");
+            return (void*)EXIT_FAILURE;
+        }
+
+        paquete_recv = recibir_paquete(socket_nuevo->socket);
+
+        nombre_io = list_remove(paquete_recv, 0);
+        // socket_nuevo->nombre = nombre_io;
+        strcpy(socket_nuevo->nombre, nombre_io);
+        
+        pthread_mutex_lock(lista_sockets_io->mutex);
+        list_add(lista_sockets_io->lista, socket_nuevo);
+        pthread_mutex_unlock(lista_sockets_io->mutex);
+
+        socket_nuevo = malloc(sizeof(t_socket_io));
+
+    }
+}
 void inicializarSemaforos(){
     //vacia por ahora
     return;    
 }
 void inicializarListasKernel(){
     lista_sockets_cpu = inicializarLista();
+    lista_sockets_io = inicializarLista();
 }
