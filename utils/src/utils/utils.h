@@ -54,16 +54,6 @@ typedef struct
 	t_buffer* buffer;
 } t_paquete;
 
-typedef struct{
-    int dispatch;
-    int interrupt;
-    int flag_libre;
-}t_socket_cpu;
-
-typedef struct{
-    int socket;
-    char *nombre;
-}t_socket_io;
 
 extern t_log* logger;
 
