@@ -6,5 +6,16 @@
 #include <commons/log.h>
 #include <commons/config.h>
 
+typedef struct{
+    int socket;
+    char *nombre;
+}t_socket_io;
+
+typedef struct{
+    int dispatch;
+    int interrupt;
+    int flag_libre;
+}t_socket_cpu;
+
 
 #endif

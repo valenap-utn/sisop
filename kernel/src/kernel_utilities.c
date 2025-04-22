@@ -28,6 +28,18 @@ void inicializarKernel(){
 
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
+
+
+    // sleep(5);
+    // t_list_iterator *iterator = list_iterator_create(lista_sockets_cpu->lista);
+    // t_socket_cpu *element;
+    // while(list_iterator_has_next(iterator)){
+    //     element = list_iterator_next(iterator);
+
+    //     log_debug(logger, "%d", element->interrupt);
+        
+    // }
+
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);
 
