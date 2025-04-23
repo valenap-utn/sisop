@@ -17,5 +17,11 @@ typedef struct{
     int flag_libre;
 }t_socket_cpu;
 
+typedef struct{
+    int PID;
+    int PC;
+    t_list ME;
+    t_list MT;    
+}PCB;
 
 #endif

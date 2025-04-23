@@ -56,8 +56,9 @@ void *conexion_cliente_kernel(void *args){
     return (void *)EXIT_SUCCESS;
 }
 
-void dormir_IO(char* nombre_modulo_io,int segundos_espera){
+void dormir_IO(char* nombre_modulo_io,int segundos_espera,int pid){
+    log_info(logger, "## PID <%d> - Inicio de IO - Tiempo:  <%d>",pid, segundos_espera);
     usleep(segundos_espera);
     log_debug(logger, "%s IO DURMIO %d SEGUNDOS",nombre_modulo_io, segundos_espera);
-    log_debug(logger, "Finalización de IO: “## PID: <PID> - Fin de IO”.");
+    log_info(logger, "Finalización de IO: “## PID: <%d> - Fin de IO”.",pid);
 }
