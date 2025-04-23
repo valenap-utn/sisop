@@ -8,6 +8,7 @@ char * ip_kernel;
 char * puerto_kernel;
 
 extern char *nombre_modulo_io;
+extern int segundos_espera;
 
 int socket_kernel;
 
@@ -22,6 +23,7 @@ void inicializarIo(){
 
     pthread_create(&tid_conexion_kernel, NULL, conexion_cliente_kernel, NULL);
     pthread_join(tid_conexion_kernel, NULL);
+
 
 }
 void levantarConfig(){
@@ -47,10 +49,15 @@ void *conexion_cliente_kernel(void *args){
     log_info(logger, "Se realizó la conexion con KERNEL");
     
     t_paquete *paquete_send = crear_paquete(NOMBRE_IO);
-
-    agregar_a_paquete(paquete_send, nombre_modulo_io, strlen(nombre_modulo_io)+1);
-
+    agregar_a_paquete(paquete_send, nombre_modulo_io, strlen(nombre_modulo_io) + 1);
+    agregar_a_paquete(paquete_send, &segundos_espera, sizeof(int));
     enviar_paquete(paquete_send, socket_kernel);
     
     return (void *)EXIT_SUCCESS;
+}
+
+void dormir_IO(char* nombre_modulo_io,int segundos_espera){
+    usleep(segundos_espera);
+    log_debug(logger, "%s IO DURMIO %d SEGUNDOS",nombre_modulo_io, segundos_espera);
+    log_debug(logger, "Finalización de IO: “## PID: <PID> - Fin de IO”.");
 }
