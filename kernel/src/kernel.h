@@ -17,11 +17,15 @@ typedef struct{
     int flag_libre;
 }t_socket_cpu;
 
-typedef struct{
-    int PID;
-    int PC;
-    t_list ME;
-    t_list MT;    
-}PCB;
+/*
+t_list* new;
+t_list* ready;
+t_list* blocked;
+t_list* susp_block;
+*/
+
+//FUNCIONES
+
+
 
 #endif
