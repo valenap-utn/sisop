@@ -6,4 +6,10 @@
 
 
 
+void * largoPlazo(void * args);
+
+void largoPlazoFifo();
+
 #endif
+
+

@@ -43,6 +43,12 @@ enum protocolo_socket
 };
 typedef enum protocolo_socket protocolo_socket;
 
+enum enum_algoritmo_largoPlazo
+{
+    FIFO,
+};
+typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
+
 typedef struct
 {
 	int size;

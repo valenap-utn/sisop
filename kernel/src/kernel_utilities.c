@@ -12,22 +12,26 @@ t_log_level current_log_level;
 char * puerto_dispatch;
 char * puerto_interrupt;
 char * puerto_io;
+enum_algoritmo_largoPlazo algoritmo_largoPlazo;
 
 void inicializarKernel(){
 
     config = config_create("./kernel.config");
-    levantarConfig();
-
     logger = log_create("kernel.log", "Kernel", 1, current_log_level);
+
+    levantarConfig();
 
     inicializarSemaforos();
     inicializarListasKernel();
 
     pthread_t tid_server_mh_cpu;
     pthread_t tid_server_mh_io;
-
+    pthread_t tid_largoplazo;
+    
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
+    pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
+    
 
 
     // sleep(5);
@@ -42,6 +46,7 @@ void inicializarKernel(){
 
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);
+    pthread_join(tid_largoplazo, NULL);
 
 
 }
@@ -55,7 +60,10 @@ void levantarConfig(){
     puerto_dispatch = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
     puerto_io = config_get_string_value(config, "PUERTO_ESCUCHA_IO");
-
+    char * alg_largoplazo_temp;
+    alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_COLA_NEW");
+    algoritmo_largoPlazo = alg_largoPlazo_from_string(alg_largoplazo_temp);
+    
 }
 /// @brief Thread que espera conexiones de CPU nuevas y las agrega a la lista de sockets. Nunca para de esperar y aceptar nuevos
 /// @param args 
@@ -67,7 +75,7 @@ void *server_mh_cpu(void *args){
 
     t_socket_cpu *socket_nuevo = malloc(sizeof(t_socket_cpu));
 
-    while(socket_nuevo->dispatch = esperar_cliente(server_dispatch)){
+    while((socket_nuevo->dispatch = esperar_cliente(server_dispatch))){
         
         socket_nuevo->interrupt = esperar_cliente(server_interrupt);
 
@@ -78,6 +86,8 @@ void *server_mh_cpu(void *args){
         socket_nuevo = malloc(sizeof(t_socket_cpu));
 
     }
+    
+    return (void *)EXIT_SUCCESS;
 }
 void *server_mh_io(void *args){
 
@@ -90,7 +100,7 @@ void *server_mh_io(void *args){
 
     protocolo_socket cod_op;
 
-    while(socket_nuevo->socket = esperar_cliente(server)){
+    while((socket_nuevo->socket = esperar_cliente(server))){
 
         cod_op = recibir_operacion(socket_nuevo->socket);
 
@@ -114,6 +124,7 @@ void *server_mh_io(void *args){
         socket_nuevo = malloc(sizeof(t_socket_io));
 
     }
+    return (void *)EXIT_SUCCESS;
 }
 void inicializarSemaforos(){
     //vacia por ahora
@@ -122,4 +133,12 @@ void inicializarSemaforos(){
 void inicializarListasKernel(){
     lista_sockets_cpu = inicializarLista();
     lista_sockets_io = inicializarLista();
+}
+enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
+    if(!strcmp(string, "FIFO")){
+        return FIFO;
+    }
+    //agregar mas elseif aca mientras se van creando
+    log_error(logger, "Config de largo plazo no reconocido");
+    return -1;
 }
