@@ -5,7 +5,7 @@
 
 void inicializarIo();
 void levantarConfig();
-void dormir_IO(char* nombre_modulo_io,int segundos_espera,int pid);
+void dormir_IO();
 void *conexion_cliente_kernel(void *);
 
 #endif

@@ -39,6 +39,7 @@ enum protocolo_socket
 {
     OK,
     NOMBRE_IO,
+    DORMIR_IO,
 };
 typedef enum protocolo_socket protocolo_socket;
 
