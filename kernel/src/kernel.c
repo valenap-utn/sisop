@@ -10,5 +10,8 @@ list_struct_t *lista_sockets_io;
 
 int main(int argc, char* argv[]) {
     inicializarKernel();
+    
+    
+
     return 0;
 }
