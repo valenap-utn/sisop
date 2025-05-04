@@ -6,11 +6,22 @@ extern t_log_level current_log_level;
 char * puerto_cpu;
 extern list_struct_t *lista_sockets_cpu;
 
+int tam_memoria,tam_pagina,cant_entradas_x_tabla,cant_niveles;
+extern char* dump_path;
+char* swapfile_path;
+
 void inicializarMemoria(){
     
     config = config_create("./memoria.config");
     levantarConfig();
     logger = log_create("memoria.log", "Memoria", 1, current_log_level);
+
+    tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
+    tam_pagina = config_get_int_value(config, "TAM_PAGINA");
+    cant_entradas_x_tabla = config_get_int_value(config, "ENTRADAS_POR_TABLA");
+    cant_niveles = config_get_int_value(config,"CANTIDAD_NIVELES");
+    swapfile_path = config_get_string_value(config,"PATH_SWAPFILE");
+    dump_path = config_get_string_value(config,"DUMP_PATH");
     
     inicializarListasMemoria();
 
@@ -20,6 +31,7 @@ void inicializarMemoria(){
     pthread_join(tid_cpu, NULL);
     pthread_join(tid_cpu, NULL);
 }
+
 void levantarConfig(){
     puerto_cpu = config_get_string_value(config, "PUERTO_ESCUCHA_CPU");
     char *value = config_get_string_value(config, "LOG_LEVEL");
@@ -74,6 +86,12 @@ void *conexion_server_cpu(void *args) {
     close(server_cpu);
     pthread_exit(NULL);
 }
+
 void inicializarListasMemoria(){
     lista_sockets_cpu = inicializarLista();
+}
+
+
+void inicializar_proceso(){
+    
 }
