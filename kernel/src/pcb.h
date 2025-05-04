@@ -17,8 +17,9 @@ typedef enum
 typedef struct{
     int pid;
     int pc;
-    t_list* me;
-    t_list* mt;    
+    t_list* me; //metricas de estado
+    t_list* mt; //metricas de tiempo
+    t_list* instrucciones;
 }PCB;
 
 //FUNCIONES
