@@ -7,6 +7,21 @@
 #include <commons/config.h>
 #include <errno.h>
 
+typedef struct t_tabla_nivel {
+    struct t_entrada_tabla** entradas; // Arreglo de punteros a entradas
+} t_tabla_nivel;
+
+typedef struct t_entrada_tabla {
+    bool presente;
+    bool es_utlimo_nivel;
+    t_tabla_nivel* siguiente_nivel; // Si no es el último nivel
+    uint32_t marco_fisico;       // Si es el último nivel
+} t_entrada_tabla;
+
+typedef struct {
+    int pid;
+    t_tabla_nivel* tabla_raiz; // Apunta al primer nivel
+} t_proceso;
 
 
 typedef struct{

@@ -10,7 +10,6 @@ void *conexion_server_cpu(void *args);
 void inicializarListasMemoria();
 
 
-
 //FUNCIONES
 void inicializar_proceso();
 void suspender_proceso();
