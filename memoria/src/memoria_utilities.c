@@ -91,7 +91,63 @@ void inicializarListasMemoria(){
     lista_sockets_cpu = inicializarLista();
 }
 
+//FUNCIONES PARA TDP
 
-void inicializar_proceso(){
-    
+t_tabla_nivel* crear_tabla_nivel(int nivel_actual){
+    t_tabla_nivel* tabla = malloc(sizeof(t_tabla_nivel));
+    tabla->entradas = malloc(sizeof(t_entrada_tabla*) * cant_entradas_x_tabla);
+
+    for (int i = 0; i < cant_entradas_x_tabla; i++) {
+        tabla->entradas[i] = malloc(sizeof(t_entrada_tabla));
+        tabla->entradas[i]->presente = false;
+        tabla->entradas[i]->es_ultimo_nivel = (nivel_actual == cant_niveles - 1);
+        tabla->entradas[i]->siguiente_nivel = NULL;
+        tabla->entradas[i]->marco_fisico = 0;
+    }
+
+    return tabla;
 }
+
+void inicializar_proceso(int pid){
+    t_proceso* nuevo_proceso = malloc(sizeof(t_proceso));
+    nuevo_proceso->pid = pid;
+    nuevo_proceso->tabla_raiz = crear_tabla_nivel(0); // nivel 0 == raíz
+
+    // Agregalo a tu lista global de procesos
+    //list_add(procesos_memoria, nuevo_proceso);
+
+    log_info(logger, "Proceso PID %d inicializado correctamente", pid);
+
+    return nuevo_proceso; // o retornar "OK" si se espera mensaje
+}
+
+void liberar_tabla_nivel(t_tabla_nivel* tabla, int nivel_actual) {
+    for (int i = 0; i < cant_entradas_x_tabla; i++) {
+        t_entrada_tabla* entrada = tabla->entradas[i];
+
+        if (entrada->presente && !entrada->es_ultimo_nivel && entrada->siguiente_nivel != NULL) {
+            // Liberar la tabla del siguiente nivel recursivamente
+            liberar_tabla_nivel(entrada->siguiente_nivel, nivel_actual + 1);
+        }
+
+        free(entrada);
+    }
+
+    free(tabla->entradas);
+    free(tabla);
+}
+
+/* HAY QUE VER COMO IMPLEMENTARLA CON SWAP
+
+void finalizar_proceso(int pid) {
+    Proceso* proceso = buscar_proceso_por_pid(pid);
+    if (proceso == NULL) return;
+
+    liberar_tabla_nivel(proceso->tabla_raiz, 0);
+
+    list_remove_element(procesos_memoria, proceso);
+    free(proceso);
+
+    log_info(logger, "Proceso PID %d finalizado y estructuras liberadas", pid);
+}
+*/
