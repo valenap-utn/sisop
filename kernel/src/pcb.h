@@ -3,16 +3,7 @@
 
 #include <utils/utils.h>
 
-typedef struct{
-    int pid;
-    registrosPCB *registros;
-    int memoria_necesaria;
-    t_estado estado;
-    uint32_t base;
-    uint32_t limite;
-    t_list* me;
-    t_list* mt;
-}PCB;
+
 
 enum t_estado
 {
@@ -37,7 +28,20 @@ typedef struct{
     uint32_t HX;
 }registrosPCB;
 
+typedef struct{
+    int pid;
+    registrosPCB *registros;
+    int memoria_necesaria;
+    uint32_t base;
+    uint32_t limite;
+    t_list* instrucciones;
+    list_struct_t* me;
+    list_struct_t* mt;
+}PCB;
+
 //FUNCIONES
 PCB* iniciar_pcb();
+
+void inicializarRegistros(registrosPCB *reg);
 
 #endif
