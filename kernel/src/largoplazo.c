@@ -25,9 +25,9 @@ void largoPlazoFifo(){
     while(true){
         sem_wait(lista_procesos_new->sem); // espera a que haya un nuevo elemento en la cola_new
         log_debug(logger, "Nuevo proceso a crear: Intentando cargar en memoria");
-        PCB * pcb = desencolar_cola_new();
+        PCB * pcb = desencolar_cola_new(0);
         if(!encolarPeticionLargoPlazo(pcb)){
-            encolar_cola_new(pcb, 0);
+            encolar_cola_new(pcb);
             sem_wait(sem_proceso_fin); //espera a que un proceso finalize para volver a intentar enviar peticiones a memoria
         }
     }

@@ -190,14 +190,14 @@ PCB *desencolar_cola_new(int index){
 /// @brief Encola de lista_procesos_new
 void encolar_cola_new(PCB *pcb){
     pthread_mutex_lock(lista_procesos_new->mutex);
-    list_add_in_index(lista_procesos_new->lista, 0);
+    list_add_in_index(lista_procesos_new->lista, 0, pcb);
     pthread_mutex_unlock(lista_procesos_new->mutex);
     sem_post(lista_procesos_new->sem);
     return;
 }
 void encolar_cola_ready(PCB *pcb){
     pthread_mutex_lock(lista_procesos_ready->mutex);
-    list_add_in_index(lista_procesos_ready->lista, -1);
+    list_add_in_index(lista_procesos_ready->lista, -1, pcb);
     pthread_mutex_unlock(lista_procesos_ready->mutex);
     // sem_post(lista_procesos_ready->sem); por ahora creo que no hace falta
     return;
@@ -206,7 +206,7 @@ void encolar_cola_new_ordenado_smallerFirst(PCB * pcb){
     int index = 0;
     PCB *pcb_aux;
     
-    t_list_iterator iterator = list_iterator_create(lista_procesos_new->lista);
+    t_list_iterator *iterator = list_iterator_create(lista_procesos_new->lista);
     while(list_iterator_has_next(iterator)){
         pcb_aux = list_iterator_next(iterator);
         index = list_iterator_index(iterator);
