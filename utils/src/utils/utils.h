@@ -51,6 +51,12 @@ enum enum_algoritmo_largoPlazo
 };
 typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
 
+enum enum_algoritmo_cortoPlazo
+{
+    FIFO,
+};
+typedef enum enum_algoritmo_cortoPlazo enum_algoritmo_cortoPlazo;
+
 typedef struct
 {
 	int size;
