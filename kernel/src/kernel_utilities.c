@@ -210,12 +210,12 @@ void encolar_cola_new_ordenado_smallerFirst(PCB * pcb){
     while(list_iterator_has_next(iterator)){
         pcb_aux = list_iterator_next(iterator);
         index = list_iterator_index(iterator);
-        // if (pcb.memoria_utilizada < pcb_aux.memoria_utilizada){
-        //     pthread_mutex_lock(lista_procesos_new->mutex);
-        //     list_add(lista_procesos_new->lista, index);
-        //     pthread_mutex_unlock(lista_procesos_new->mutex);
-        //     return;
-        // }
+        if (pcb->memoria_necesaria < pcb_aux->memoria_necesaria){
+            pthread_mutex_lock(lista_procesos_new->mutex);
+            list_add_in_index(lista_procesos_new->lista, index, pcb);
+            pthread_mutex_unlock(lista_procesos_new->mutex);
+            return;
+        }
     }
     return;
 }
