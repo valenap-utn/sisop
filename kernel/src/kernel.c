@@ -7,7 +7,7 @@ t_config *config;
 list_struct_t *lista_sockets_cpu;
 list_struct_t *lista_sockets_io;
 
-list_struct_t *lista_procesos_new
+list_struct_t *lista_procesos_new;
 list_struct_t *lista_procesos_ready;
 //variables globales
 
