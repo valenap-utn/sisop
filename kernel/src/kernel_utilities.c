@@ -1,4 +1,5 @@
 #include <kernel_utilities.h>
+#include <pcb.h>
 
 extern t_log *logger;
 extern t_config *config;
@@ -6,6 +7,13 @@ extern t_config *config;
 extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
 
+//colas_planificadores
+extern list_struct_t *lista_procesos_new;
+extern list_struct_t *lista_procesos_ready;
+
+//semaforos auxiliares
+sem_t * sem_proceso_fin;
+sem_t * sem_respuesta_memoria;
 
 //configs
 t_log_level current_log_level;
@@ -30,6 +38,9 @@ void inicializarKernel(){
     
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
+    
+    //Al iniciar el proceso Kernel, el algoritmo de Largo Plazo debe estar frenado (estado STOP) y se deberá esperar un ingreso de un Enter por teclado para poder iniciar con la planificación.
+    //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
     pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
     
 
@@ -127,12 +138,14 @@ void *server_mh_io(void *args){
     return (void *)EXIT_SUCCESS;
 }
 void inicializarSemaforos(){
-    //vacia por ahora
+    sem_proceso_fin = inicializarSem(0);
+    sem_respuesta_memoria = inicializarSem(0);
     return;    
 }
 void inicializarListasKernel(){
     lista_sockets_cpu = inicializarLista();
     lista_sockets_io = inicializarLista();
+    lista_procesos_new = inicializarLista();
 }
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
     if(!strcmp(string, "FIFO")){
@@ -141,4 +154,68 @@ enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
     //agregar mas elseif aca mientras se van creando
     log_error(logger, "Config de largo plazo no reconocido");
     return -1;
+}
+bool encolarPeticionLargoPlazo(PCB *pcb){
+    t_peticion_largoPlazo * peticion = malloc(sizeof(t_peticion_largoPlazo));
+
+    peticion->tipo = PROCESS_CREATE_MEM;
+    peticion->proceso = pcb;
+    encolarPeticionMemoria(peticion);
+    sem_wait(sem_respuesta_memoria);
+    if (peticion->respuesta_exitosa){
+        log_debug(logger, "Se cargo un nuevo proceso en memoria");
+        encolar_cola_ready(pcb);
+        //sem post a proceso nuevo encolado, revisar si hace falta
+        return true;
+    }
+    else{
+        log_debug(logger, "No se pudo cargar proceso nuevo en memoria");
+        return false;
+    }
+}
+void encolarPeticionMemoria(t_peticion_largoPlazo *peticion){
+    //codigo
+    //sem post a lista de peticiones para memoria
+    return;
+}
+/// @brief desencola de lista_procesos_new con el index indicado (0 para FIFO)
+/// @param index 
+/// @return el PCB de la posicion index
+PCB *desencolar_cola_new(int index){
+    pthread_mutex_lock(lista_procesos_new->mutex);
+    PCB *pcb = list_remove(lista_procesos_new->lista, index);
+    pthread_mutex_unlock(lista_procesos_new->mutex);
+    return pcb;
+}
+/// @brief Encola de lista_procesos_new
+void encolar_cola_new(PCB *pcb){
+    pthread_mutex_lock(lista_procesos_new->mutex);
+    list_add_in_index(lista_procesos_new->lista, 0);
+    pthread_mutex_unlock(lista_procesos_new->mutex);
+    sem_post(lista_procesos_new->sem);
+    return;
+}
+void encolar_cola_ready(PCB *pcb){
+    pthread_mutex_lock(lista_procesos_ready->mutex);
+    list_add_in_index(lista_procesos_ready->lista, -1);
+    pthread_mutex_unlock(lista_procesos_ready->mutex);
+    // sem_post(lista_procesos_ready->sem); por ahora creo que no hace falta
+    return;
+}
+void encolar_cola_new_ordenado_smallerFirst(PCB * pcb){
+    int index = 0;
+    PCB *pcb_aux;
+    
+    t_list_iterator iterator = list_iterator_create(lista_procesos_new->lista);
+    while(list_iterator_has_next(iterator)){
+        pcb_aux = list_iterator_next(iterator);
+        index = list_iterator_index(iterator);
+        // if (pcb.memoria_utilizada < pcb_aux.memoria_utilizada){
+        //     pthread_mutex_lock(lista_procesos_new->mutex);
+        //     list_add(lista_procesos_new->lista, index);
+        //     pthread_mutex_unlock(lista_procesos_new->mutex);
+        //     return;
+        // }
+    }
+    return;
 }
