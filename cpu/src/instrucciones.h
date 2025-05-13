@@ -11,10 +11,11 @@ void read(uint32_t* direccion, int tamanio);
 void goto_(int valor);
 
 void Feth();
-void Decode();
+void Decode(char *);
 void Execute();
 void Execute();
 void Check_Int();
+int instrStringMap(char []);
 
 typedef enum {
     // Syscalls
