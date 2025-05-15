@@ -1,5 +1,6 @@
 #include <memoria.h>
 
+extern espacio_de_usuario;
 //variables globales
 t_log *logger;
 t_config *config;
@@ -12,6 +13,8 @@ char* dump_path;
 int main(int argc, char* argv[]) {
     dump_path = crear_directorio("/dump_files");
     inicializarMemoria();
+
+    free(espacio_de_usuario);
     return 0;
 }
 
@@ -41,3 +44,8 @@ char* crear_directorio(char* ruta_a_agregar) {
 
     return ruta;
 }
+
+
+
+
+

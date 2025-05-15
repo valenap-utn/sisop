@@ -7,6 +7,27 @@
 #include <commons/config.h>
 #include <errno.h>
 
+
+//COMUNICACION CON KERNEL y CPU
+enum comu_cpu{
+    ACCEDER_A_TDP,
+    ACCEDER_A_ESPACIO_USUARIO,
+    LEER_PAG_COMPLETA,
+    ACTUALIZAR_PAG_COMPLETA,
+    MEMORY_DUMP
+};
+
+enum comu_kernel{
+    INICIALIZAR_PROCESO,
+    SUSPENDER_PROCESO,
+    DESSUPENDER_PROCESO,
+    FINALIZAR_PROCESO
+};
+
+// typedef struct{
+    
+// }t_memoria;
+
 typedef struct t_tabla_nivel {
     struct t_entrada_tabla** entradas; // Arreglo de punteros a entradas
 } t_tabla_nivel;
@@ -23,8 +44,24 @@ typedef struct {
     t_tabla_nivel* tabla_raiz; // Apunta al primer nivel
 } t_proceso;
 
+typedef struct {
+    bool presencia;
+    bool uso;
+    bool modificado;
+    uint32_t marco; // Solo válido si es tabla de último nivel
+} t_entrada_pagina;
 
-typedef struct{
+typedef struct t_tabla_pagina {
+    bool es_nivel_final; // True si apunta a marcos
+    union {
+        struct t_tabla_pagina** sub_tablas; // para niveles intermedios
+        t_entrada_pagina* entradas;         // para nivel final
+    };
+} t_tabla_pagina;
+
+
+
+typedef struct {
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas
     int cant_instr_sol; //cantidad de instrucciones solicitadas
     int cant_bajadas_swap; //cantidad de bajadas a SWAP
