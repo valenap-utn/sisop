@@ -7,11 +7,19 @@ void inicializarMemoria();
 void levantarConfig();
 void *conexion_server_cpu(void *args);
 
+void cpu(int* conexion);
+
+
+void kernel(int* conexion);
+
+int hay_espacio_en_memoria(int tamanio);
+
+
 void inicializarListasMemoria();
 
 
 //FUNCIONES
-void inicializar_proceso();
+int inicializar_proceso(int pid);
 void suspender_proceso();
 void des_suspender_proceso();
 void finalizar_proceso();
