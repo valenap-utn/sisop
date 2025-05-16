@@ -10,12 +10,25 @@ void write(uint32_t* direccion, uint32_t* datos);
 void read(uint32_t* direccion, int tamanio);
 void goto_(int valor);
 
-void Feth();
-void Decode(char *);
-void Execute();
-void Execute();
+char * Fetch();
+instruccion_t Decode(char *);
+void Execute(instruccion_t);
 void Check_Int();
 int instrStringMap(char []);
+void MMU(uint32_t*direccion);
+
+typedef enum {
+    SYSCALL,
+    USUARIO,
+}priv_instrucion_t ;
+
+typedef struct
+{
+    int opcode;
+    char ** data;
+    priv_instrucion_t tipo;
+}
+instruccion_t;
 
 typedef enum {
     // Syscalls

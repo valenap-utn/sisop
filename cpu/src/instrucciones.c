@@ -4,13 +4,14 @@
 
 
 void ciclo_instruccion(){
-	while ((1)){
-        Feth();
-        Decode();
-        Execute();
-        Execute();
-        Check_Int();
-	}
+    char * instrSTR;
+    instruccion_t instr;
+        while ((1)){
+            instrSTR = Fetch();
+            instr = Decode(instrSTR);
+            Execute(instr);
+            Check_Int();
+        }
 }
 
 int instrStringMap(char opcodeStr []){
@@ -43,65 +44,85 @@ int instrStringMap(char opcodeStr []){
     return opCode;
 };
 
-void Feth(){
-        log_info(logger,"## PID: %d TID: %d PC: %d- FETCH ",, , );
+char * Fetch(){
+    log_info(logger,"## PID: %d TID: %d PC: %d- FETCH ",, , );
+    return "NOOP"; // Para cambiar en el futuro por el valor posta
 };
-void Decode(char * instr){
-    char ** instrPartida = string_split(instr, " ");
-    int opCode = instrStringMap(instrinstrPartida[0]);
 
-    switch (opCode){
+instruccion_t Decode(char * instr){
+    instruccion_t current_instr;
+    current_instr.data = string_split(instr, " ");
+    current_instr.opcode = instrStringMap(current_instr.data[0]);
+
+
+    switch (current_instr.opcode){
         case IO:
+                current_instr.tipo = SYSCALL;
 
         break;
         case INIT_PROC:
-
-        
+                current_instr.tipo = SYSCALL;       
         break;
 
         case DUMP_MEMORY:
-
+                current_instr.tipo = SYSCALL;
         
         break;
         case EXIT:
 
-        
+                current_instr.tipo = SYSCALL;
         break;
         case NOOP:
-
-        
+            current_instr.tipo = USUARIO;
         break;
         case WRITE:
+            current_instr.tipo = USUARIO;
 
-        
         break;
         case READ:
+            current_instr.tipo = USUARIO;
 
-        
         break;
         case GOTO:
-
+            current_instr.tipo = USUARIO;
         break;
         default:
              log_info(logger, "Instrucción no reconocida: %s", *instrPartida);
              exit(EXIT_FAILURE);
                 break;
         }
-        if (opCode == IO || opCode == INIT_PROC || opCode ==  WRITE || opCode ==  READ && (!instrinstrPartida[1] || !instrinstrPartida[2])){
-            log_info(logger, "Instrucción no tiene los 2 parametros: %s", *instrPartida);
+        if (current_instr.opCode == IO || current_instr.opCode == INIT_PROC || current_instr.opCode ==  WRITE || 
+            current_instr.opCode ==  READ && (!current_instr.data[0] || !current_instr.data[1])){
+
+                log_info(logger, "Instrucción no tiene los 2 parametros: %s", *instrPartida);
+                exit(EXIT_FAILURE);
+        } else if (current_instr.opCode == GOTO && !current_instr.data[0]){
+
+                log_info(logger, "Instrucción no tiene el parametro: %s", *instrPartida);
+                exit(EXIT_FAILURE);
+        };
+        return current_instr;    
+};
+
+void Execute(instruccion_t instr){
+    switch (instr.tipo){
+        case SYSCALL:
+
+        break;
+        case USUARIO:
+                    
+        break;
+        default:
+            log_info(logger, "Error al ejecutar la instruccion: %s", *instr.data);
             exit(EXIT_FAILURE);
-        } else if (opCode == GOTO && !instrinstrPartida[1]){
-            log_info(logger, "Instrucción no tiene el parametro: %s", *instrPartida);
-            exit(EXIT_FAILURE);
+            break;
         }
-        
 };
-void Execute(){
 
-};
-void Execute(){
-
-};
 void Check_Int(){
+
+};
+
+void MMU(uint32_t*direccion){
 
 };
