@@ -14,7 +14,8 @@ enum comu_cpu{
     ACCEDER_A_ESPACIO_USUARIO,
     LEER_PAG_COMPLETA,
     ACTUALIZAR_PAG_COMPLETA,
-    MEMORY_DUMP
+    MEMORY_DUMP,
+    PEDIR_INSTRUCCIONES
 };
 
 enum comu_kernel{
@@ -24,43 +25,6 @@ enum comu_kernel{
     FINALIZAR_PROCESO
 };
 
-// typedef struct{
-    
-// }t_memoria;
-
-typedef struct t_tabla_nivel {
-    struct t_entrada_tabla** entradas; // Arreglo de punteros a entradas
-} t_tabla_nivel;
-
-typedef struct t_entrada_tabla {
-    bool presente;
-    bool es_utlimo_nivel;
-    t_tabla_nivel* siguiente_nivel; // Si no es el último nivel
-    uint32_t marco_fisico;       // Si es el último nivel
-} t_entrada_tabla;
-
-typedef struct {
-    int pid;
-    t_tabla_nivel* tabla_raiz; // Apunta al primer nivel
-} t_proceso;
-
-typedef struct {
-    bool presencia;
-    bool uso;
-    bool modificado;
-    uint32_t marco; // Solo válido si es tabla de último nivel
-} t_entrada_pagina;
-
-typedef struct t_tabla_pagina {
-    bool es_nivel_final; // True si apunta a marcos
-    union {
-        struct t_tabla_pagina** sub_tablas; // para niveles intermedios
-        t_entrada_pagina* entradas;         // para nivel final
-    };
-} t_tabla_pagina;
-
-
-
 typedef struct {
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas
     int cant_instr_sol; //cantidad de instrucciones solicitadas
@@ -69,6 +33,13 @@ typedef struct {
     int cant_lecturas; //cantidad de lecturas de memoria
     int cant_escrituras; //cantidad de escrituras de memoria
 }t_metricas;
+
+typedef struct{
+    void* espacio;
+    t_list *tabla_paginas;
+    t_metricas metricas;
+}t_memoria;
+
 
 char* crear_directorio(char* ruta_a_agregar);
 
