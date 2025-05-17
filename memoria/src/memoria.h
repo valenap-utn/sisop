@@ -6,7 +6,7 @@
 #include <commons/log.h>
 #include <commons/config.h>
 #include <errno.h>
-
+#include "../../kernel/src/pcb.h"
 
 //COMUNICACION CON KERNEL y CPU
 enum comu_cpu{
@@ -15,7 +15,8 @@ enum comu_cpu{
     LEER_PAG_COMPLETA,
     ACTUALIZAR_PAG_COMPLETA,
     MEMORY_DUMP,
-    PEDIR_INSTRUCCIONES
+    PEDIR_INSTRUCCIONES,
+    OBTENER_INSTRUCCION
 };
 
 enum comu_kernel{
