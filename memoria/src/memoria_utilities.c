@@ -17,14 +17,14 @@ void inicializarMemoria(){
     config = config_create("./memoria.config");
     levantarConfig();
     logger = log_create("memoria.log", "Memoria", 1, current_log_level);
-
+    
     tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
     tam_pagina = config_get_int_value(config, "TAM_PAGINA");
     cant_entradas_x_tabla = config_get_int_value(config, "ENTRADAS_POR_TABLA");
     cant_niveles = config_get_int_value(config,"CANTIDAD_NIVELES");
     swapfile_path = config_get_string_value(config,"PATH_SWAPFILE");
     dump_path = config_get_string_value(config,"DUMP_PATH");
-
+    dump_path = crear_directorio("/dump_files");
     espacio_de_usuario = calloc(1,tam_memoria); //RECORDAR HACER UN FREE DE ESTO (no lo puse)
     
     inicializarListasMemoria();
