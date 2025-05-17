@@ -1,5 +1,7 @@
 #include <memoria_utilities.h>
 
+
+
 void* espacio_de_usuario;
 
 extern t_log *logger;
@@ -12,6 +14,7 @@ int tam_memoria,tam_pagina,cant_entradas_x_tabla,cant_niveles;
 extern char* dump_path;
 char* swapfile_path;
 char* path_instrucciones;
+
 
 void inicializarMemoria(){
     
@@ -137,12 +140,11 @@ void cpu(int* conexion){
             
             //A CHEQUEAR que esté bien
             case OBTENER_INSTRUCCION:
-
                 int pc;
                 recv(*conexion, &pid, sizeof(int), MSG_WAITALL);
                 recv(*conexion, &pc, sizeof(int), MSG_WAITALL);
 
-                t_proceso* proceso = buscar_proceso_por_pid(pid);
+                PCB* proceso = buscar_proceso_por_pid(pid);
                 if (!proceso) {
                     log_error(logger, "PID %d no encontrado al pedir instrucción", pid);
                     break;
@@ -182,7 +184,7 @@ void kernel(int* conexion){
                 recv(*conexion,&pid,sizeof(int),MSG_WAITALL);
                 recv(*conexion,&tamanio,sizeof(int),MSG_WAITALL);
 
-                if(hay_espacio_en_mem(tamanio)) inicializar_proceso(pid);
+                if(hay_espacio_en_mem(tamanio)) inicializar_proceso(pid,tamanio);
                 else log_error(logger,"No se pudo inicializar el proceso por falta de memoria");
 
             break;
@@ -218,13 +220,13 @@ int hay_espacio_en_mem(int tamanio_proceso){
 int pc = 0; //no se si esto ya viene de antes (desde el kernel), creo que si
 
 int inicializar_proceso(int pid, int tamanio){
-    t_proceso* nuevo_proceso = malloc(sizeof(t_proceso));
+    PCB* nuevo_proceso = malloc(sizeof(PCB));
     nuevo_proceso->pid = pid;
     nuevo_proceso->pc = pc++;
     nuevo_proceso->me = list_create();
     nuevo_proceso->mt = list_create();
-    nuevo_proceso->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones);
-    nuevo_proceso->tamanio = tamanio; 
+    nuevo_proceso->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones); 
+    
     
     if (nuevo_proceso->instrucciones == NULL) {
         log_error(logger, "Error cargando instrucciones para PID %d", pid);
@@ -264,4 +266,15 @@ t_list* cargar_instrucciones_desde_archivo(char* path) {
     free(linea);
     fclose(archivo);
     return instrucciones;
+}
+
+PCB* buscar_proceso_por_pid(int pid) {
+    t_list* procesos_memoria = list_create(); //ESTO ESTA ACA PORQUE FALTARIA LA LISTA DE PROCESOS GLOBAL AHRE
+    for (int i = 0; i < list_size(procesos_memoria); i++) {
+        PCB* proceso = list_get(procesos_memoria, i);
+        if (proceso->pid == pid) {
+            return proceso;
+        }
+    }
+    return NULL;  // No se encontró el proceso
 }
