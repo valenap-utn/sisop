@@ -11,6 +11,7 @@ extern list_struct_t *lista_sockets_cpu;
 int tam_memoria,tam_pagina,cant_entradas_x_tabla,cant_niveles;
 extern char* dump_path;
 char* swapfile_path;
+char* path_instrucciones;
 
 void inicializarMemoria(){
     
@@ -25,6 +26,11 @@ void inicializarMemoria(){
     swapfile_path = config_get_string_value(config,"PATH_SWAPFILE");
     dump_path = config_get_string_value(config,"DUMP_PATH");
     dump_path = crear_directorio("/dump_files");
+
+    //Creo que esto está bien, no lo habíamos agregado antes
+    path_instrucciones = config_get_string_value(config,"PATH_INSTRUCCIONES");
+    path_instrucciones = crear_directorio("/scripts");
+
     espacio_de_usuario = calloc(1,tam_memoria); //RECORDAR HACER UN FREE DE ESTO (no lo puse)
     
     inicializarListasMemoria();
@@ -128,6 +134,34 @@ void cpu(int* conexion){
 
             case PEDIR_INSTRUCCIONES:
             break;
+            
+            //A CHEQUEAR que esté bien
+            case OBTENER_INSTRUCCION:
+
+                int pc;
+                recv(*conexion, &pid, sizeof(int), MSG_WAITALL);
+                recv(*conexion, &pc, sizeof(int), MSG_WAITALL);
+
+                t_proceso* proceso = buscar_proceso_por_pid(pid);
+                if (!proceso) {
+                    log_error(logger, "PID %d no encontrado al pedir instrucción", pid);
+                    break;
+                }
+
+                if (pc >= list_size(proceso->instrucciones)) {
+                    log_error(logger, "Índice %d fuera de rango para PID %d", pc, pid);
+                    break;
+                }
+
+                char* instruccion = list_get(proceso->instrucciones, pc);
+                int len = strlen(instruccion) + 1;
+
+                send(*conexion, &len, sizeof(int), 0);
+                send(*conexion, instruccion, len, 0);
+
+                // log_info(logger, "Se envió instrucción [%s] del PID %d - Index %d", instruccion, pid, index);
+
+            break;
         }
     }
 }
@@ -165,6 +199,8 @@ void kernel(int* conexion){
     }
 }
 
+
+//Hay que ir calculando el tam_memoria disponible en algun lado
 int hay_espacio_en_mem(int tamanio_proceso){
     return (tamanio_proceso > tam_memoria) ? 0 : 1;
 }
@@ -179,18 +215,53 @@ int hay_espacio_en_mem(int tamanio_proceso){
 
 //FUNCIONES PARA TDP
 
+int pc = 0; //no se si esto ya viene de antes (desde el kernel), creo que si
 
-
-int inicializar_proceso(int pid){
-    int tamanio_proceso = 1; //HAY QUE CALCULAR ESTO
-    if(hay_espacio_en_mem(tamanio_proceso)){
-        log_info(logger, "Creación de Proceso: ## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio_proceso);
-        return 0; // o retornar "OK" si se espera mensaje
-    }
-    else{
-        log_info(logger, "El proceso no pudo ser creado por falta de espacio");
-    };
+int inicializar_proceso(int pid, int tamanio){
+    t_proceso* nuevo_proceso = malloc(sizeof(t_proceso));
+    nuevo_proceso->pid = pid;
+    nuevo_proceso->pc = pc++;
+    nuevo_proceso->me = list_create();
+    nuevo_proceso->mt = list_create();
+    nuevo_proceso->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones);
+    nuevo_proceso->tamanio = tamanio; 
     
+    if (nuevo_proceso->instrucciones == NULL) {
+        log_error(logger, "Error cargando instrucciones para PID %d", pid);
+        free(nuevo_proceso);
+        return -1;
+    }
+
+    nuevo_proceso->cant_instrucciones = list_size(nuevo_proceso->instrucciones);
+
+    // Agregalo a tu lista global de procesos
+    //list_add(procesos_memoria, nuevo_proceso);
+
+    log_info(logger, "Creación de Proceso: ## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
+
+    return 0; // o retornar "OK" si se espera mensaje
 }
 
 
+//Para cargar instrucciones desde path de config en nuevo_proceso->instrucciones
+t_list* cargar_instrucciones_desde_archivo(char* path) {
+    FILE* archivo = fopen(path, "r");
+    if (!archivo) {
+        log_error(logger, "No se pudo abrir el archivo de instrucciones en %s", path);
+        return NULL;
+    }
+
+    t_list* instrucciones = list_create();
+    char* linea = NULL;
+    size_t len = 0;
+
+    while (getline(&linea, &len, archivo) != -1) {
+        // Eliminar salto de línea si existe
+        linea[strcspn(linea, "\n")] = '\0';
+        list_add(instrucciones, strdup(linea));
+    }
+
+    free(linea);
+    fclose(archivo);
+    return instrucciones;
+}

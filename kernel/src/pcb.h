@@ -20,6 +20,7 @@ typedef struct{
     t_list* me; //metricas de estado
     t_list* mt; //metricas de tiempo
     t_list* instrucciones;
+    int cant_instrucciones;
 }PCB;
 
 //FUNCIONES
