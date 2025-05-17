@@ -19,7 +19,11 @@ void inicializarListasMemoria();
 
 
 //FUNCIONES
-int inicializar_proceso(int pid);
+int inicializar_proceso(int pid, int tamanio);
+t_list* cargar_instrucciones_desde_archivo(char* path);
+
+
+
 void suspender_proceso();
 void des_suspender_proceso();
 void finalizar_proceso();

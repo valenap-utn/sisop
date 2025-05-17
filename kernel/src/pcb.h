@@ -35,6 +35,7 @@ typedef struct{
     uint32_t base;
     uint32_t limite;
     t_list* instrucciones;
+    int cant_instrucciones;
     list_struct_t* me;
     list_struct_t* mt;
 }PCB;
