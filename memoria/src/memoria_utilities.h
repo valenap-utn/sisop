@@ -9,13 +9,12 @@ void inicializarMemoria();
 void levantarConfig();
 void *conexion_server_cpu(void *args);
 
-void cpu(int* conexion);
+void *cpu(void* conexion);
 
 
 void kernel(int* conexion);
 
-int hay_espacio_en_memoria(int tamanio);
-
+int hay_espacio_en_mem(int tamanio_proceso);
 
 void inicializarListasMemoria();
 

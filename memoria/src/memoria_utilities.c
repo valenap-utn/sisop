@@ -80,7 +80,7 @@ void *conexion_server_cpu(void *args) {
 
 
     log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente CPU..", puerto_cpu);
-    while (*socket_nuevo = esperar_cliente(server_cpu)){
+    while ((*socket_nuevo = esperar_cliente(server_cpu))){
         
         // será error del cliente?
         if (*socket_nuevo == -1) {
@@ -94,7 +94,9 @@ void *conexion_server_cpu(void *args) {
         pthread_mutex_unlock(lista_sockets_cpu->mutex);
         
         //MANEJA LAS INSTRUCCIONES
-        cpu(server_cpu);
+        // cpu(socket_nuevo);(void*)socket_nuevo
+        //pthread_create();
+        sleep(0.5);
     }
 
     close(*socket_nuevo);
@@ -107,17 +109,21 @@ void inicializarListasMemoria(){
 }
 
 
-void cpu(int* conexion){
+void * cpu(void* args){
     //realizar handshake
 
+    int conexion = *(int *)args;
+    comu_cpu peticion;
+    t_list *paquete_recv;
+
     while(1){
-        int peticion;
-        recv(*conexion,&peticion,sizeof(int),MSG_WAITALL);
+        peticion = recibir_operacion(conexion);
 
         //retardo para peticiones
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
 
         int pid;
+        int pc;
 
         switch(peticion){
             case ACCEDER_A_TDP:
@@ -140,9 +146,11 @@ void cpu(int* conexion){
             
             //A CHEQUEAR que esté bien
             case OBTENER_INSTRUCCION:
-                int pc;
-                recv(*conexion, &pid, sizeof(int), MSG_WAITALL);
-                recv(*conexion, &pc, sizeof(int), MSG_WAITALL);
+
+                t_paquete *paquete_send;
+                paquete_recv = recibir_paquete(conexion);
+                pid = *(int *)list_remove(paquete_recv, 0);
+                pc = *(int *)list_remove(paquete_recv, 0);
 
                 PCB* proceso = buscar_proceso_por_pid(pid);
                 if (!proceso) {
@@ -150,7 +158,7 @@ void cpu(int* conexion){
                     break;
                 }
 
-                if (pc >= list_size(proceso->instrucciones)) {
+                if (pc > list_size(proceso->instrucciones)) {
                     log_error(logger, "Índice %d fuera de rango para PID %d", pc, pid);
                     break;
                 }
@@ -158,8 +166,10 @@ void cpu(int* conexion){
                 char* instruccion = list_get(proceso->instrucciones, pc);
                 int len = strlen(instruccion) + 1;
 
-                send(*conexion, &len, sizeof(int), 0);
-                send(*conexion, instruccion, len, 0);
+                paquete_send = crear_paquete(DEVOLVER_INSTRUCCION);
+                agregar_a_paquete(paquete_send, instruccion, len);
+
+                enviar_paquete(paquete_send, conexion);
 
                 // log_info(logger, "Se envió instrucción [%s] del PID %d - Index %d", instruccion, pid, index);
 
@@ -222,9 +232,9 @@ int pc = 0; //no se si esto ya viene de antes (desde el kernel), creo que si
 int inicializar_proceso(int pid, int tamanio){
     PCB* nuevo_proceso = malloc(sizeof(PCB));
     nuevo_proceso->pid = pid;
-    nuevo_proceso->pc = pc++;
-    nuevo_proceso->me = list_create();
-    nuevo_proceso->mt = list_create();
+    nuevo_proceso->PC = pc++;
+    nuevo_proceso->me = inicializarLista();
+    nuevo_proceso->mt = inicializarLista();
     nuevo_proceso->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones); 
     
     
