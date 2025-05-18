@@ -17,7 +17,6 @@ enum t_estado
 };typedef enum t_estado t_estado;
 
 typedef struct{
-    uint32_t PC;
     uint32_t AX;
     uint32_t BX;
     uint32_t CX;
@@ -30,11 +29,13 @@ typedef struct{
 
 typedef struct{
     int pid;
+    int PC;
     registrosPCB *registros;
     int memoria_necesaria;
     uint32_t base;
     uint32_t limite;
     t_list* instrucciones;
+    int cant_instrucciones;
     list_struct_t* me;
     list_struct_t* mt;
 }PCB;
