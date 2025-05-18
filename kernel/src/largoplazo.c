@@ -8,7 +8,7 @@ extern sem_t *sem_proceso_fin;
 
 void *largoPlazo(void *args){
     switch(algoritmo_largoPlazo){
-        case FIFO:
+        case LPL_FIFO:
             largoPlazoFifo();
             break;
 
