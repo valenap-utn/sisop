@@ -34,9 +34,10 @@ typedef struct{
     int memoria_necesaria;
     uint32_t base;
     uint32_t limite;
+    list_struct_t* me; //metricas de estado
+    list_struct_t* mt; //metricas de tiempo
     t_list* instrucciones;
-    list_struct_t* me;
-    list_struct_t* mt;
+    int cant_instrucciones;
 }PCB;
 
 //FUNCIONES
