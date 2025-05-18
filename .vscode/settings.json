@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "config.h": "c",
-        "memoria.h": "c",
-        "memoria_utilities.h": "c"
-    }
-}
