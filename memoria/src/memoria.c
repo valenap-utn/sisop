@@ -9,10 +9,8 @@ list_struct_t *lista_sockets_cpu;
 
 //variables globales
 char* dump_path;
-char* dump_path;
 
 int main(int argc, char* argv[]) {
-    
     
     inicializarMemoria();
     free(espacio_de_usuario);
