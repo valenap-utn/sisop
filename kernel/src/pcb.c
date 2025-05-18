@@ -23,7 +23,6 @@ PCB* iniciar_pcb(){
     return pcb;
 }
 void inicializarRegistros(registrosPCB *reg){
-    reg->PC=0;
     reg->AX=0;
     reg->BX=0;
     reg->CX=0;
