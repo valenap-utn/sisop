@@ -30,6 +30,8 @@ typedef struct{
 
 typedef struct{
     int pid;
+    int pc;
+    t_estado estado;
     registrosPCB *registros;
     int memoria_necesaria;
     uint32_t base;

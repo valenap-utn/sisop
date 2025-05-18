@@ -42,6 +42,7 @@ enum protocolo_socket
     NOMBRE_IO,
     DORMIR_IO,
     PROCESS_CREATE_MEM,
+    DISPATCH__CPU
 };
 typedef enum protocolo_socket protocolo_socket;
 
@@ -53,7 +54,7 @@ typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
 
 enum enum_algoritmo_cortoPlazo
 {
-    FIFO,
+    FIFO_CP,
 };
 typedef enum enum_algoritmo_cortoPlazo enum_algoritmo_cortoPlazo;
 
