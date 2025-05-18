@@ -34,11 +34,15 @@ typedef struct list_struct{
     t_list *lista;
     pthread_mutex_t *mutex;
     sem_t *sem;
+    sem_t *sem;
 }list_struct_t;
 
 enum protocolo_socket
 {
     OK,
+    NOMBRE_IO,
+    DORMIR_IO,
+    PROCESS_CREATE_MEM,
     NOMBRE_IO,
     DORMIR_IO,
     PROCESS_CREATE_MEM,
@@ -93,8 +97,11 @@ extern t_log* logger;
     void terminar_programa(int conexion, t_log* logger, t_config* config);
     void iterator(char* value);
 //
+//
 
     list_struct_t * inicializarLista();
+
+    sem_t *inicializarSem(int initial_value);
 
     sem_t *inicializarSem(int initial_value);
 

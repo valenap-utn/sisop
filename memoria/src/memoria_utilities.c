@@ -104,6 +104,7 @@ void *conexion_server_cpu(void *args) {
     pthread_exit(NULL);
 }
 
+
 void inicializarListasMemoria(){
     lista_sockets_cpu = inicializarLista();
 }
