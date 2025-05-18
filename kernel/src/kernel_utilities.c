@@ -1,10 +1,20 @@
 #include <kernel_utilities.h>
 #include <pcb.h>
+#include <pcb.h>
 
 extern t_log *logger;
 extern t_config *config;
 
 extern list_struct_t *lista_sockets_cpu;
+extern list_struct_t *lista_sockets_io;
+
+//colas_planificadores
+extern list_struct_t *lista_procesos_new;
+extern list_struct_t *lista_procesos_ready;
+
+//semaforos auxiliares
+sem_t * sem_proceso_fin;
+sem_t * sem_respuesta_memoria;
 extern list_struct_t *lista_sockets_io;
 
 //colas_planificadores
@@ -21,11 +31,15 @@ char * puerto_dispatch;
 char * puerto_interrupt;
 char * puerto_io;
 enum_algoritmo_largoPlazo algoritmo_largoPlazo;
+char * puerto_io;
+enum_algoritmo_largoPlazo algoritmo_largoPlazo;
 
 void inicializarKernel(){
 
     config = config_create("./kernel.config");
     logger = log_create("kernel.log", "Kernel", 1, current_log_level);
+
+    levantarConfig();
 
     levantarConfig();
 
@@ -58,9 +72,36 @@ void inicializarKernel(){
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);
     pthread_join(tid_largoplazo, NULL);
+    pthread_t tid_server_mh_cpu;
+    pthread_t tid_server_mh_io;
+    pthread_t tid_largoplazo;
+    
+    pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
+    pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
+    
+    //Al iniciar el proceso Kernel, el algoritmo de Largo Plazo debe estar frenado (estado STOP) y se deberá esperar un ingreso de un Enter por teclado para poder iniciar con la planificación.
+    //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
+    pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
+    
+
+
+    // sleep(5);
+    // t_list_iterator *iterator = list_iterator_create(lista_sockets_cpu->lista);
+    // t_socket_cpu *element;
+    // while(list_iterator_has_next(iterator)){
+    //     element = list_iterator_next(iterator);
+
+    //     log_debug(logger, "%d", element->interrupt);
+        
+    // }
+
+    pthread_join(tid_server_mh_cpu, NULL);
+    pthread_join(tid_server_mh_io, NULL);
+    pthread_join(tid_largoplazo, NULL);
 
 
 }
+
 
 void levantarConfig(){
 
@@ -70,6 +111,11 @@ void levantarConfig(){
 
     puerto_dispatch = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
+    puerto_io = config_get_string_value(config, "PUERTO_ESCUCHA_IO");
+    char * alg_largoplazo_temp;
+    alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_COLA_NEW");
+    algoritmo_largoPlazo = alg_largoPlazo_from_string(alg_largoplazo_temp);
+    
     puerto_io = config_get_string_value(config, "PUERTO_ESCUCHA_IO");
     char * alg_largoplazo_temp;
     alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_COLA_NEW");
@@ -86,6 +132,7 @@ void *server_mh_cpu(void *args){
 
     t_socket_cpu *socket_nuevo = malloc(sizeof(t_socket_cpu));
 
+    while((socket_nuevo->dispatch = esperar_cliente(server_dispatch))){
     while((socket_nuevo->dispatch = esperar_cliente(server_dispatch))){
         
         socket_nuevo->interrupt = esperar_cliente(server_interrupt);
@@ -136,8 +183,49 @@ void *server_mh_io(void *args){
 
     }
     return (void *)EXIT_SUCCESS;
+    
+    return (void *)EXIT_SUCCESS;
+}
+void *server_mh_io(void *args){
+
+    int server = iniciar_servidor(puerto_io);
+
+    t_socket_io *socket_nuevo = malloc(sizeof(t_socket_io));
+    t_list *paquete_recv;
+
+    char *nombre_io;
+
+    protocolo_socket cod_op;
+
+    while((socket_nuevo->socket = esperar_cliente(server))){
+
+        cod_op = recibir_operacion(socket_nuevo->socket);
+
+        if(cod_op != NOMBRE_IO){
+            log_error(logger, "Se recibio un protocolo inesperado de IO");
+            return (void*)EXIT_FAILURE;
+        }
+
+        paquete_recv = recibir_paquete(socket_nuevo->socket);
+
+        nombre_io = list_remove(paquete_recv, 0);
+        // socket_nuevo->nombre = nombre_io;
+        socket_nuevo->nombre = nombre_io;
+        
+        pthread_mutex_lock(lista_sockets_io->mutex);
+        list_add(lista_sockets_io->lista, socket_nuevo);
+        pthread_mutex_unlock(lista_sockets_io->mutex);
+
+        log_debug(logger, socket_nuevo->nombre);
+
+        socket_nuevo = malloc(sizeof(t_socket_io));
+
+    }
+    return (void *)EXIT_SUCCESS;
 }
 void inicializarSemaforos(){
+    sem_proceso_fin = inicializarSem(0);
+    sem_respuesta_memoria = inicializarSem(0);
     sem_proceso_fin = inicializarSem(0);
     sem_respuesta_memoria = inicializarSem(0);
     return;    
