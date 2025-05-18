@@ -1,6 +1,6 @@
 #include <memoria.h>
 
-extern espacio_de_usuario;
+extern void * espacio_de_usuario;
 //variables globales
 t_log *logger;
 t_config *config;

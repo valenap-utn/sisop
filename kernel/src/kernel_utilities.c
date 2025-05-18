@@ -149,7 +149,7 @@ void inicializarListasKernel(){
 }
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
     if(!strcmp(string, "FIFO")){
-        return FIFO;
+        return LPL_FIFO;
     }
     //agregar mas elseif aca mientras se van creando
     log_error(logger, "Config de largo plazo no reconocido");

@@ -48,13 +48,13 @@ typedef enum protocolo_socket protocolo_socket;
 
 enum enum_algoritmo_largoPlazo
 {
-    FIFO,
+    LPL_FIFO,
 };
 typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
 
 enum enum_algoritmo_cortoPlazo
 {
-    FIFO_CP,
+    CPL_FIFO,
 };
 typedef enum enum_algoritmo_cortoPlazo enum_algoritmo_cortoPlazo;
 

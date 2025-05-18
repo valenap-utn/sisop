@@ -5,18 +5,6 @@
 #include <cpu_utilities.h>
 #include <utils/utils.h>
 
-void noop();
-void write(uint32_t* direccion, uint32_t* datos);
-void read(uint32_t* direccion, int tamanio);
-void goto_(int valor);
-
-char * Fetch();
-instruccion_t Decode(char *);
-void Execute(instruccion_t);
-void Check_Int();
-int instrStringMap(char []);
-void MMU(uint32_t*direccion);
-
 typedef enum {
     SYSCALL,
     USUARIO,
@@ -24,7 +12,7 @@ typedef enum {
 
 typedef struct
 {
-    int opcode;
+    int opCode;
     char ** data;
     priv_instrucion_t tipo;
 }
@@ -42,5 +30,20 @@ typedef enum {
     READ,
     GOTO
 }intrucciones_t ;
+
+
+void noop();
+// void write(uint32_t* , uint32_t* );
+// void read(uint32_t* , int );
+void goto_(int valor);
+void noop();
+
+char * Fetch();
+instruccion_t Decode(char *);
+void Execute(instruccion_t);
+void Check_Int();
+int instrStringMap(char []);
+void MMU(uint32_t*direccion);
+
 
 #endif
