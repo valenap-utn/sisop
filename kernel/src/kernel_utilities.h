@@ -22,6 +22,7 @@ void *server_mh_io(void *args);
 void inicializarSemaforos();
 void inicializarListasKernel();
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char *string);
+enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char *string);
 bool encolarPeticionLargoPlazo(PCB *pcb);
 void encolarPeticionMemoria(t_peticion_largoPlazo *peticion);
 PCB *desencolar_cola_new(int index);

@@ -7,6 +7,8 @@ extern t_config *config;
 extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
 
+extern int socket_dispatch_cpu;
+
 //colas_planificadores
 extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_ready;
@@ -21,6 +23,8 @@ char * puerto_dispatch;
 char * puerto_interrupt;
 char * puerto_io;
 enum_algoritmo_largoPlazo algoritmo_largoPlazo;
+
+enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
 
 void inicializarKernel(){
 
@@ -74,7 +78,9 @@ void levantarConfig(){
     char * alg_largoplazo_temp;
     alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_COLA_NEW");
     algoritmo_largoPlazo = alg_largoPlazo_from_string(alg_largoplazo_temp);
-    
+    char * alg_cortoplazo_temp;
+    alg_cortoplazo_temp = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    algoritmo_cortoPlazo = alg_cortoPlazo_from_string(alg_cortoplazo_temp);
 }
 /// @brief Thread que espera conexiones de CPU nuevas y las agrega a la lista de sockets. Nunca para de esperar y aceptar nuevos
 /// @param args 
@@ -130,7 +136,7 @@ void *server_mh_io(void *args){
         list_add(lista_sockets_io->lista, socket_nuevo);
         pthread_mutex_unlock(lista_sockets_io->mutex);
 
-        log_debug(logger, socket_nuevo->nombre);
+        log_debug(logger, "%s", socket_nuevo->nombre);
 
         socket_nuevo = malloc(sizeof(t_socket_io));
 
@@ -153,6 +159,14 @@ enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
     }
     //agregar mas elseif aca mientras se van creando
     log_error(logger, "Config de largo plazo no reconocido");
+    return -1;
+}
+enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char * string){
+    if(!strcmp(string, "FIFO")){
+        return CPL_FIFO;
+    }
+    //agregar mas elseif aca mientras se van creando
+    log_error(logger, "Config de corto plazo no reconocido");
     return -1;
 }
 bool encolarPeticionLargoPlazo(PCB *pcb){
@@ -218,4 +232,18 @@ void encolar_cola_new_ordenado_smallerFirst(PCB * pcb){
         }
     }
     return;
+}
+
+void inicializarConexiones(void) {
+    char* ip_cpu = config_get_string_value(config, "IP_CPU");
+    char* puerto_dispatch_cpu = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
+
+    socket_dispatch_cpu = crear_conexion(ip_cpu, puerto_dispatch_cpu);
+
+    if (socket_dispatch_cpu == -1) {
+        log_error(logger, "No se pudo conectar a CPU (dispatch)");
+        exit(EXIT_FAILURE);
+    }
+
+    log_info(logger, "Conexión establecida con CPU (dispatch)");
 }

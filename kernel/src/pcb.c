@@ -14,6 +14,8 @@ int pid = 0;
 PCB* iniciar_pcb(){
     PCB* pcb = malloc(sizeof(PCB));
     pcb->pid = pid++;
+    //a chequear -> agrego esta linea para que no de warning, para que apunte a memoria valida
+    pcb->registros = malloc(sizeof(registrosPCB));
     inicializarRegistros(pcb->registros);
     pcb->base = 0;
     pcb->limite = 0;

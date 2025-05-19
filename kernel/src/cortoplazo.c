@@ -10,7 +10,7 @@ extern int socket_dispatch_cpu;
 void *cortoPlazo (void *args) {
 
     switch (algoritmo_cortoPlazo) {
-            case FIFO_CP:
+            case CPL_FIFO:
                 cortoPlazoFifo();
                 break;
 
@@ -34,7 +34,7 @@ void cortoPlazoFifo(void) {
 
         log_info(logger, "## (%d) - Planificado por FIFO", pcb->pid);
 
-        enviar_a_cpu_dispatch(pcb); // TO DO
+        enviar_a_cpu_dispatch(pcb);
     }
 
 }
