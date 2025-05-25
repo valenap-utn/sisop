@@ -22,6 +22,9 @@ void inicializarCpu(){
 
     pthread_t tid_conexion_kernel;
     pthread_t tid_conexion_memoria;
+    pthread_t tid_ciclo_inst;
+    pthread_create(&tid_ciclo_inst, NULL, ciclo_instruccion, NULL);
+    pthread_join(tid_ciclo_inst, NULL);
 
     pthread_create(&tid_conexion_kernel, NULL, conexion_cliente_kernel, NULL);
     pthread_create(&tid_conexion_memoria, NULL, conexion_cliente_memoria, NULL);

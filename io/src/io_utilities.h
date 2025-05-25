@@ -5,5 +5,7 @@
 
 void inicializarIo();
 void levantarConfig();
+void dormir_IO();
+void *conexion_cliente_kernel(void *);
 
 #endif

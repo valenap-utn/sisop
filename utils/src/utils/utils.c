@@ -264,7 +264,14 @@ list_struct_t * inicializarLista(){
     lista->mutex = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(lista->mutex, NULL);
 
+    lista->sem = inicializarSem(0);
+
     log_debug(logger, "Se creo un list_struct nuevo");
     return lista;
 
+}
+sem_t *inicializarSem(int initial_value){
+    sem_t * semaforo = malloc(sizeof(sem_t));
+    sem_init(semaforo, 0, initial_value);
+    return semaforo;
 }

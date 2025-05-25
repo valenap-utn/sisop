@@ -33,13 +33,30 @@ typedef struct arg_struct {
 typedef struct list_struct{
     t_list *lista;
     pthread_mutex_t *mutex;
+    sem_t *sem;
 }list_struct_t;
 
 enum protocolo_socket
 {
     OK,
+    NOMBRE_IO,
+    DORMIR_IO,
+    PROCESS_CREATE_MEM,
+    DISPATCH__CPU
 };
 typedef enum protocolo_socket protocolo_socket;
+
+enum enum_algoritmo_largoPlazo
+{
+    LPL_FIFO,
+};
+typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
+
+enum enum_algoritmo_cortoPlazo
+{
+    CPL_FIFO,
+};
+typedef enum enum_algoritmo_cortoPlazo enum_algoritmo_cortoPlazo;
 
 typedef struct
 {
@@ -53,11 +70,6 @@ typedef struct
 	t_buffer* buffer;
 } t_paquete;
 
-typedef struct{
-    int dispatch;
-    int interrupt;
-    int flag_libre;
-}t_socket_cpu;
 
 extern t_log* logger;
 
@@ -81,7 +93,10 @@ extern t_log* logger;
     void leer_consola(void);
     void terminar_programa(int conexion, t_log* logger, t_config* config);
     void iterator(char* value);
+//
 
     list_struct_t * inicializarLista();
+
+    sem_t *inicializarSem(int initial_value);
 
 #endif
