@@ -4,6 +4,8 @@
 #include "cpu.h"
 #include <cpu_utilities.h>
 #include <utils/utils.h>
+#include <string.h>
+
 
 typedef enum {
     SYSCALL,
@@ -33,10 +35,14 @@ typedef enum {
 
 
 void noop();
-// void write(uint32_t* , uint32_t* );
-// void read(uint32_t* , int );
+void write_(uint32_t* , uint32_t* );
+void read_(uint32_t* , int );
 void goto_(int valor);
 void noop();
+void io();
+void init_proc();
+void dump_memory();
+void exit_();
 
 char * Fetch();
 instruccion_t Decode(char *);
@@ -44,6 +50,6 @@ void Execute(instruccion_t);
 void Check_Int();
 int instrStringMap(char []);
 void MMU(uint32_t*direccion);
-
+void * ciclo_instruccion(void *);
 
 #endif

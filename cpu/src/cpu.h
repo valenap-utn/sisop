@@ -5,6 +5,7 @@
 #include <utils/utils.h>
 #include <commons/log.h>
 #include <commons/config.h>
+#include "./instrucciones.h"
 
 
 #endif
