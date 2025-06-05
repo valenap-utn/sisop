@@ -189,6 +189,7 @@ void kernel(int* conexion){
 
 //Hay que ir calculando el tam_memoria disponible en algun lado
 int hay_espacio_en_mem(int tamanio_proceso){
+    int tam_memoria=0;//lo hardcodeo despues hay que calcularlo
     return (tamanio_proceso > tam_memoria) ? 0 : 1;
 }
 
@@ -207,7 +208,7 @@ int pc = 0; //no se si esto ya viene de antes (desde el kernel), creo que si
 int inicializar_proceso(int pid, int tamanio){
     PCB* nuevo_proceso = malloc(sizeof(PCB));
     nuevo_proceso->pid = pid;
-    nuevo_proceso->PC = pc++;
+    nuevo_proceso->pc = pc++;
     nuevo_proceso->me = inicializarLista();
     nuevo_proceso->mt = inicializarLista();
     nuevo_proceso->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones); 

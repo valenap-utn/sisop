@@ -43,6 +43,21 @@ typedef struct{
     t_metricas metricas;
 }t_memoria;
 
+typedef struct {
+    int nivel;
+    int primer_index;
+    int ultimo_index;
+    int presente; // 0 1
+    t_memoria *puntero_a_memoria;
+    int es_ultima;
+}t_tabla_paginas;
+
+typedef struct {
+    int direccion;
+    t_tabla_paginas *puntero_a_tabla;
+    int cantidad_tablas;
+    t_tabla_paginas tabla_siguiente;
+}t_puntero_tabla_paginas;
 
 char* crear_directorio(char* ruta_a_agregar);
 
