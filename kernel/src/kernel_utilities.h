@@ -4,6 +4,8 @@
 #include <kernel.h>
 #include <utils/utils.h>
 #include <largoplazo.h>
+#include <cortoplazo.h>
+
 #include <pcb.h>
 
 

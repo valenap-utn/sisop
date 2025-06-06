@@ -14,7 +14,6 @@ typedef struct{
 typedef struct{
     int dispatch;
     int interrupt;
-    int flag_libre;
 }t_socket_cpu;
 
 /*
