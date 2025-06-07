@@ -47,8 +47,12 @@ int instrStringMap(char opcodeStr []){
 };
 
 char * Fetch(){
-    log_info(logger,"## PID: %d TID: %d PC: %d- FETCH ",-1,-1 ,-1 );
-    return "NOOP  "; // Para cambiar en el futuro por el valor posta
+    char * opcode = "NOOP  "; // Para cambiar en el futuro por el valor posta
+    t_paquete * paquete;
+    protocolo_socket op;
+
+    log_info(logger,"## PID: %d PC: %d- FETCH ",-1,-1 );
+    return opcode ;
 };
 
 instruccion_t Decode(char * instr){
@@ -60,33 +64,27 @@ instruccion_t Decode(char * instr){
     switch (current_instr.opCode){
         case IO:
                 current_instr.tipo = SYSCALL;
-
         break;
         case INIT_PROC:
                 current_instr.tipo = SYSCALL;       
         break;
-
         case DUMP_MEMORY:
                 current_instr.tipo = SYSCALL;
-        
         break;
         case EXIT:
-
                 current_instr.tipo = SYSCALL;
         break;
         case NOOP:
-            current_instr.tipo = USUARIO;
+                current_instr.tipo = USUARIO;
         break;
         case WRITE:
-            current_instr.tipo = USUARIO;
-
+                current_instr.tipo = USUARIO;
         break;
         case READ:
-            current_instr.tipo = USUARIO;
-
+                current_instr.tipo = USUARIO;
         break;
         case GOTO:
-            current_instr.tipo = USUARIO;
+                current_instr.tipo = USUARIO;
         break;
         default:
              log_info(logger, "Instrucción no reconocida: %s", *current_instr.data);
