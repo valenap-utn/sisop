@@ -12,7 +12,7 @@ void *conexion_server_cpu(void *args);
 void *cpu(void* conexion);
 
 
-void kernel(int* conexion);
+void *kernel(void* conexion);
 
 int hay_espacio_en_mem(int tamanio_proceso);
 

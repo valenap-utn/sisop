@@ -26,7 +26,7 @@ enum comu_kernel{
     SUSPENDER_PROCESO,
     DESSUPENDER_PROCESO,
     FINALIZAR_PROCESO
-};
+}typedef comu_kernel;
 
 typedef struct {
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas

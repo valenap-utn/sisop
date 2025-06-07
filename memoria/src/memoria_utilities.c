@@ -5,6 +5,10 @@ extern t_config *config;
 extern t_log_level current_log_level;
 char * puerto_cpu;
 extern list_struct_t *lista_sockets_cpu;
+char* path_instrucciones;
+int tam_memoria;
+
+t_memoria *memoria_principal;
 
 void inicializarMemoria(){
     
@@ -13,6 +17,11 @@ void inicializarMemoria(){
     logger = log_create("memoria.log", "Memoria", 1, current_log_level);
     
     inicializarListasMemoria();
+
+    tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
+    path_instrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
+
+    inicialiar_mem_prin();
 
     pthread_t tid_cpu;
     pthread_create(&tid_cpu, NULL, conexion_server_cpu, NULL);
@@ -153,12 +162,19 @@ void * cpu(void* args){
     }
 }
 
-void kernel(int* conexion){
+void * kernel(void* args){
     //hanshake
+
+    int conexion = *(int *)args;
+    comu_kernel peticion;
+    t_list *paquete_recv;
+
     while(1){
-        int peticion;
-        recv(*conexion,&peticion,sizeof(int),MSG_WAITALL);
+        peticion = recibir_operacion(conexion);
+
+        //retardo para peticiones 
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
+
         int pid;
 
         switch(peticion){
@@ -166,8 +182,13 @@ void kernel(int* conexion){
 
                 int tamanio;
 
-                recv(*conexion,&pid,sizeof(int),MSG_WAITALL);
-                recv(*conexion,&tamanio,sizeof(int),MSG_WAITALL);
+                // recv(*conexion,&pid,sizeof(int),MSG_WAITALL);
+                // recv(*conexion,&tamanio,sizeof(int),MSG_WAITALL);
+
+                t_paquete *paquete_send;
+                paquete_recv = recibir_paquete(conexion);
+                pid = *(int *)list_remove(paquete_recv, 0);
+                tamanio = *(int *)list_remove(paquete_recv,0); //no entiendo muy bien como es esto...
 
                 if(hay_espacio_en_mem(tamanio)) inicializar_proceso(pid,tamanio);
                 else log_error(logger,"No se pudo inicializar el proceso por falta de memoria");
@@ -189,7 +210,6 @@ void kernel(int* conexion){
 
 //Hay que ir calculando el tam_memoria disponible en algun lado
 int hay_espacio_en_mem(int tamanio_proceso){
-    int tam_memoria=0;//lo hardcodeo despues hay que calcularlo
     return (tamanio_proceso > tam_memoria) ? 0 : 1;
 }
 
@@ -263,4 +283,10 @@ PCB* buscar_proceso_por_pid(int pid) {
         }
     }
     return NULL;  // No se encontró el proceso
+}
+
+void inicialiar_mem_prin(){
+    memoria_principal = malloc(sizeof(t_memoria));
+    memoria_principal->espacio = malloc(sizeof(uint32_t)*tam_memoria);
+    memoria_principal->tabla_paginas = list_create();
 }
