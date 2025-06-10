@@ -123,6 +123,16 @@ void * cpu(void* args){
             break;
 
             case MEMORY_DUMP:
+                t_paquete *paquete_send;
+                paquete_recv = recibir_paquete(conexion);
+                pid = *(int *)list_remove(paquete_recv, 0);
+                PCB* proceso = buscar_proceso_por_pid(pid);
+                if (!proceso) {
+                    log_error(logger, "PID %d no encontrado al pedir instrucción", pid);
+                    break;
+                }
+                log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pid);
+                cargar_archivo(pid,proceso);
             break;
 
             case PEDIR_INSTRUCCIONES:
@@ -196,6 +206,7 @@ void * kernel(void* args){
             break;
 
             case SUSPENDER_PROCESO:
+                //ACA SE CARGA EN SWAP
             break;
 
             case DESSUPENDER_PROCESO:
@@ -212,8 +223,6 @@ void * kernel(void* args){
 int hay_espacio_en_mem(int tamanio_proceso){
     return (tamanio_proceso > tam_memoria) ? 0 : 1;
 }
-
-            
 
 
 //CONEXION KERNEL-MEMORIA
@@ -289,4 +298,27 @@ void inicialiar_mem_prin(){
     memoria_principal = malloc(sizeof(t_memoria));
     memoria_principal->espacio = malloc(sizeof(uint32_t)*tam_memoria);
     memoria_principal->tabla_paginas = list_create();
+}
+
+
+int cargar_archivo(int pid,PCB* proceso){
+    struct timeval tiempo_actual;
+    gettimeofday(&tiempo_actual, NULL);
+    struct tm *tiempo_local = localtime(&tiempo_actual.tv_sec);
+
+    char *nombre_archivo = malloc(60);
+    if (nombre_archivo == NULL) {
+        perror("Error al asignar memoria");
+        return EXIT_FAILURE;
+    }
+    snprintf(nombre_archivo, 60,
+            "%d-%02d:%02d:%02d:%03ld.dmp",
+            pid,
+            tiempo_local->tm_hour,
+            tiempo_local->tm_min,
+            tiempo_local->tm_sec,
+            tiempo_actual.tv_usec / 1000);
+
+    log_info(logger, "Nombre del archivo de dump: %s", nombre_archivo);
+    return 0;
 }

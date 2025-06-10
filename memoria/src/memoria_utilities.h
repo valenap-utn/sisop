@@ -31,4 +31,5 @@ void actualizar_pagina_completa();
 void memory_dump();
 t_list* cargar_instrucciones_desde_archivo(char* path);
 PCB* buscar_proceso_por_pid(int pid);
+int cargar_archivo(int pid,PCB* proceso);
 #endif

@@ -38,6 +38,7 @@ typedef struct{
     int cant_instrucciones;
     list_struct_t* me;
     list_struct_t* mt;
+    t_estado estado;
 }PCB;
 
 //FUNCIONES
