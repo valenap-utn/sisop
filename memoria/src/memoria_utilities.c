@@ -123,16 +123,16 @@ void * cpu(void* args){
             break;
 
             case MEMORY_DUMP:
-                t_paquete *paquete_send;
+                t_paquete *paquete_send_Dump;
                 paquete_recv = recibir_paquete(conexion);
-                pid = *(int *)list_remove(paquete_recv, 0);
-                PCB* proceso = buscar_proceso_por_pid(pid);
-                if (!proceso) {
-                    log_error(logger, "PID %d no encontrado al pedir instrucción", pid);
+                int pidDump = *(int *)list_remove(paquete_recv, 0);
+                PCB* procesoDump = buscar_proceso_por_pid(pid);
+                if (!procesoDump) {
+                    log_error(logger, "PID %d no encontrado al pedir instrucción", pidDump);
                     break;
                 }
-                log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pid);
-                cargar_archivo(pid,proceso);
+                log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pidDump);
+                cargar_archivo(pid,procesoDump);
             break;
 
             case PEDIR_INSTRUCCIONES:
@@ -140,12 +140,10 @@ void * cpu(void* args){
             
             //A CHEQUEAR que esté bien
             case OBTENER_INSTRUCCION:
-
                 t_paquete *paquete_send;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
                 pc = *(int *)list_remove(paquete_recv, 0);
-
                 PCB* proceso = buscar_proceso_por_pid(pid);
                 if (!proceso) {
                     log_error(logger, "PID %d no encontrado al pedir instrucción", pid);
