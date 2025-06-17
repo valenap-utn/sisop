@@ -38,7 +38,7 @@ void cortoPlazoFifo(void) {
 
         sem_wait(lista_sockets_cpu_libres->sem);
         pthread_mutex_lock(lista_sockets_cpu_libres->mutex);
-        t_socket_cpu * socket_cpu = list_remove(lista_sockets_cpu_libres, 0);
+        t_socket_cpu * socket_cpu = list_remove(lista_sockets_cpu_libres->lista, 0);
         pthread_mutex_unlock(lista_sockets_cpu_libres->mutex);
         
         enviar_a_cpu_dispatch(pcb, socket_cpu);
@@ -69,25 +69,6 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
     sem_post(lista_sockets_cpu_ocupados->sem);
     
     // esperar_respuesta_cpu() ver discord, tenemos que agregar un par de cosas aca
-
-}
-t_socket_cpu *buscar_cpu_libre(){
-    t_socket_cpu * socket=NULL;
-    pthread_mutex_lock(lista_sockets_cpu->mutex);
-    t_list_iterator iterator = list_iterator_create(lista_sockets_cpu->lista);
-    while(list_iterator_has_next(iterator)){
-        socket = list_iterator_next(iterator);
-        if (socket->flag_libre){
-            break;
-        }
-    }
-    pthread_mutex_unlock(lista_sockets_cpu->mutex);
-
-    if (socket == NULL){
-        log_error(logger, "corto plazo: no hay CPU libres");
-        return socket;
-    }
-    return socket;
 
 }
 /* TP ANTERIOR

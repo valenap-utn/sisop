@@ -1,7 +1,7 @@
 #ifndef KERNEL_CORTOPLAZO_
 #define KERNEL_CORTOPLAZO_
 
-#include <kernel.h>
+#include "kernel.h"
 #include <kernel_utilities.h>
 #include <pcb.h>
 

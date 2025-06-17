@@ -14,9 +14,16 @@ typedef struct
 {
     protocolo_socket tipo;
     PCB *proceso;
-    bool respuesta_recibida;
+    sem_t * peticion_finalizada;
     bool respuesta_exitosa;
 }t_peticion_largoPlazo;
+
+typedef struct
+{
+    int socket;
+    t_peticion_largoPlazo *peticion;
+
+}t_args_peticion_largoPlazo;
 
 void inicializarKernel();
 void *server_mh_cpu(void *args);
@@ -31,6 +38,8 @@ PCB *desencolar_cola_new(int index);
 void encolar_cola_new(PCB *pcb);
 void encolar_cola_ready(PCB *pcb);
 void encolar_cola_new_ordenado_smallerFirst(PCB *pcb);
+t_peticion_largoPlazo *inicializarPeticionLargoPlazo();
+void liberar_peticionLargoPlazo(t_peticion_largoPlazo *peticion);
 void levantarConfig();
 
 #endif
