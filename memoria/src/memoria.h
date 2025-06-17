@@ -61,4 +61,48 @@ typedef struct {
 
 char* crear_directorio(char* ruta_a_agregar);
 
+
+// typedef struct{
+//     void* espacio;
+//     t_list *tabla_paginas;
+//     t_metricas metricas;
+// }t_memoria;
+
+// typedef struct {
+//     int nivel;
+//     t_list *tabla_paginas;
+// }t_tabla_paginas;
+
+// typedef struct {
+//     int nivel;
+//     t_list *tabla;
+// }t_tabla_paginas_ultimo_nivel;
+
+// typedef struct {
+//     int pid;
+//     bool asignado;
+//     int direccion;
+// }entrada_ultimo_nivel;
+
+
+
+// N=3
+// c_entradas=5
+
+// 2 | 4 | 3 | 1 | 30
+
+// t_list * tabla_global;
+
+// tabla_nivel_1 = list_get(tabla_global->tabla_paginas, 2);
+
+// tabla_nivel_2 = list_get(tabla_nivel_1->tabla_paginas, 4);
+
+// ...
+
+// t_tabla_paginas_ultimo_nivel * tabla = list_get(
+
+// list_add(tabla->tabla, 0)
+// list_add(tabla->tabla, 10)
+// list_add(tabla->tabla, 20)
+
 #endif
