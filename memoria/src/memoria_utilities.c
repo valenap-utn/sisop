@@ -5,6 +5,10 @@ extern t_config *config;
 extern t_log_level current_log_level;
 char * puerto_cpu;
 extern list_struct_t *lista_sockets_cpu;
+char* path_instrucciones;
+int tam_memoria;
+
+t_memoria *memoria_principal;
 
 void inicializarMemoria(){
     
@@ -13,6 +17,11 @@ void inicializarMemoria(){
     logger = log_create("memoria.log", "Memoria", 1, current_log_level);
     
     inicializarListasMemoria();
+
+    tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
+    path_instrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
+
+    inicialiar_mem_prin();
 
     pthread_t tid_cpu;
     pthread_create(&tid_cpu, NULL, conexion_server_cpu, NULL);
@@ -114,6 +123,16 @@ void * cpu(void* args){
             break;
 
             case MEMORY_DUMP:
+                t_paquete *paquete_send_Dump;
+                paquete_recv = recibir_paquete(conexion);
+                int pidDump = *(int *)list_remove(paquete_recv, 0);
+                PCB* procesoDump = buscar_proceso_por_pid(pid);
+                if (!procesoDump) {
+                    log_error(logger, "PID %d no encontrado al pedir instrucción", pidDump);
+                    break;
+                }
+                log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pidDump);
+                cargar_archivo(pid,procesoDump);
             break;
 
             case PEDIR_INSTRUCCIONES:
@@ -121,12 +140,10 @@ void * cpu(void* args){
             
             //A CHEQUEAR que esté bien
             case OBTENER_INSTRUCCION:
-
                 t_paquete *paquete_send;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
                 pc = *(int *)list_remove(paquete_recv, 0);
-
                 PCB* proceso = buscar_proceso_por_pid(pid);
                 if (!proceso) {
                     log_error(logger, "PID %d no encontrado al pedir instrucción", pid);
@@ -153,12 +170,19 @@ void * cpu(void* args){
     }
 }
 
-void kernel(int* conexion){
+void * kernel(void* args){
     //hanshake
+
+    int conexion = *(int *)args;
+    comu_kernel peticion;
+    t_list *paquete_recv;
+
     while(1){
-        int peticion;
-        recv(*conexion,&peticion,sizeof(int),MSG_WAITALL);
+        peticion = recibir_operacion(conexion);
+
+        //retardo para peticiones 
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
+
         int pid;
 
         switch(peticion){
@@ -166,8 +190,13 @@ void kernel(int* conexion){
 
                 int tamanio;
 
-                recv(*conexion,&pid,sizeof(int),MSG_WAITALL);
-                recv(*conexion,&tamanio,sizeof(int),MSG_WAITALL);
+                // recv(*conexion,&pid,sizeof(int),MSG_WAITALL);
+                // recv(*conexion,&tamanio,sizeof(int),MSG_WAITALL);
+
+                t_paquete *paquete_send;
+                paquete_recv = recibir_paquete(conexion);
+                pid = *(int *)list_remove(paquete_recv, 0);
+                tamanio = *(int *)list_remove(paquete_recv,0); //no entiendo muy bien como es esto...
 
                 if(hay_espacio_en_mem(tamanio)) inicializar_proceso(pid,tamanio);
                 else log_error(logger,"No se pudo inicializar el proceso por falta de memoria");
@@ -175,6 +204,7 @@ void kernel(int* conexion){
             break;
 
             case SUSPENDER_PROCESO:
+                //ACA SE CARGA EN SWAP
             break;
 
             case DESSUPENDER_PROCESO:
@@ -192,8 +222,6 @@ int hay_espacio_en_mem(int tamanio_proceso){
     return (tamanio_proceso > tam_memoria) ? 0 : 1;
 }
 
-            
-
 
 //CONEXION KERNEL-MEMORIA
 
@@ -207,7 +235,7 @@ int pc = 0; //no se si esto ya viene de antes (desde el kernel), creo que si
 int inicializar_proceso(int pid, int tamanio){
     PCB* nuevo_proceso = malloc(sizeof(PCB));
     nuevo_proceso->pid = pid;
-    nuevo_proceso->PC = pc++;
+    nuevo_proceso->pc = pc++;
     nuevo_proceso->me = inicializarLista();
     nuevo_proceso->mt = inicializarLista();
     nuevo_proceso->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones); 
@@ -262,4 +290,33 @@ PCB* buscar_proceso_por_pid(int pid) {
         }
     }
     return NULL;  // No se encontró el proceso
+}
+
+void inicialiar_mem_prin(){
+    memoria_principal = malloc(sizeof(t_memoria));
+    memoria_principal->espacio = malloc(sizeof(uint32_t)*tam_memoria);
+    memoria_principal->tabla_paginas = list_create();
+}
+
+
+int cargar_archivo(int pid,PCB* proceso){
+    struct timeval tiempo_actual;
+    gettimeofday(&tiempo_actual, NULL);
+    struct tm *tiempo_local = localtime(&tiempo_actual.tv_sec);
+
+    char *nombre_archivo = malloc(60);
+    if (nombre_archivo == NULL) {
+        perror("Error al asignar memoria");
+        return EXIT_FAILURE;
+    }
+    snprintf(nombre_archivo, 60,
+            "%d-%02d:%02d:%02d:%03ld.dmp",
+            pid,
+            tiempo_local->tm_hour,
+            tiempo_local->tm_min,
+            tiempo_local->tm_sec,
+            tiempo_actual.tv_usec / 1000);
+
+    log_info(logger, "Nombre del archivo de dump: %s", nombre_archivo);
+    return 0;
 }

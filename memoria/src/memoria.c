@@ -1,6 +1,6 @@
 #include <memoria.h>
 
-extern void * espacio_de_usuario;
+
 //variables globales
 t_log *logger;
 t_config *config;
@@ -13,7 +13,7 @@ char* dump_path;
 int main(int argc, char* argv[]) {
     
     inicializarMemoria();
-    free(espacio_de_usuario);
+
     return 0;
 }
 

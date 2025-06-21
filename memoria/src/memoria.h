@@ -26,7 +26,7 @@ enum comu_kernel{
     SUSPENDER_PROCESO,
     DESSUPENDER_PROCESO,
     FINALIZAR_PROCESO
-};
+}typedef comu_kernel;
 
 typedef struct {
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas
@@ -43,7 +43,66 @@ typedef struct{
     t_metricas metricas;
 }t_memoria;
 
+typedef struct {
+    int nivel;
+    int primer_index;
+    int ultimo_index;
+    int presente; // 0 1
+    t_memoria *puntero_a_memoria;
+    int es_ultima;
+}t_tabla_paginas;
+
+typedef struct {
+    int direccion;
+    t_tabla_paginas *puntero_a_tabla;
+    int cantidad_tablas;
+    t_tabla_paginas tabla_siguiente;
+}t_puntero_tabla_paginas;
 
 char* crear_directorio(char* ruta_a_agregar);
+
+
+// typedef struct{
+//     void* espacio;
+//     t_list *tabla_paginas;
+//     t_metricas metricas;
+// }t_memoria;
+
+// typedef struct {
+//     int nivel;
+//     t_list *tabla_paginas;
+// }t_tabla_paginas;
+
+// typedef struct {
+//     int nivel;
+//     t_list *tabla;
+// }t_tabla_paginas_ultimo_nivel;
+
+// typedef struct {
+//     int pid;
+//     bool asignado;
+//     int direccion;
+// }entrada_ultimo_nivel;
+
+
+
+// N=3
+// c_entradas=5
+
+// 2 | 4 | 3 | 1 | 30
+
+// t_list * tabla_global;
+
+// tabla_nivel_1 = list_get(tabla_global->tabla_paginas, 2);
+
+// tabla_nivel_2 = list_get(tabla_nivel_1->tabla_paginas, 4);
+
+// ...
+
+// t_tabla_paginas_ultimo_nivel * tabla = list_get(
+
+// list_add(tabla->tabla, 0)
+// list_add(tabla->tabla, 10)
+// list_add(tabla->tabla, 20)
 
 #endif

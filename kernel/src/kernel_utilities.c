@@ -4,14 +4,15 @@
 extern t_log *logger;
 extern t_config *config;
 
-extern list_struct_t *lista_sockets_cpu;
+extern list_struct_t *lista_sockets_cpu_libres;
+extern list_struct_t *lista_sockets_cpu_ocupados;
 extern list_struct_t *lista_sockets_io;
-
-extern int socket_dispatch_cpu;
+extern list_struct_t *lista_peticiones_pendientes;
 
 //colas_planificadores
 extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_ready;
+extern list_struct_t *lista_procesos_exec;
 
 //semaforos auxiliares
 sem_t * sem_proceso_fin;
@@ -38,7 +39,7 @@ void inicializarKernel(){
 
     pthread_t tid_server_mh_cpu;
     pthread_t tid_server_mh_io;
-    pthread_t tid_largoplazo;
+    pthread_t tid_largoplazo, tid_cortoplazo;
     
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
@@ -46,22 +47,13 @@ void inicializarKernel(){
     //Al iniciar el proceso Kernel, el algoritmo de Largo Plazo debe estar frenado (estado STOP) y se deberá esperar un ingreso de un Enter por teclado para poder iniciar con la planificación.
     //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
     pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
+    pthread_create(&tid_cortoplazo, NULL, cortoPlazo, NULL);
     
-
-
-    // sleep(5);
-    // t_list_iterator *iterator = list_iterator_create(lista_sockets_cpu->lista);
-    // t_socket_cpu *element;
-    // while(list_iterator_has_next(iterator)){
-    //     element = list_iterator_next(iterator);
-
-    //     log_debug(logger, "%d", element->interrupt);
-        
-    // }
 
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);
     pthread_join(tid_largoplazo, NULL);
+    pthread_join(tid_cortoplazo, NULL);
 
 
 }
@@ -96,9 +88,9 @@ void *server_mh_cpu(void *args){
         
         socket_nuevo->interrupt = esperar_cliente(server_interrupt);
 
-        pthread_mutex_lock(lista_sockets_cpu->mutex);
-        list_add(lista_sockets_cpu->lista, socket_nuevo);
-        pthread_mutex_unlock(lista_sockets_cpu->mutex);
+        pthread_mutex_lock(lista_sockets_cpu_libres->mutex);
+        list_add(lista_sockets_cpu_libres->lista, socket_nuevo);
+        pthread_mutex_unlock(lista_sockets_cpu_libres->mutex);
 
         socket_nuevo = malloc(sizeof(t_socket_cpu));
 
@@ -149,9 +141,14 @@ void inicializarSemaforos(){
     return;    
 }
 void inicializarListasKernel(){
-    lista_sockets_cpu = inicializarLista();
+    lista_sockets_cpu_libres = inicializarLista();
+    lista_sockets_cpu_ocupados = inicializarLista();
     lista_sockets_io = inicializarLista();
     lista_procesos_new = inicializarLista();
+    lista_procesos_ready = inicializarLista();
+    lista_procesos_exec = inicializarLista();
+    lista_peticiones_pendientes = inicializarLista();
+
 }
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
     if(!strcmp(string, "FIFO")){
@@ -233,17 +230,13 @@ void encolar_cola_new_ordenado_smallerFirst(PCB * pcb){
     }
     return;
 }
+t_peticion_largoPlazo * inicializarPeticionLargoPlazo(){
+    t_peticion_largoPlazo * peticion = malloc(sizeof(t_peticion_largoPlazo));
+    peticion->peticion_finalizada = inicializarSem(0);
 
-void inicializarConexiones(void) {
-    char* ip_cpu = config_get_string_value(config, "IP_CPU");
-    char* puerto_dispatch_cpu = config_get_string_value(config, "PUERTO_CPU_DISPATCH");
-
-    socket_dispatch_cpu = crear_conexion(ip_cpu, puerto_dispatch_cpu);
-
-    if (socket_dispatch_cpu == -1) {
-        log_error(logger, "No se pudo conectar a CPU (dispatch)");
-        exit(EXIT_FAILURE);
-    }
-
-    log_info(logger, "Conexión establecida con CPU (dispatch)");
+    return peticion;
+}
+void liberar_peticionLargoPlazo(t_peticion_largoPlazo * peticion){
+    sem_destroy(peticion->peticion_finalizada);
+    free(peticion);
 }

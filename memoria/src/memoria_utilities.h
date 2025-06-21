@@ -12,7 +12,7 @@ void *conexion_server_cpu(void *args);
 void *cpu(void* conexion);
 
 
-void kernel(int* conexion);
+void *kernel(void* conexion);
 
 int hay_espacio_en_mem(int tamanio_proceso);
 
@@ -31,4 +31,5 @@ void actualizar_pagina_completa();
 void memory_dump();
 t_list* cargar_instrucciones_desde_archivo(char* path);
 PCB* buscar_proceso_por_pid(int pid);
+int cargar_archivo(int pid,PCB* proceso);
 #endif
