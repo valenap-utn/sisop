@@ -105,4 +105,21 @@ char* crear_directorio(char* ruta_a_agregar);
 // list_add(tabla->tabla, 10)
 // list_add(tabla->tabla, 20)
 
+/* ------- PROPUESTA by valucha para TDP ------- */
+
+typedef struct {
+    int nro_pagina;
+    struct Tabla_Nivel **niveles; //array de punteros al nivel 2 
+}Tabla_Principal; //tabla_global
+
+typedef struct Tabla_Nivel{
+    int nro_pagina;
+    int esta_presente; //bool
+    int es_ultimo_nivel; //bool
+    union{
+        struct Tabla_Nivel **sgte_nivel; 
+        int marco; //si es ultimo nivel
+    };
+}Tabla_Nivel;
+
 #endif

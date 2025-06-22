@@ -8,6 +8,9 @@ extern list_struct_t *lista_sockets_cpu;
 char* path_instrucciones;
 int tam_memoria;
 
+//variables para tdp
+int  tam_pagina, entradas_por_tabla, cant_niveles;
+
 t_memoria *memoria_principal;
 
 void inicializarMemoria(){
@@ -20,6 +23,13 @@ void inicializarMemoria(){
 
     tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
     path_instrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
+
+
+    //Obtengo de config valores para tener en cuenta para TDPs
+    tam_pagina = config_get_int_value(config, "TAM_PAGINA");
+    entradas_por_tabla = config_get_int_value(config, "ENTRADAS_POR_TABLA");
+    cant_niveles = config_get_int_value(config, "CANTIDAD_NIVELES");
+
 
     inicialiar_mem_prin();
 
@@ -319,4 +329,34 @@ int cargar_archivo(int pid,PCB* proceso){
 
     log_info(logger, "Nombre del archivo de dump: %s", nombre_archivo);
     return 0;
+}
+
+
+/* ------- PROPUESTA by valucha para TDP ------- */
+Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina){
+    Tabla_Nivel* tabla = malloc(sizeof(Tabla_Nivel));
+    tabla->nro_pagina = nro_pagina;
+    tabla->esta_presente = false;
+    tabla->es_ultimo_nivel = (nivel_actual == cant_niveles);
+
+    if(tabla->es_ultimo_nivel){
+        tabla->marco = -1;
+    }else{
+        tabla->sgte_nivel = malloc(sizeof(Tabla_Nivel*)* entradas_por_tabla);
+        for(int i = 0; i < entradas_por_tabla; i++){
+            tabla->sgte_nivel[i] = crear_tabla_nivel((nivel_actual + 1),i);
+        }
+    }
+    return tabla;
+}
+
+Tabla_Principal* crear_tabla_principal(){
+    Tabla_Principal* tabla = malloc(sizeof(Tabla_Principal));
+    tabla->niveles = malloc(sizeof(Tabla_Nivel*)*entradas_por_tabla);
+
+    for(int i = 0; i < entradas_por_tabla; i++){
+        tabla->niveles[i] = crear_tabla_nivel(2,i);
+    }
+
+    return tabla;
 }
