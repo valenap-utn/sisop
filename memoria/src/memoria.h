@@ -8,6 +8,7 @@
 #include <errno.h>
 #include "../../kernel/src/pcb.h"
 #include <sys/stat.h>
+#include <stdbool.h> //para poder usar variables de tipo 'bool' 
 
 //COMUNICACION CON KERNEL y CPU
 enum comu_cpu{
@@ -39,25 +40,34 @@ typedef struct {
 
 typedef struct{
     void* espacio;
-    t_list *tabla_paginas;
+    t_list *tablas_por_proceso; //cambio nombre de tabla_paginas a tablas_por_proceso | Lista de t_tabla_proceso*
+    bool* bitmap_marcos;       //bitmap de marcos ocupados
+    int cantidad_marcos;      //total marcos disponibles
     t_metricas metricas;
 }t_memoria;
 
-typedef struct {
-    int nivel;
-    int primer_index;
-    int ultimo_index;
-    int presente; // 0 1
-    t_memoria *puntero_a_memoria;
-    int es_ultima;
-}t_tabla_paginas;
+// Agrego estructura para asociar tablas con procesos
+typedef struct{
+    int pid;
+    struct Tabla_Principal* tabla_principal;
+    t_list* instrucciones;
+}t_tabla_proceso;
 
-typedef struct {
-    int direccion;
-    t_tabla_paginas *puntero_a_tabla;
-    int cantidad_tablas;
-    t_tabla_paginas tabla_siguiente;
-}t_puntero_tabla_paginas;
+// typedef struct {
+//     int nivel;
+//     int primer_index;
+//     int ultimo_index;
+//     int presente; // 0 1
+//     t_memoria *puntero_a_memoria;
+//     int es_ultima;
+// }t_tabla_paginas;
+
+// typedef struct {
+//     int direccion;
+//     t_tabla_paginas *puntero_a_tabla;
+//     int cantidad_tablas;
+//     t_tabla_paginas tabla_siguiente;
+// }t_puntero_tabla_paginas;
 
 char* crear_directorio(char* ruta_a_agregar);
 
