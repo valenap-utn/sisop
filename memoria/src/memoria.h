@@ -1,7 +1,7 @@
 #ifndef MEMORIA_MAIN_
 #define MEMORIA_MAIN_
 
-#include <memoria_utilities.h>
+// #include <memoria_utilities.h>
 #include <utils/utils.h>
 #include <commons/log.h>
 #include <commons/config.h>
@@ -13,8 +13,14 @@
 //COMUNICACION CON KERNEL y CPU
 enum comu_cpu{
     ACCEDER_A_TDP,
+    DEVOLVER_MARCO, //para cuando se ejecuta ACCEDER_A_TDP (consultar, si es así esto)
+
     ACCEDER_A_ESPACIO_USUARIO,
+    DEVOLVER_VALOR,
+
     LEER_PAG_COMPLETA,
+    DEVOLVER_PAGINA,
+
     ACTUALIZAR_PAG_COMPLETA,
     MEMORY_DUMP,
     PEDIR_INSTRUCCIONES,
@@ -117,9 +123,9 @@ char* crear_directorio(char* ruta_a_agregar);
 
 /* ------- PROPUESTA by valucha para TDP ------- */
 
-typedef struct {
+typedef struct Tabla_Principal{
     int nro_pagina;
-    struct Tabla_Nivel **niveles; //array de punteros al nivel 2 
+    struct Tabla_Nivel** niveles; //array de punteros al nivel 2 
 }Tabla_Principal; //tabla_global
 
 typedef struct Tabla_Nivel{

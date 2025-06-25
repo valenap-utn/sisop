@@ -6,7 +6,11 @@
 #include "../../kernel/src/pcb.h"
 
 void inicializarMemoria();
+
 void levantarConfig();
+
+void inicializar_mem_prin();
+
 void *conexion_server_cpu(void *args);
 
 void inicializarListasMemoria();
@@ -16,16 +20,13 @@ void *cpu(void* conexion);
 void *kernel(void* conexion);
 
 int hay_espacio_en_mem(int tamanio_proceso);
-
 t_list* cargar_instrucciones_desde_archivo(char* path_instrucciones);
-
-//FUNCIONES
-
 struct t_tabla_proceso* buscar_proceso_por_pid(int pid);
 
-void inicializar_mem_prin();
+int acceder_a_tdp(int pid, int* indices_por_nivel);
 
 int cargar_archivo(int pid);
+void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual);
 
 int inicializar_proceso(int pid, int tamanio);
 
@@ -43,7 +44,9 @@ struct Tabla_Principal* crear_tabla_principal();
 void suspender_proceso();
 void des_suspender_proceso();
 void finalizar_proceso();
-void acceder_a_tdp();
+
+
+
 void acceder_a_espacio_usuario();
 void leer_pagina_completa();
 void actualizar_pagina_completa();
