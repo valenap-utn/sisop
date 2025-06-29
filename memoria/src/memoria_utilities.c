@@ -39,6 +39,7 @@ void inicializarMemoria(){
     pthread_join(tid_cpu, NULL);
     pthread_join(tid_cpu, NULL);
 }
+
 void levantarConfig(){
     puerto_cpu = config_get_string_value(config, "PUERTO_ESCUCHA_CPU");
     char *value = config_get_string_value(config, "LOG_LEVEL");
@@ -170,8 +171,8 @@ void * cpu(void* args){
                 pid = *(int*)list_remove(paquete_recv,0);
 
                 //CHEQUEAR QUE LAS COSAS SE RECIBAN/ENVIEN DE FORMA ORDENADA
-                int tamanio = list_remove(paquete_recv,0);
-                int dir_fisica = list_remove(paquete_recv,0);
+                int tamanio = *(int*)list_remove(paquete_recv,0);
+                int dir_fisica = *(int*)list_remove(paquete_recv,0);
                 int tipo_acceso = *(int*)list_remove(paquete_recv,0); // lectura || escritura 
 
                 if(tipo_acceso == 0){ //lectura
@@ -333,6 +334,8 @@ void * cpu(void* args){
                 list_destroy_and_destroy_elements(paquete_recv,free); 
             }    
             break;
+            default: log_warning(logger,"Petición desconocida");
+            break;
         }
     }
 }
@@ -357,7 +360,7 @@ void * kernel(void* args){
 
                 int tamanio;
 
-                t_paquete *paquete_send;
+                // t_paquete *paquete_send;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
                 tamanio = *(int *)list_remove(paquete_recv,0); 
@@ -426,7 +429,7 @@ struct t_tabla_proceso* buscar_proceso_por_pid(int pid) {
 int acceder_a_tdp(int pid, int* indices_por_nivel){
     t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
     if(!proceso){
-        log_error("PID %d no encontrado para acceso a TDP", pid);
+        log_error(logger,"PID %d no encontrado para acceso a TDP", pid);
         return -1;
     }
 
@@ -436,7 +439,7 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
         memoria_principal->metricas.cant_accesos_tdp++;
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
         if(!actual || actual->es_ultimo_nivel){
-            log_error("Error al querer acceder al nivel %d para PID %d",nivel,pid);
+            log_error(logger,"Error al querer acceder al nivel %d para PID %d",nivel,pid);
             return -1;
         }
         actual = actual->sgte_nivel[indices_por_nivel[nivel+1]];
@@ -469,7 +472,8 @@ int cargar_archivo(int pid){
         return EXIT_FAILURE;
     }
     snprintf(nombre_archivo, 60,
-            "%d-%02d:%02d:%02d:%03ld.dmp",
+            // "%d-%02d:%02d:%02d:%03ld.dmp",
+            "%s-%d-%02d:%02d:%02d:%03ld.dmp",
             dump_path,
             pid,
             tiempo_local->tm_hour,

@@ -9,6 +9,9 @@
 #include "../../kernel/src/pcb.h"
 #include <sys/stat.h>
 #include <stdbool.h> //para poder usar variables de tipo 'bool' 
+#include <sys/time.h>
+
+void inicializarMemoria();
 
 //COMUNICACION CON KERNEL y CPU
 enum comu_cpu{
@@ -35,7 +38,7 @@ enum comu_kernel{
     FINALIZAR_PROCESO
 }typedef comu_kernel;
 
-typedef struct {
+typedef struct t_metricas{
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas
     int cant_instr_sol; //cantidad de instrucciones solicitadas
     int cant_bajadas_swap; //cantidad de bajadas a SWAP
@@ -44,7 +47,7 @@ typedef struct {
     int cant_escrituras; //cantidad de escrituras de memoria
 }t_metricas;
 
-typedef struct{
+typedef struct t_memoria{
     void* espacio;
     t_list *tablas_por_proceso; //cambio nombre de tabla_paginas a tablas_por_proceso | Lista de t_tabla_proceso*
     bool* bitmap_marcos;       //bitmap de marcos ocupados
@@ -53,29 +56,34 @@ typedef struct{
 }t_memoria;
 
 // Agrego estructura para asociar tablas con procesos
-typedef struct{
+typedef struct t_tabla_proceso{
     int pid;
     struct Tabla_Principal* tabla_principal;
     t_list* instrucciones;
 }t_tabla_proceso;
 
-// typedef struct {
-//     int nivel;
-//     int primer_index;
-//     int ultimo_index;
-//     int presente; // 0 1
-//     t_memoria *puntero_a_memoria;
-//     int es_ultima;
-// }t_tabla_paginas;
-
-// typedef struct {
-//     int direccion;
-//     t_tabla_paginas *puntero_a_tabla;
-//     int cantidad_tablas;
-//     t_tabla_paginas tabla_siguiente;
-// }t_puntero_tabla_paginas;
 
 char* crear_directorio(char* ruta_a_agregar);
+
+/* ------- PROPUESTA by valucha para TDP ------- */
+
+typedef struct Tabla_Principal{
+    int nro_pagina;
+    struct Tabla_Nivel** niveles; //array de punteros al nivel 2 
+}Tabla_Principal; //tabla_global
+
+typedef struct Tabla_Nivel{
+    int nro_pagina;
+    int esta_presente; //bool
+    int es_ultimo_nivel; //bool
+    union{
+        struct Tabla_Nivel **sgte_nivel; 
+        int marco; //si es ultimo nivel
+    };
+}Tabla_Nivel;
+
+
+
 
 
 // typedef struct{
@@ -120,22 +128,5 @@ char* crear_directorio(char* ruta_a_agregar);
 // list_add(tabla->tabla, 0)
 // list_add(tabla->tabla, 10)
 // list_add(tabla->tabla, 20)
-
-/* ------- PROPUESTA by valucha para TDP ------- */
-
-typedef struct Tabla_Principal{
-    int nro_pagina;
-    struct Tabla_Nivel** niveles; //array de punteros al nivel 2 
-}Tabla_Principal; //tabla_global
-
-typedef struct Tabla_Nivel{
-    int nro_pagina;
-    int esta_presente; //bool
-    int es_ultimo_nivel; //bool
-    union{
-        struct Tabla_Nivel **sgte_nivel; 
-        int marco; //si es ultimo nivel
-    };
-}Tabla_Nivel;
 
 #endif

@@ -5,7 +5,7 @@
 #include <utils/utils.h>
 #include "../../kernel/src/pcb.h"
 
-void inicializarMemoria();
+// void inicializarMemoria();
 
 void levantarConfig();
 
@@ -27,6 +27,7 @@ int acceder_a_tdp(int pid, int* indices_por_nivel);
 
 int cargar_archivo(int pid);
 void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual);
+void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual);
 
 int inicializar_proceso(int pid, int tamanio);
 
@@ -45,12 +46,10 @@ void suspender_proceso();
 void des_suspender_proceso();
 void finalizar_proceso();
 
-
-
-void acceder_a_espacio_usuario();
-void leer_pagina_completa();
-void actualizar_pagina_completa();
-void memory_dump();
+// void acceder_a_espacio_usuario();
+// void leer_pagina_completa();
+// void actualizar_pagina_completa();
+// void memory_dump();
 
 
 #endif
