@@ -13,6 +13,9 @@ int  tam_pagina, entradas_por_tabla, cant_niveles;
 
 t_memoria *memoria_principal;
 
+//variable para manejo de SWAP
+char* path_swapfile;
+
 void inicializarMemoria(){
     
     config = config_create("./memoria.config");
@@ -30,6 +33,8 @@ void inicializarMemoria(){
     entradas_por_tabla = config_get_int_value(config, "ENTRADAS_POR_TABLA");
     cant_niveles = config_get_int_value(config, "CANTIDAD_NIVELES");
 
+    //Obtengo path para swapfile desde config
+    path_swapfile = config_get_string_value(config,"PATH_SWAPFILE");
 
     inicializar_mem_prin();
 
