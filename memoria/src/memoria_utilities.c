@@ -294,7 +294,6 @@ void * cpu(void* args){
             //     t_paquete* paquete_send;
             //     paquete_recv = recibir_paquete(conexion);
             //     pid = *(int*)list_remove(paquete_recv,0);
-                
             // }
             // break;
             
@@ -334,7 +333,7 @@ void * cpu(void* args){
                 list_destroy_and_destroy_elements(paquete_recv,free); 
             }    
             break;
-            default: log_warning(logger,"Petición desconocida");
+            default: log_warning(logger,"Petición %d desconocida", peticion);
             break;
         }
     }
@@ -357,17 +356,25 @@ void * kernel(void* args){
 
         switch(peticion){
             case INICIALIZAR_PROCESO:
-
+            {
                 int tamanio;
 
-                // t_paquete *paquete_send;
+                t_paquete* paquete_send;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
                 tamanio = *(int *)list_remove(paquete_recv,0); 
 
-                if(hay_espacio_en_mem(tamanio)) inicializar_proceso(pid,tamanio);
-                else log_error(logger,"No se pudo inicializar el proceso por falta de memoria");
-
+                if(hay_espacio_en_mem(tamanio)){
+                    if(inicializar_proceso(pid,tamanio) == 0){
+                        paquete_send = crear_paquete_ok();
+                        enviar_paquete(paquete_send,conexion);
+                        eliminar_paquete(paquete_send);
+                        log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
+                    } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
+                } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
+                eliminar_paquete(paquete_send);
+                list_destroy_and_destroy_elements(paquete_recv,free);
+            }
             break;
 
             case SUSPENDER_PROCESO:
@@ -378,6 +385,8 @@ void * kernel(void* args){
             break;
 
             case FINALIZAR_PROCESO:
+            break;
+            default: log_warning(logger,"Petición %d desconocida",peticion);
             break;
         }
     }
@@ -414,7 +423,6 @@ t_list* cargar_instrucciones_desde_archivo(char* path) {
     return instrucciones;
 }
 
-
 struct t_tabla_proceso* buscar_proceso_por_pid(int pid) {
     for (int i = 0; i < list_size(memoria_principal->tablas_por_proceso); i++) {
         t_tabla_proceso* proceso = list_get(memoria_principal->tablas_por_proceso, i);
@@ -424,7 +432,6 @@ struct t_tabla_proceso* buscar_proceso_por_pid(int pid) {
     }
     return NULL;  // No se encontró el proceso
 }
-
 
 int acceder_a_tdp(int pid, int* indices_por_nivel){
     t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
@@ -558,20 +565,29 @@ void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual)
 /* ------- + PROPUESTA by valucha ------- */
 
 int inicializar_proceso(int pid, int tamanio){
+    int paginas_necesarias = (tamanio + tam_pagina - 1) / tam_pagina;
+
+    if(contar_marcos_libres() < paginas_necesarias) return -1;
+
     t_tabla_proceso* nueva_tabla = malloc(sizeof(t_tabla_proceso));
     nueva_tabla->pid = pid;
     nueva_tabla->tabla_principal = crear_tabla_principal();
 
+    if (nueva_tabla->tabla_principal == NULL) {
+        log_error(logger, "Error al crear tabla principal");
+        free(nueva_tabla);
+        return -1;
+    }
+
     nueva_tabla->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones);
     if(nueva_tabla->instrucciones == NULL){
         log_error(logger,"Error al cargar instrucciones del proceso %d", pid);
+        liberar_tabla_principal(nueva_tabla->tabla_principal);
         free(nueva_tabla);
         return -1;
     }
 
     list_add(memoria_principal->tablas_por_proceso, nueva_tabla);
-
-    log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
 
     return 0;
 }
@@ -599,7 +615,7 @@ int asignar_marco_libre(){
 }
 
 void liberar_marco(int marco){
-    if(marco <= 0 && marco < memoria_principal->cantidad_marcos){
+    if(marco >= 0 && marco < memoria_principal->cantidad_marcos){
         memoria_principal->bitmap_marcos[marco] = false;
     }
 }
@@ -609,17 +625,32 @@ void liberar_marco(int marco){
 struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina){
     Tabla_Nivel* tabla = malloc(sizeof(Tabla_Nivel));
     tabla->nro_pagina = nro_pagina;
-    tabla->esta_presente = false;
+    tabla->esta_presente = false; 
     tabla->es_ultimo_nivel = (nivel_actual == cant_niveles);
 
     if(tabla->es_ultimo_nivel){
-        tabla->marco = -1;
+        int marco = asignar_marco_libre();
+        if(marco == -1){
+            free(tabla);
+            return NULL;
+        }
+        tabla->marco = marco;
+        tabla->esta_presente = true;
     }else{
         tabla->sgte_nivel = malloc(sizeof(Tabla_Nivel*)* entradas_por_tabla);
         for(int i = 0; i < entradas_por_tabla; i++){
             tabla->sgte_nivel[i] = crear_tabla_nivel((nivel_actual + 1),i);
+            if(!tabla->sgte_nivel[i]){ //liberamos lo creado hasta ahora, si hay fallo en la rama
+                for(int j = 0; j < i; j++){
+                    liberar_tabla_nivel(tabla->sgte_nivel[j]);
+                }
+                free(tabla->sgte_nivel);
+                free(tabla);
+                return NULL;
+            }
         }
     }
+
     return tabla;
 }
 
@@ -629,7 +660,42 @@ struct Tabla_Principal* crear_tabla_principal(){
 
     for(int i = 0; i < entradas_por_tabla; i++){
         tabla->niveles[i] = crear_tabla_nivel(2,i);
+        if(!tabla->niveles[i]){ //liberamos lo creado hasta ahora, si hay fallo en la rama
+                for(int j = 0; j < i; j++){
+                    liberar_tabla_nivel(tabla->niveles[j]);
+                }
+                free(tabla->niveles);
+                free(tabla);
+                return NULL;
+            }
     }
 
     return tabla;
 }
+
+void liberar_tabla_nivel(Tabla_Nivel* tabla){
+    if(tabla == NULL) return;
+
+    if(tabla->es_ultimo_nivel){
+        if(tabla->marco != -1){
+            liberar_marco(tabla->marco);
+        }
+    }else{
+        for(int i = 0; i < entradas_por_tabla; i++){
+            liberar_tabla_nivel(tabla->sgte_nivel[i]);
+        }
+        free(tabla->sgte_nivel);
+    }
+    free(tabla);
+}
+
+void liberar_tabla_principal(Tabla_Principal* tabla){
+    if(tabla == NULL)return;
+
+    for(int i = 0; i < entradas_por_tabla; i++){
+        liberar_tabla_nivel(tabla->niveles[i]);
+    }
+    free(tabla->niveles);
+    free(tabla);
+}
+

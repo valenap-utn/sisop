@@ -39,7 +39,8 @@ void liberar_marco(int marco);
 //TDPs
 struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina);
 struct Tabla_Principal* crear_tabla_principal();
-
+void liberar_tabla_nivel(Tabla_Nivel* tabla);
+void liberar_tabla_principal(Tabla_Principal* tabla);
 
 //FUTURAS (sin implementar ni nada aún)
 void suspender_proceso();
