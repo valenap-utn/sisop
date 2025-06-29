@@ -141,6 +141,7 @@ void * cpu(void* args){
                     list_destroy_and_destroy_elements(paquete_recv, free);
                     break;
                 }
+
                 int* indices_por_nivel = malloc(sizeof(int)*cant_niveles);
                 for(int i = 0; i < cant_niveles; i++){
                     int* index = list_remove(paquete_recv,0);
@@ -157,7 +158,7 @@ void * cpu(void* args){
                 log_info(logger,"## PID: <%d> - Acceso a TDP - Marco obtenido: <%d>",pid,marco_correspondiente);
 
                 free(indices_por_nivel);
-                list_destroy(paquete_recv);
+                list_destroy_and_destroy_elements(paquete_recv,free);
             }
             break;
 
@@ -193,6 +194,8 @@ void * cpu(void* args){
                     log_info(logger,"## PID: <%d> - <Escritura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
                     memoria_principal->metricas.cant_escrituras++;
                 }
+                eliminar_paquete(paquete_send);
+                list_destroy_and_destroy_elements(paquete_recv,free);
             }
             break;
 
@@ -201,30 +204,32 @@ void * cpu(void* args){
                 t_paquete* paquete_send;
                 paquete_recv = recibir_paquete(conexion);
 
+                pid = *(int*)list_remove(paquete_recv,0);
                 int dir_fisica = *(int*)list_remove(paquete_recv,0);
 
                 if(dir_fisica % tam_pagina != 0){
                     log_error(logger,"La Dirección Física %d no es inicio de página",dir_fisica);
+                    list_destroy_and_destroy_elements(paquete_recv,free); 
                     break;
                 }
 
                 if(dir_fisica < 0 || dir_fisica + tam_pagina > tam_memoria){
-                    log_error("Dirección %d fuera de rango",dir_fisica);
+                    log_error(logger,"Dirección %d fuera de rango",dir_fisica);
+                    list_destroy_and_destroy_elements(paquete_recv,free); 
                     break;
                 }
 
-                void* contenido_pagina = malloc(tam_pagina);
-                memcpy(contenido_pagina,memoria_principal->espacio + dir_fisica,tam_pagina);
+                void* contenido_pagina = memoria_principal->espacio + dir_fisica;
 
                 paquete_send = crear_paquete(DEVOLVER_PAGINA);
                 agregar_a_paquete(paquete_send,contenido_pagina,tam_pagina);
                 enviar_paquete(paquete_send,conexion);
 
-                log_info(logger,"Lectura de página completa");
+                log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tam_pagina);
                 memoria_principal->metricas.cant_lecturas++;
 
-                free(contenido_pagina);
-                eliminar_paquete(paquete_send);    
+                eliminar_paquete(paquete_send);  
+                list_destroy_and_destroy_elements(paquete_recv,free);  
             }
             break;
 
@@ -232,35 +237,39 @@ void * cpu(void* args){
             {
                 t_paquete* paquete_send;
                 paquete_recv = recibir_paquete(conexion);
-
+                pid = *(int*)list_remove(paquete_recv,0);
                 int dir_fisica = *(int*)list_remove(paquete_recv,0);
 
                 if(dir_fisica % tam_pagina != 0){
                     log_error(logger,"La Dirección Física %d no es inicio de página",dir_fisica);
+                    list_destroy_and_destroy_elements(paquete_recv,free); 
                     break;
                 }
 
                 if(dir_fisica < 0 || dir_fisica + tam_pagina > tam_memoria){
-                    log_error("Dirección %d fuera de rango",dir_fisica);
+                    log_error(logger,"Dirección %d fuera de rango",dir_fisica);
+                    list_destroy_and_destroy_elements(paquete_recv,free); 
                     break;
                 }
 
                 void* datos = list_remove(paquete_recv,0);
-                memcpy(memoria_principal->espacio + dir_fisica, datos, tam_pagina);
+                memcpy(memoria_principal->espacio + dir_fisica, datos, tam_pagina); //escribo sobre el espacio de usuario
+                free(datos);
 
-                paquete_send = crear_paquete(OK);
+                paquete_send = crear_paquete_ok();
                 enviar_paquete(paquete_send,conexion);
 
-                log_info(logger,"Página escrita correctamente");
+                log_info(logger,"## PID: <%d> - <Escritura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tam_pagina);
                 memoria_principal->metricas.cant_escrituras++;
 
                 eliminar_paquete(paquete_send);
+                list_destroy_and_destroy_elements(paquete_recv,free); 
             }
             break;
 
             case MEMORY_DUMP:
             {
-                t_paquete *paquete_send_Dump;
+                // t_paquete *paquete_send_Dump;
 
                 paquete_recv = recibir_paquete(conexion);
 
@@ -269,21 +278,31 @@ void * cpu(void* args){
                 t_tabla_proceso* procesoDump = buscar_proceso_por_pid(pidDump);
                 if (!procesoDump) {
                     log_error(logger, "PID %d no encontrado al pedir instrucción", pidDump);
+                    list_destroy_and_destroy_elements(paquete_recv,free);
                     break;
                 }
                 cargar_archivo(pidDump);
                 log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pidDump);
+
+                list_destroy_and_destroy_elements(paquete_recv,free);
             }    
             break;
 
-            case PEDIR_INSTRUCCIONES:
-            break;
+            // case OBTENER_INSTRUCCION:
+            // {
+            //     t_paquete* paquete_send;
+            //     paquete_recv = recibir_paquete(conexion);
+            //     pid = *(int*)list_remove(paquete_recv,0);
+                
+            // }
+            // break;
             
             //A CHEQUEAR que esté bien
-            case OBTENER_INSTRUCCION:
+            case PEDIR_INSTRUCCION:
             {
                 t_paquete *paquete_send;
                 paquete_recv = recibir_paquete(conexion);
+
                 pid = *(int *)list_remove(paquete_recv, 0);
                 pc = *(int *)list_remove(paquete_recv, 0);
 
@@ -309,6 +328,9 @@ void * cpu(void* args){
                 memoria_principal->metricas.cant_instr_sol++; //creo que esto va acá
 
                 log_info(logger, "## PID: <%d> - Obtener instrucción: <%d> - Instrucción: <INSTRUCCIÓN> <%s>", pid, pc, instruccion);
+
+                eliminar_paquete(paquete_send);
+                list_destroy_and_destroy_elements(paquete_recv,free); 
             }    
             break;
         }
@@ -439,6 +461,8 @@ int cargar_archivo(int pid){
     gettimeofday(&tiempo_actual, NULL);
     struct tm *tiempo_local = localtime(&tiempo_actual.tv_sec);
 
+    char* dump_path = config_get_string_value(config,"DUMP_PATH");
+
     char *nombre_archivo = malloc(60);
     if (nombre_archivo == NULL) {
         perror("Error al asignar memoria");
@@ -446,6 +470,7 @@ int cargar_archivo(int pid){
     }
     snprintf(nombre_archivo, 60,
             "%d-%02d:%02d:%02d:%03ld.dmp",
+            dump_path,
             pid,
             tiempo_local->tm_hour,
             tiempo_local->tm_min,
@@ -468,7 +493,15 @@ int cargar_archivo(int pid){
     log_info(logger, "## PID: <%d> - Memory Dump solicitado", pid);
 
     Tabla_Nivel** niveles = proceso->tabla_principal->niveles;
-    dump_tabla_nivel(f,niveles,1);
+
+    //esta parte del enunciado me queda retumbando en la cabeza:
+    // crear un nuevo archivo con el TAMANIO TOTAL de 
+    // la memoria reservada por el proceso
+    // y debe escribir en dicho archivo todo el contenido 
+    // actual de la memoria del mismo
+
+    // dump_tabla_nivel(f,niveles,1);
+    dump_tabla_nivel_completo(f,niveles,1); //supongo que será así... 
 
     fclose(f);
 
@@ -487,6 +520,33 @@ void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual){ //recor
             }
         }else{
             dump_tabla_nivel(f,entrada->sgte_nivel,nivel_actual+1);
+        }
+    }
+}
+
+//Guarda TODAS las páginas reservadas del proceso, incluso si la 
+//página no está presente, escribe ceros
+void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual){
+    for(int i = 0; i < entradas_por_tabla; i++){
+        Tabla_Nivel* entrada = niveles[i];
+        if(entrada == NULL){ //si falta la entrada, igual "reserva" espacio con ceros
+            char buffer_ceros[tam_pagina];
+            memset(buffer_ceros, 0, tam_pagina);
+            fwrite(buffer_ceros,1,tam_pagina,f);
+            continue;
+        }
+
+        if(entrada->es_ultimo_nivel){
+            if(entrada->marco != -1 && entrada->esta_presente){
+                int offset = entrada->marco * tam_pagina;
+                fwrite((char*)memoria_principal->espacio + offset, 1, tam_pagina,f);
+            }else{ //pagina no presente o sin marco
+                char buffer_ceros[tam_pagina];
+                memset(buffer_ceros,0,tam_pagina);
+                fwrite(buffer_ceros,1,tam_pagina,f);
+            }
+        }else{//siguiente nivel
+            dump_tabla_nivel_completo(f,entrada->sgte_nivel, nivel_actual + 1);
         }
     }
 }
