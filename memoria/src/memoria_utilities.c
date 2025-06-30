@@ -383,10 +383,22 @@ void * kernel(void* args){
             break;
 
             case SUSPENDER_PROCESO:
-                //ACA SE CARGA EN SWAP
+                t_paquete* paquete_send_suspencion_proceso;
+                paquete_recv = recibir_paquete(conexion);
+                pid = *(int *)list_remove(paquete_recv, 0);
+                //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
+                eliminar_paquete(paquete_send_suspencion_proceso);
+                list_destroy_and_destroy_elements(paquete_recv,free);
             break;
 
             case DESSUPENDER_PROCESO:
+                t_paquete* paquete_send_dessuspencion_proceso;
+                paquete_recv = recibir_paquete(conexion);
+                pid = *(int *)list_remove(paquete_recv, 0);
+                //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
+                eliminar_paquete(paquete_send_dessuspencion_proceso);
+                list_destroy_and_destroy_elements(paquete_recv,free);
+                //responder con un OK
             break;
 
             case FINALIZAR_PROCESO:
