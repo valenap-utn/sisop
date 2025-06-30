@@ -23,7 +23,7 @@ void inicializarMemoria(){
     logger = log_create("memoria.log", "Memoria", 1, current_log_level);
     
     inicializarListasMemoria();
-
+    crear_directorio();
     tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
     path_instrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
 
@@ -280,7 +280,8 @@ void * cpu(void* args){
                 paquete_recv = recibir_paquete(conexion);
 
                 int pidDump = *(int *)list_remove(paquete_recv, 0);
-
+                
+                crear_directorio();
                 t_tabla_proceso* procesoDump = buscar_proceso_por_pid(pidDump);
                 if (!procesoDump) {
                     log_error(logger, "PID %d no encontrado al pedir instrucción", pidDump);
@@ -476,7 +477,6 @@ int cargar_archivo(int pid){
     gettimeofday(&tiempo_actual, NULL);
     struct tm *tiempo_local = localtime(&tiempo_actual.tv_sec);
 
-    char* dump_path = config_get_string_value(config,"DUMP_PATH");
 
     char *nombre_archivo = malloc(60);
     if (nombre_archivo == NULL) {
@@ -484,9 +484,7 @@ int cargar_archivo(int pid){
         return EXIT_FAILURE;
     }
     snprintf(nombre_archivo, 60,
-            // "%d-%02d:%02d:%02d:%03ld.dmp",
-            "%s-%d-%02d:%02d:%02d:%03ld.dmp",
-            dump_path,
+            "%d-%02d:%02d:%02d:%03ld.dmp",
             pid,
             tiempo_local->tm_hour,
             tiempo_local->tm_min,

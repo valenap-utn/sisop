@@ -63,7 +63,7 @@ typedef struct t_tabla_proceso{
 }t_tabla_proceso;
 
 
-char* crear_directorio(char* ruta_a_agregar);
+char* crear_directorio();
 
 /* ------- PROPUESTA by valucha para TDP ------- */
 
