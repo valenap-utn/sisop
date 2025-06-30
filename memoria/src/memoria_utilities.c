@@ -281,7 +281,6 @@ void * cpu(void* args){
 
                 int pidDump = *(int *)list_remove(paquete_recv, 0);
                 
-                crear_directorio();
                 t_tabla_proceso* procesoDump = buscar_proceso_por_pid(pidDump);
                 if (!procesoDump) {
                     log_error(logger, "PID %d no encontrado al pedir instrucción", pidDump);
@@ -477,50 +476,78 @@ int cargar_archivo(int pid){
     gettimeofday(&tiempo_actual, NULL);
     struct tm *tiempo_local = localtime(&tiempo_actual.tv_sec);
 
-
-    char *nombre_archivo = malloc(60);
-    if (nombre_archivo == NULL) {
-        perror("Error al asignar memoria");
-        return EXIT_FAILURE;
+    char* ruta_base = crear_directorio();
+    if (ruta_base == NULL) {
+        log_error(logger, "No se pudo obtener la ruta base para el dump");
+        return -1;
     }
-    snprintf(nombre_archivo, 60,
-            "%d-%02d:%02d:%02d:%03ld.dmp",
-            pid,
-            tiempo_local->tm_hour,
-            tiempo_local->tm_min,
-            tiempo_local->tm_sec,
-            tiempo_actual.tv_usec / 1000);
 
+    char nombre_archivo[64];
+    snprintf(nombre_archivo, sizeof(nombre_archivo),
+             "%d-%02d:%02d:%02d:%03ld.dmp",
+             pid,
+             tiempo_local->tm_hour,
+             tiempo_local->tm_min,
+             tiempo_local->tm_sec,
+             tiempo_actual.tv_usec / 1000);
+
+    size_t ruta_completa_len = strlen(ruta_base) + strlen(nombre_archivo) + 2;
+    char* ruta_completa = malloc(ruta_completa_len);
+    if (!ruta_completa) {
+        log_error(logger, "No se pudo asignar memoria para la ruta completa");
+        free(ruta_base);
+        return -1;
+    }
+
+    snprintf(ruta_completa, ruta_completa_len, "%s/%s", ruta_base, nombre_archivo);
 
     t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
-    if(proceso == NULL){
-        log_error(logger,"No se encontró el proceso PID %d para el dump",pid);
+    if (proceso == NULL) {
+        log_error(logger, "No se encontró el proceso PID %d para el dump", pid);
+        free(ruta_base);
+        free(ruta_completa);
         return -1;
     }
 
-    FILE* f = fopen(nombre_archivo,"w");
-    if(!f){
+
+    FILE* f = fopen(ruta_completa, "w");
+    if (!f) {
         log_error(logger, "No se pudo abrir archivo de dump para PID %d", pid);
+        free(ruta_base);
+        free(ruta_completa);
         return -1;
     }
 
-    log_info(logger, "## PID: <%d> - Memory Dump solicitado", pid);
+    log_info(logger, "## PID: <%d> - Memory Dump solicitado en %s", pid, ruta_completa);
 
-    Tabla_Nivel** niveles = proceso->tabla_principal->niveles;
-
-    //esta parte del enunciado me queda retumbando en la cabeza:
+    // esta parte del enunciado me queda retumbando en la cabeza:
     // crear un nuevo archivo con el TAMANIO TOTAL de 
     // la memoria reservada por el proceso
     // y debe escribir en dicho archivo todo el contenido 
     // actual de la memoria del mismo
 
-    // dump_tabla_nivel(f,niveles,1);
-    dump_tabla_nivel_completo(f,niveles,1); //supongo que será así... 
+    //existe algo para obtener el contenido en memoria? y tamanio? osea tipo el largo del proceso,
+    //no se si me explico bien, si podemos obtener eso ya creo que estamos, y lo armamos tipo tabla 
 
+    //lo cargamos como texto plano
+
+    //PID? | TAMANIO TOTAL de memoria reservada | contenido de memoria
+    
+    // Realizar dump
+    Tabla_Nivel** niveles = proceso->tabla_principal->niveles;
+    
+
+
+    dump_tabla_nivel_completo(f, niveles, 1);
+
+    // Limpieza
     fclose(f);
+    free(ruta_base);
+    free(ruta_completa);
 
     return 0;
 }
+
 
 void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual){ //recorre recursivamente los niveles y guarda el contenido de marcos presentes
     for(int i = 0 ; i < entradas_por_tabla ; i++){
