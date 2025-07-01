@@ -13,30 +13,6 @@
 
 void inicializarMemoria();
 
-//COMUNICACION CON KERNEL y CPU
-enum comu_cpu{
-    ACCEDER_A_TDP,
-    DEVOLVER_MARCO, //para cuando se ejecuta ACCEDER_A_TDP (consultar, si es así esto)
-
-    ACCEDER_A_ESPACIO_USUARIO,
-    DEVOLVER_VALOR,
-
-    LEER_PAG_COMPLETA,
-    DEVOLVER_PAGINA,
-
-    ACTUALIZAR_PAG_COMPLETA,
-    MEMORY_DUMP,
-    PEDIR_INSTRUCCION,
-    // OBTENER_INSTRUCCION,
-    DEVOLVER_INSTRUCCION,
-}typedef comu_cpu;
-
-enum comu_kernel{
-    INICIALIZAR_PROCESO,
-    SUSPENDER_PROCESO,
-    DESSUPENDER_PROCESO,
-    FINALIZAR_PROCESO
-}typedef comu_kernel;
 
 typedef struct t_metricas{
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas

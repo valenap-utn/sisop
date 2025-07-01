@@ -46,6 +46,32 @@ enum protocolo_socket
 };
 typedef enum protocolo_socket protocolo_socket;
 
+//COMUNICACION CON KERNEL y CPU
+enum comu_cpu{
+    ACCEDER_A_TDP,
+    DEVOLVER_MARCO, //para cuando se ejecuta ACCEDER_A_TDP (consultar, si es así esto)
+
+    ACCEDER_A_ESPACIO_USUARIO,
+    DEVOLVER_VALOR,
+
+    LEER_PAG_COMPLETA,
+    DEVOLVER_PAGINA,
+
+    ACTUALIZAR_PAG_COMPLETA,
+    MEMORY_DUMP,
+    PEDIR_INSTRUCCIONES,
+    OBTENER_INSTRUCCION,
+    DEVOLVER_INSTRUCCION,
+}typedef comu_cpu;
+
+enum comu_kernel{
+    INICIALIZAR_PROCESO,
+    SUSPENDER_PROCESO,
+    DESSUPENDER_PROCESO,
+    FINALIZAR_PROCESO
+}typedef comu_kernel;
+
+
 enum enum_algoritmo_largoPlazo
 {
     LPL_FIFO,
