@@ -4,22 +4,24 @@
 #include <commons/config.h>
 
 //variables globales
-
 //variables globales
 
 //A chequear...
-int pid = 0;
+int pid_mayor = 0;
 // int pc = 0; pc siempre es 0, podemos hardcodearlo en iniciar_pcb()
+
+//semaforos
+pthread_mutex_t * mutex_pid_mayor;
+//
 
 PCB* iniciar_pcb(){
     PCB* pcb = malloc(sizeof(PCB));
-    pcb->pid = pid++;
+    pcb->pid = generar_pid_unico();
     //a chequear -> agrego esta linea para que no de warning, para que apunte a memoria valida
     pcb->registros = malloc(sizeof(registrosPCB));
     inicializarRegistros(pcb->registros);
     pcb->base = 0;
     pcb->limite = 0;
-    pcb->instrucciones = list_create();
     pcb->me = inicializarLista();
     pcb->mt = inicializarLista();
     return pcb;
@@ -35,3 +37,9 @@ void inicializarRegistros(registrosPCB *reg){
     reg->HX=0;
 }
 
+int generar_pid_unico() {
+    pthread_mutex_lock(mutex_pid_mayor);
+    pid_mayor +=1;
+    pthread_mutex_unlock(mutex_pid_mayor);
+    return pid_mayor;
+}

@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
 
     pthread_t tid_server_mh_cpu;
     pthread_t tid_server_mh_io;
-    pthread_t tid_largoplazo, tid_cortoplazo;
+    pthread_t tid_largoplazo;
     
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
@@ -40,6 +40,15 @@ int main(int argc, char* argv[]) {
     //
     destrabar_flag_global(&flag_all_start);
     log_debug(logger, "Flag global destrabado");
+
+    // levanto proceso main
+    char * path = argv[argc-2];
+    char * size_str = argv[argc-1];
+    int size = atoi(size_str);
+
+    log_debug(logger, "Proceso inicial: %s, tamaño: %d", path, size);
+
+    PROCESS_CREATE(path, size);
 
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);

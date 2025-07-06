@@ -34,8 +34,7 @@ typedef struct{
     int memoria_necesaria;
     uint32_t base;
     uint32_t limite;
-    t_list* instrucciones;
-    int cant_instrucciones;
+    char* path_instrucciones;
     list_struct_t* me;
     list_struct_t* mt;
     t_estado estado;

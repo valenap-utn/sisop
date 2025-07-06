@@ -4,6 +4,8 @@
 extern t_log *logger;
 extern t_config *config;
 
+int pid_actual;
+
 extern int flag_all_start;
 
 extern list_struct_t *lista_sockets_cpu;
@@ -20,6 +22,7 @@ sem_t * sem_proceso_fin;
 sem_t * sem_respuesta_memoria;
 extern pthread_cond_t * sem_all_start_cond;
 extern pthread_mutex_t * mutex_all_start_mutex;
+extern pthread_mutex_t * mutex_pid_mayor;
 
 //configs
 t_log_level current_log_level;
@@ -130,6 +133,7 @@ void inicializarSemaforos(){
 
     sem_all_start_cond = inicializarCond();
     mutex_all_start_mutex = inicializarMutex();
+    mutex_pid_mayor = inicializarMutex();
     return;    
 }
 void inicializarListasKernel(){

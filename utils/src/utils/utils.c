@@ -266,7 +266,7 @@ list_struct_t * inicializarLista(){
 
     lista->sem = inicializarSem(0);
 
-    log_debug(logger, "Se creo un list_struct nuevo");
+    //log_debug(logger, "Se creo un list_struct nuevo");
     return lista;
 
 }
