@@ -10,11 +10,17 @@ extern list_struct_t *lista_sockets_cpu_ocupados;
 extern list_struct_t *lista_sockets_io;
 
 
+/// @brief Hay que crear un thread por cada CPU, y tener en cuenta 
+/// las zonas de mutua exclusion de las listas que se usan
+/// @param args es un t_socket_cpu 
+/// @return EXIT_SUCCESS / EXIT_FAILURE -> no son usados
 void *cortoPlazo (void *args) {
+
+    t_socket_cpu * socket_cpu = (t_socket_cpu *) args;
 
     switch (algoritmo_cortoPlazo) {
             case CPL_FIFO:
-                cortoPlazoFifo();
+                cortoPlazoFifo(socket_cpu);
                 break;
 
             default:
@@ -26,7 +32,7 @@ void *cortoPlazo (void *args) {
 
 }
 
-void cortoPlazoFifo(void) {
+void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
 
     while (true) {
         sem_wait(lista_procesos_ready->sem);
@@ -36,13 +42,11 @@ void cortoPlazoFifo(void) {
         pthread_mutex_unlock(lista_procesos_ready->mutex);
 
         log_info(logger, "## (%d) - Planificado por FIFO", pcb->pid);
-
-        sem_wait(lista_sockets_cpu_libres->sem);
-        pthread_mutex_lock(lista_sockets_cpu_libres->mutex);
-        t_socket_cpu * socket_cpu = list_remove(lista_sockets_cpu_libres->lista, 0);
-        pthread_mutex_unlock(lista_sockets_cpu_libres->mutex);
         
-        enviar_a_cpu_dispatch(pcb, socket_cpu);
+        enviar_a_cpu_dispatch(pcb, socket_cpu->dispatch);
+
+        esperar_respuesta_cpu(socket_cpu->dispatch);
+
     }
 
 }
@@ -64,25 +68,12 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
     list_add(lista_procesos_exec->lista, pcb);
     pthread_mutex_unlock(lista_procesos_exec->mutex);
 
-    pthread_mutex_lock(lista_sockets_cpu_ocupados->mutex);
-    list_add(lista_sockets_cpu_ocupados->lista, socket_cpu);
-    pthread_mutex_unlock(lista_sockets_cpu_ocupados->mutex);
-    sem_post(lista_sockets_cpu_ocupados->sem);
-    
-    // esperar_respuesta_cpu() ver discord, tenemos que agregar un par de cosas aca
+
 
 }
-/* TP ANTERIOR
 
-void enviar_a_cpu_dispatch(int tid, int pid)
-{   sem_wait(sem_estado_conexion_cpu_dispatch);
-    t_paquete * send_handshake = crear_paquete(INFO_HILO);
-    agregar_a_paquete(send_handshake, &tid, sizeof(tid)); 
-    agregar_a_paquete(send_handshake, &pid, sizeof(pid)); 
-    enviar_paquete(send_handshake, conexion_kernel_cpu_dispatch); 
-    eliminar_paquete(send_handshake);
-    //Se espera la respuesta, primero el tid y luego el motivo
-    sem_post(sem_estado_conexion_cpu_dispatch);
+/// @brief Queda esperando la devolucion de CPU. Generalmente una syscall o un process_exit.
+/// @param socket_cpu puntero a t_socket_cpu. Se va a leer el valor -> interrupt
+void esperar_respuesta_cpu(t_socket_cpu *socket_cpu){
+
 }
-
-*/
