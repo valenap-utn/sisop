@@ -12,9 +12,7 @@ void PROCESS_CREATE(char *path, int tam_proceso) {
 
     nuevo_pcb->path_instrucciones = path;
     
-    pthread_mutex_lock(lista_procesos_new->mutex);
-    list_add(lista_procesos_new->lista, nuevo_pcb);
-    pthread_mutex_unlock(lista_procesos_new->mutex);
+    encolar_cola_new(nuevo_pcb, -1);
     
     sem_post(lista_procesos_new->sem);
 

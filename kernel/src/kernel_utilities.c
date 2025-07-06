@@ -14,6 +14,7 @@ extern list_struct_t *lista_peticiones_pendientes;
 
 //colas_planificadores
 extern list_struct_t *lista_procesos_new;
+extern list_struct_t *lista_procesos_new_fallidos;
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_procesos_exec;
 
@@ -140,6 +141,7 @@ void inicializarListasKernel(){
     lista_sockets_cpu = inicializarLista();
     lista_sockets_io = inicializarLista();
     lista_procesos_new = inicializarLista();
+    lista_procesos_new_fallidos = inicializarLista();
     lista_procesos_ready = inicializarLista();
     lista_procesos_exec = inicializarLista();
     lista_peticiones_pendientes = inicializarLista();
@@ -193,10 +195,58 @@ PCB *desencolar_cola_new(int index){
     pthread_mutex_unlock(lista_procesos_new->mutex);
     return pcb;
 }
-/// @brief Encola de lista_procesos_new
-void encolar_cola_new(PCB *pcb){
+PCB *desencolar_cola_fallidos(int index){
+    pthread_mutex_lock(lista_procesos_new_fallidos->mutex);
+    PCB *pcb = list_remove(lista_procesos_new_fallidos->lista, index);
+    pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
+    return pcb;
+}
+int cola_new_buscar_smallest(){
     pthread_mutex_lock(lista_procesos_new->mutex);
-    list_add_in_index(lista_procesos_new->lista, 0, pcb);
+    if (list_is_empty(lista_procesos_new->lista)){
+        return -1;
+    }
+    t_list_iterator * iterator = list_iterator_create(lista_procesos_new->lista);
+    PCB *pcb;
+    PCB *pcb_smallest = (PCB*)list_iterator_next(iterator);
+    int index = 0;
+    while (list_iterator_has_next(iterator)){
+        pcb = (PCB*)list_iterator_next(iterator);
+        if (pcb->memoria_necesaria <= pcb_smallest->memoria_necesaria){
+            pcb_smallest = pcb;
+            index = list_iterator_index(iterator);
+        }
+    }
+    pthread_mutex_unlock(lista_procesos_new->mutex);
+
+    return index;
+}
+int cola_fallidos_buscar_smallest(){
+    pthread_mutex_lock(lista_procesos_new_fallidos->mutex);
+    if (list_is_empty(lista_procesos_new_fallidos->lista)){
+        return -1;
+    }
+    t_list_iterator * iterator = list_iterator_create(lista_procesos_new_fallidos->lista);
+    PCB *pcb;
+    PCB *pcb_smallest = (PCB*)list_iterator_next(iterator);
+    int index = 0;
+    while (list_iterator_has_next(iterator)){
+        pcb = (PCB*)list_iterator_next(iterator);
+        if (pcb->memoria_necesaria <= pcb_smallest->memoria_necesaria){
+            pcb_smallest = pcb;
+            index = list_iterator_index(iterator);
+        }
+    }
+    pthread_mutex_unlock(lista_procesos_new->mutex);
+
+    return index;
+}
+/// @brief Encola de lista_procesos_new
+/// @param pcb 
+/// @param index 0 para inicio de lista, -1 para final
+void encolar_cola_new(PCB *pcb, int index){
+    pthread_mutex_lock(lista_procesos_new->mutex);
+    list_add_in_index(lista_procesos_new->lista, index, pcb);
     pthread_mutex_unlock(lista_procesos_new->mutex);
     sem_post(lista_procesos_new->sem);
     return;
@@ -206,23 +256,6 @@ void encolar_cola_ready(PCB *pcb){
     list_add_in_index(lista_procesos_ready->lista, -1, pcb);
     pthread_mutex_unlock(lista_procesos_ready->mutex);
     // sem_post(lista_procesos_ready->sem); por ahora creo que no hace falta
-    return;
-}
-void encolar_cola_new_ordenado_smallerFirst(PCB * pcb){
-    int index = 0;
-    PCB *pcb_aux;
-    
-    t_list_iterator *iterator = list_iterator_create(lista_procesos_new->lista);
-    while(list_iterator_has_next(iterator)){
-        pcb_aux = list_iterator_next(iterator);
-        index = list_iterator_index(iterator);
-        if (pcb->memoria_necesaria < pcb_aux->memoria_necesaria){
-            pthread_mutex_lock(lista_procesos_new->mutex);
-            list_add_in_index(lista_procesos_new->lista, index, pcb);
-            pthread_mutex_unlock(lista_procesos_new->mutex);
-            return;
-        }
-    }
     return;
 }
 t_peticion_largoPlazo * inicializarPeticionLargoPlazo(){

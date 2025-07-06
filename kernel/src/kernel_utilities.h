@@ -5,7 +5,6 @@
 #include <utils/utils.h>
 #include <largoplazo.h>
 #include <cortoplazo.h>
-
 #include <pcb.h>
 
 
@@ -35,9 +34,11 @@ enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char *string);
 bool encolarPeticionLargoPlazo(PCB *pcb);
 void encolarPeticionMemoria(t_peticion_largoPlazo *peticion);
 PCB *desencolar_cola_new(int index);
-void encolar_cola_new(PCB *pcb);
+PCB *desencolar_cola_fallidos(int index);
+int cola_new_buscar_smallest();
+int cola_fallidos_buscar_smallest();
+void encolar_cola_new(PCB *pcb, int index);
 void encolar_cola_ready(PCB *pcb);
-void encolar_cola_new_ordenado_smallerFirst(PCB *pcb);
 t_peticion_largoPlazo *inicializarPeticionLargoPlazo();
 void liberar_peticionLargoPlazo(t_peticion_largoPlazo *peticion);
 void esperar_flag_global();

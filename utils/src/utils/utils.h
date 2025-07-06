@@ -75,6 +75,7 @@ enum comu_kernel{
 enum enum_algoritmo_largoPlazo
 {
     LPL_FIFO,
+    LPL_SMALL,
 };
 typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
 
