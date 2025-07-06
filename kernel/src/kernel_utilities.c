@@ -4,8 +4,7 @@
 extern t_log *logger;
 extern t_config *config;
 
-extern list_struct_t *lista_sockets_cpu_libres;
-extern list_struct_t *lista_sockets_cpu_ocupados;
+extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
 extern list_struct_t *lista_peticiones_pendientes;
 
@@ -48,7 +47,7 @@ void inicializarKernel(){
     //Al iniciar el proceso Kernel, el algoritmo de Largo Plazo debe estar frenado (estado STOP) y se deberá esperar un ingreso de un Enter por teclado para poder iniciar con la planificación.
     //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
     pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
-    pthread_create(&tid_cortoplazo, NULL, cortoPlazo, NULL);
+    
     
 
     pthread_join(tid_server_mh_cpu, NULL);
@@ -83,15 +82,20 @@ void *server_mh_cpu(void *args){
     int server_dispatch = iniciar_servidor(puerto_dispatch);
     int server_interrupt = iniciar_servidor(puerto_interrupt);
 
+    pthread_t * tid_nuevo_cortoplazo;
+
     t_socket_cpu *socket_nuevo = malloc(sizeof(t_socket_cpu));
 
     while((socket_nuevo->dispatch = esperar_cliente(server_dispatch))){
         
         socket_nuevo->interrupt = esperar_cliente(server_interrupt);
 
-        pthread_mutex_lock(lista_sockets_cpu_libres->mutex);
-        list_add(lista_sockets_cpu_libres->lista, socket_nuevo);
-        pthread_mutex_unlock(lista_sockets_cpu_libres->mutex);
+        pthread_mutex_lock(lista_sockets_cpu->mutex);
+        list_add(lista_sockets_cpu->lista, socket_nuevo);
+        pthread_mutex_unlock(lista_sockets_cpu->mutex);
+
+        //creamos un nuevo cortoplazo para cada CPU que se conecte
+        pthread_create(tid_nuevo_cortoplazo, NULL, cortoPlazo, (void*)socket_nuevo);
 
         socket_nuevo = malloc(sizeof(t_socket_cpu));
 
@@ -142,8 +146,7 @@ void inicializarSemaforos(){
     return;    
 }
 void inicializarListasKernel(){
-    lista_sockets_cpu_libres = inicializarLista();
-    lista_sockets_cpu_ocupados = inicializarLista();
+    lista_sockets_cpu = inicializarLista();
     lista_sockets_io = inicializarLista();
     lista_procesos_new = inicializarLista();
     lista_procesos_ready = inicializarLista();

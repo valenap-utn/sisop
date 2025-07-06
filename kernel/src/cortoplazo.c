@@ -68,13 +68,11 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
     list_add(lista_procesos_exec->lista, pcb);
     pthread_mutex_unlock(lista_procesos_exec->mutex);
 
-
-
 }
 
 /// @brief Queda esperando la devolucion de CPU. Generalmente una syscall o un process_exit.
 /// @param socket_cpu puntero a t_socket_cpu. Se va a leer el valor -> interrupt
-/// @param pid
+/// @param pid 🤔🤔🤔
 void esperar_respuesta_cpu(int pid, t_socket_cpu *socket_cpu){
     protocolo_socket motivo;
     
@@ -86,7 +84,7 @@ void esperar_respuesta_cpu(int pid, t_socket_cpu *socket_cpu){
     switch (motivo) {
 
         default:
-            log_info(logger, "Motivo: %d desconocido para el hilo %d\n", motivo, tid);
+            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pid);
             break;
     }
 }
