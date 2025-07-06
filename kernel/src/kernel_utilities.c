@@ -57,7 +57,7 @@ void inicializarKernel(){
 
     if(ready){
         destrabar_flag_global(&flag_all_start);
-        log_info(logger, "Flag global destrabado");
+        log_debug(logger, "Flag global destrabado");
     }
 
     pthread_join(tid_server_mh_cpu, NULL);
