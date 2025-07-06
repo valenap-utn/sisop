@@ -9,6 +9,7 @@ extern list_struct_t *lista_sockets_cpu_libres;
 extern list_struct_t *lista_sockets_cpu_ocupados;
 extern list_struct_t *lista_sockets_io;
 
+
 void *cortoPlazo (void *args) {
 
     switch (algoritmo_cortoPlazo) {
