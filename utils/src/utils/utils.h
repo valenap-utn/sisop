@@ -125,4 +125,8 @@ extern t_log* logger;
 
     sem_t *inicializarSem(int initial_value);
 
+    pthread_cond_t *inicializarCond();
+
+    pthread_mutex_t *inicializarMutex();
+
 #endif

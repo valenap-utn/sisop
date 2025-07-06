@@ -275,3 +275,13 @@ sem_t *inicializarSem(int initial_value){
     sem_init(semaforo, 0, initial_value);
     return semaforo;
 }
+pthread_cond_t *inicializarCond(){
+    pthread_cond_t * semaforo = malloc(sizeof(pthread_cond_t));
+    pthread_cond_init(semaforo, NULL);
+    return semaforo;
+}
+pthread_mutex_t *inicializarMutex(){
+    pthread_mutex_t * semaforo = malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(semaforo, NULL);
+    return semaforo;
+}

@@ -3,6 +3,8 @@
 extern enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
 extern t_log *logger;
 
+extern int flag_all_start;
+
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_procesos_exec;
 extern list_struct_t *lista_sockets_cpu_libres;
@@ -16,7 +18,9 @@ extern list_struct_t *lista_sockets_io;
 /// @return EXIT_SUCCESS / EXIT_FAILURE -> no son usados
 void *cortoPlazo (void *args) {
 
-    t_socket_cpu * socket_cpu = (t_socket_cpu *) args;
+    t_socket_cpu * socket_cpu = args;
+
+    esperar_flag_global();
 
     switch (algoritmo_cortoPlazo) {
             case CPL_FIFO:
@@ -43,9 +47,9 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
 
         log_info(logger, "## (%d) - Planificado por FIFO", pcb->pid);
         
-        enviar_a_cpu_dispatch(pcb, socket_cpu->dispatch);
+        enviar_a_cpu_dispatch(pcb, socket_cpu);
 
-        esperar_respuesta_cpu(pcb->pid, socket_cpu->dispatch);
+        esperar_respuesta_cpu(pcb->pid, socket_cpu);
 
     }
 

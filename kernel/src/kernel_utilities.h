@@ -40,6 +40,8 @@ void encolar_cola_ready(PCB *pcb);
 void encolar_cola_new_ordenado_smallerFirst(PCB *pcb);
 t_peticion_largoPlazo *inicializarPeticionLargoPlazo();
 void liberar_peticionLargoPlazo(t_peticion_largoPlazo *peticion);
+void esperar_flag_global();
+void destrabar_flag_global(int *flag);
 void levantarConfig();
 
 #endif

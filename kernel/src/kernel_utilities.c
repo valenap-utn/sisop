@@ -4,6 +4,8 @@
 extern t_log *logger;
 extern t_config *config;
 
+extern int flag_all_start;
+
 extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
 extern list_struct_t *lista_peticiones_pendientes;
@@ -16,6 +18,8 @@ extern list_struct_t *lista_procesos_exec;
 //semaforos auxiliares
 sem_t * sem_proceso_fin;
 sem_t * sem_respuesta_memoria;
+extern pthread_cond_t * sem_all_start_cond;
+extern pthread_mutex_t * mutex_all_start_mutex;
 
 //configs
 t_log_level current_log_level;
@@ -48,13 +52,9 @@ void inicializarKernel(){
     //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
     pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
     
-    
-
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);
     pthread_join(tid_largoplazo, NULL);
-    pthread_join(tid_cortoplazo, NULL);
-
 
 }
 
@@ -143,6 +143,9 @@ void *server_mh_io(void *args){
 void inicializarSemaforos(){
     sem_proceso_fin = inicializarSem(0);
     sem_respuesta_memoria = inicializarSem(0);
+
+    sem_all_start_cond = inicializarCond();
+    mutex_all_start_mutex = inicializarMutex();
     return;    
 }
 void inicializarListasKernel(){
@@ -243,4 +246,22 @@ t_peticion_largoPlazo * inicializarPeticionLargoPlazo(){
 void liberar_peticionLargoPlazo(t_peticion_largoPlazo * peticion){
     sem_destroy(peticion->peticion_finalizada);
     free(peticion);
+}
+
+void esperar_flag_global(){
+    
+    pthread_mutex_lock(mutex_all_start_mutex);
+    while (!flag_all_start) {
+        pthread_cond_wait(sem_all_start_cond, mutex_all_start_mutex);
+    }
+    pthread_mutex_unlock(mutex_all_start_mutex);
+
+}
+
+void destrabar_flag_global(int *flag){
+    
+    pthread_mutex_lock(mutex_all_start_mutex);
+    *flag = 1;
+    pthread_cond_broadcast(sem_all_start_cond);
+    pthread_mutex_unlock(mutex_all_start_mutex);
 }
