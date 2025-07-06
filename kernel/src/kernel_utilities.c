@@ -52,6 +52,14 @@ void inicializarKernel(){
     //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
     pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
     
+    int ready;
+    scanf("%d", &ready);
+
+    if(ready){
+        destrabar_flag_global(&flag_all_start);
+        log_info(logger, "Flag global destrabado");
+    }
+
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);
     pthread_join(tid_largoplazo, NULL);

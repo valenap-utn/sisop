@@ -21,11 +21,6 @@ pthread_mutex_t * mutex_all_start_mutex;
 
 int main(int argc, char* argv[]) {
     inicializarKernel();
-    int ready;
-
-    scanf("%d", &ready);
-
-    destrabar_flag_global(&flag_all_start);
 
     return 0;
 }
