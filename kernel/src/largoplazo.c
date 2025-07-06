@@ -2,11 +2,16 @@
 
 extern enum_algoritmo_largoPlazo algoritmo_largoPlazo;
 extern t_log *logger;
+extern int flag_all_start;
 
 extern list_struct_t *lista_procesos_new;
 extern sem_t *sem_proceso_fin;
 
 void *largoPlazo(void *args){
+
+    esperar_flag_global(&flag_all_start);
+    log_debug(logger, "largo plazo arranca");
+
     switch(algoritmo_largoPlazo){
         case LPL_FIFO:
             largoPlazoFifo();

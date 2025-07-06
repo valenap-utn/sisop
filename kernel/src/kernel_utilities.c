@@ -41,34 +41,10 @@ void inicializarKernel(){
     inicializarSemaforos();
     inicializarListasKernel();
 
-    pthread_t tid_server_mh_cpu;
-    pthread_t tid_server_mh_io;
-    pthread_t tid_largoplazo, tid_cortoplazo;
-    
-    pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
-    pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
-    
-    //Al iniciar el proceso Kernel, el algoritmo de Largo Plazo debe estar frenado (estado STOP) y se deberá esperar un ingreso de un Enter por teclado para poder iniciar con la planificación.
-    //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
-    pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
-    
-    int ready;
-    scanf("%d", &ready);
-
-    if(ready){
-        destrabar_flag_global(&flag_all_start);
-        log_debug(logger, "Flag global destrabado");
-    }
-
-    pthread_join(tid_server_mh_cpu, NULL);
-    pthread_join(tid_server_mh_io, NULL);
-    pthread_join(tid_largoplazo, NULL);
-
 }
 
 void levantarConfig(){
 
-    
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
 
@@ -256,10 +232,10 @@ void liberar_peticionLargoPlazo(t_peticion_largoPlazo * peticion){
     free(peticion);
 }
 
-void esperar_flag_global(){
+void esperar_flag_global(int * flag){
     
     pthread_mutex_lock(mutex_all_start_mutex);
-    while (!flag_all_start) {
+    while (!*flag) {
         pthread_cond_wait(sem_all_start_cond, mutex_all_start_mutex);
     }
     pthread_mutex_unlock(mutex_all_start_mutex);
