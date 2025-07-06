@@ -30,9 +30,10 @@ enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
 void inicializarKernel(){
 
     config = config_create("./kernel.config");
-    logger = log_create("kernel.log", "Kernel", 1, current_log_level);
 
     levantarConfig();
+
+    logger = log_create("kernel.log", "Kernel", 1, current_log_level);
 
     inicializarSemaforos();
     inicializarListasKernel();
