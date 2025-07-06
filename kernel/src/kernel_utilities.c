@@ -1,5 +1,5 @@
 #include <kernel_utilities.h>
-#include <pcb.h>
+
 
 extern t_log *logger;
 extern t_config *config;
@@ -249,6 +249,13 @@ void encolar_cola_new(PCB *pcb, int index){
     list_add_in_index(lista_procesos_new->lista, index, pcb);
     pthread_mutex_unlock(lista_procesos_new->mutex);
     sem_post(lista_procesos_new->sem);
+    return;
+}
+void encolar_cola_new_fallidos(PCB *pcb, int index){
+    pthread_mutex_lock(lista_procesos_new_fallidos->mutex);
+    list_add_in_index(lista_procesos_new_fallidos->lista, index, pcb);
+    pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
+    sem_post(lista_procesos_new_fallidos->sem);
     return;
 }
 void encolar_cola_ready(PCB *pcb){

@@ -21,7 +21,7 @@ void *largoPlazo(void *args){
 
         case LPL_SMALL:
             largoPlazoSmallFirst();
-            pthread_create(tid_aux, largoPlazoFallidos, NULL);
+            pthread_create(tid_aux, NULL, largoPlazoFallidos, NULL);
 
         //Agregar aca mientras se van haciendo
         
@@ -66,7 +66,7 @@ void largoPlazoSmallFirst(){
         log_debug(logger, "Nuevo proceso a crear: Intentando cargar en memoria");
         index = cola_new_buscar_smallest();
         if (index == -1){
-            log_error("LPL: lista vacia, preparese para la autodestruccion");
+            log_error(logger, "LPL: lista vacia, preparese para la autodestruccion");
         }
         PCB * pcb = desencolar_cola_new(index);
         if(!encolarPeticionLargoPlazo(pcb)){

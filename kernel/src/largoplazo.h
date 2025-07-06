@@ -11,6 +11,8 @@ void * largoPlazo(void * args);
 
 void largoPlazoFifo();
 
+void *largoPlazoFallidos(void *args);
+
 #endif
 
 
