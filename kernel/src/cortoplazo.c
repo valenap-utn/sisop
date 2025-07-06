@@ -87,10 +87,9 @@ void esperar_respuesta_cpu(int pid, t_socket_cpu *socket_cpu){
 
     switch (motivo) {
 
-        
-
         default:
             log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pid);
+            list_destroy(paquete_respuesta);
             break;
     }
 }

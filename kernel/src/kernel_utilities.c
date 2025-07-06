@@ -70,7 +70,7 @@ void *server_mh_cpu(void *args){
     int server_dispatch = iniciar_servidor(puerto_dispatch);
     int server_interrupt = iniciar_servidor(puerto_interrupt);
 
-    pthread_t * tid_nuevo_cortoplazo;
+    pthread_t tid_nuevo_cortoplazo;
 
     t_socket_cpu *socket_nuevo = malloc(sizeof(t_socket_cpu));
 
@@ -83,12 +83,12 @@ void *server_mh_cpu(void *args){
         pthread_mutex_unlock(lista_sockets_cpu->mutex);
 
         //creamos un nuevo cortoplazo para cada CPU que se conecte
-        pthread_create(tid_nuevo_cortoplazo, NULL, cortoPlazo, (void*)socket_nuevo);
+        pthread_create(&tid_nuevo_cortoplazo, NULL, cortoPlazo, (void*)socket_nuevo);
 
         socket_nuevo = malloc(sizeof(t_socket_cpu));
 
     }
-    
+    pthread_join(tid_nuevo_cortoplazo, NULL);
     return (void *)EXIT_SUCCESS;
 }
 void *server_mh_io(void *args){
@@ -150,6 +150,9 @@ void inicializarListasKernel(){
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
     if(!strcmp(string, "FIFO")){
         return LPL_FIFO;
+    }
+    if(!strcmp(string, "PMCP")){
+        return LPL_SMALL;
     }
     //agregar mas elseif aca mientras se van creando
     log_error(logger, "Config de largo plazo no reconocido");
@@ -224,6 +227,7 @@ int cola_new_buscar_smallest(){
 int cola_fallidos_buscar_smallest(){
     pthread_mutex_lock(lista_procesos_new_fallidos->mutex);
     if (list_is_empty(lista_procesos_new_fallidos->lista)){
+        pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
         return -1;
     }
     t_list_iterator * iterator = list_iterator_create(lista_procesos_new_fallidos->lista);

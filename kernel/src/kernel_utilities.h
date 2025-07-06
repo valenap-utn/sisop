@@ -38,6 +38,7 @@ PCB *desencolar_cola_fallidos(int index);
 int cola_new_buscar_smallest();
 int cola_fallidos_buscar_smallest();
 void encolar_cola_new(PCB *pcb, int index);
+void encolar_cola_new_fallidos(PCB *pcb, int index);
 void encolar_cola_ready(PCB *pcb);
 t_peticion_largoPlazo *inicializarPeticionLargoPlazo();
 void liberar_peticionLargoPlazo(t_peticion_largoPlazo *peticion);

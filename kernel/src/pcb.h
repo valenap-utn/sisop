@@ -42,6 +42,7 @@ typedef struct{
 
 //FUNCIONES
 PCB* iniciar_pcb();
+int generar_pid_unico();
 
 void inicializarRegistros(registrosPCB *reg);
 

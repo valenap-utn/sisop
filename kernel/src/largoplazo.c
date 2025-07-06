@@ -12,7 +12,7 @@ void *largoPlazo(void *args){
     esperar_flag_global(&flag_all_start);
     log_debug(logger, "largo plazo arranca");
 
-    pthread_t *tid_aux;
+    pthread_t tid_aux;
 
     switch(algoritmo_largoPlazo){
         case LPL_FIFO:
@@ -20,8 +20,8 @@ void *largoPlazo(void *args){
             break;
 
         case LPL_SMALL:
+            pthread_create(&tid_aux, NULL, largoPlazoFallidos, NULL);
             largoPlazoSmallFirst();
-            pthread_create(tid_aux, NULL, largoPlazoFallidos, NULL);
 
         //Agregar aca mientras se van haciendo
         
@@ -91,5 +91,5 @@ void * largoPlazoFallidos(void * args){
             encolar_cola_new_fallidos(pcb, 0); // se puede reencolar en cualquier lado
         }
     }
-    return;
+    return (void *)EXIT_SUCCESS;
 }
