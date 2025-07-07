@@ -13,7 +13,7 @@ extern int flag_all_start;
 extern pthread_mutex_t * mutex_all_start;
 
 
-extern sem_t *sem_proceso_fin;
+extern sem_t *sem_memoria_liberada;
 extern pthread_cond_t * cond_susp_ready_empty;
 extern int susp_ready_empty;
 extern pthread_mutex_t * mutex_susp_ready_empty;
@@ -66,7 +66,7 @@ void largoPlazoFifo(){
         PCB * pcb = desencolar_generico(lista_procesos_new, 0);
         if(!encolarPeticionLargoPlazo(pcb)){
             encolar_cola_generico(lista_procesos_new, pcb, 0);
-            sem_wait(sem_proceso_fin); //espera a que un proceso finalize para volver a intentar enviar peticiones a memoria
+            sem_wait(sem_memoria_liberada); //espera a que un proceso finalize para volver a intentar enviar peticiones a memoria
         }
     }
     return;
@@ -113,7 +113,7 @@ void largoPlazoSmallFirst(){
 void * largoPlazoFallidos(void * args){
     int index = -1;
     while(true){
-        sem_wait(sem_proceso_fin); // espera a que finalize un proceso
+        sem_wait(sem_memoria_liberada); // espera a que finalize un proceso
         log_debug(logger, "LPL: Termino un proceso , reintentando cargar en memoria");
         index = cola_fallidos_buscar_smallest();
         if (index == -1){ // si no hay elementos en la cola, se cancela el proceso

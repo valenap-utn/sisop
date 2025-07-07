@@ -20,7 +20,7 @@ extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_procesos_susp_block;
 
 //semaforos auxiliares
-sem_t * sem_proceso_fin;
+sem_t * sem_memoria_liberada;
 
 //condiciones globales
 pthread_cond_t * cond_susp_ready_empty;
@@ -138,7 +138,7 @@ void *server_mh_io(void *args){
     return (void *)EXIT_SUCCESS;
 }
 void inicializarSemaforos(){
-    sem_proceso_fin = inicializarSem(0);
+    sem_memoria_liberada = inicializarSem(0);
 
     cond_all_start = inicializarCond();
     mutex_all_start = inicializarMutex();

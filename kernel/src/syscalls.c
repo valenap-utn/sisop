@@ -3,7 +3,7 @@
 extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_ready;
-extern sem_t *sem_proceso_fin;
+extern sem_t *sem_memoria_liberada;
 
 void PROCESS_CREATE(char *path, int tam_proceso) {
     
@@ -51,7 +51,7 @@ void PROCESS_EXIT(PCB *pcb) {
     pcb_destroy(pcb);
 
     //post fin_proceso para que largo plazo pueda intentar de nuevo
-    sem_post(sem_proceso_fin);
+    sem_post(sem_memoria_liberada);
 }
 
 void DUMP_MEMORY(PCB *pcb) {
