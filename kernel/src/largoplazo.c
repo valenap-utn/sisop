@@ -55,13 +55,7 @@ void largoPlazoFifo(){
         log_debug(logger, "Nuevo proceso a crear: Intentando cargar en memoria");
         
         //el planificador queda en pausa hasta que susp_ready este vacia
-        pthread_mutex_lock(lista_procesos_susp_ready->mutex);
-        int lista_vacia = list_is_empty(lista_procesos_susp_ready->lista);
-        pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
-        if (!lista_vacia){
-            esperar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
-        }
-        //
+        esperar_prioridad_susp_ready();
 
         PCB * pcb = desencolar_generico(lista_procesos_new, 0);
         if(!encolarPeticionLargoPlazo(pcb)){
@@ -89,13 +83,7 @@ void largoPlazoSmallFirst(){
         log_debug(logger, "Nuevo proceso a crear: Intentando cargar en memoria");
 
         //el planificador queda en pausa hasta que susp_ready este vacia
-        pthread_mutex_lock(lista_procesos_susp_ready->mutex);
-        int lista_vacia = list_is_empty(lista_procesos_susp_ready->lista);
-        pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
-        if (!lista_vacia){
-            esperar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
-        }
-        //
+        esperar_prioridad_susp_ready();
 
         index = cola_new_buscar_smallest();
         if (index == -1){
@@ -113,6 +101,8 @@ void largoPlazoSmallFirst(){
 void * largoPlazoFallidos(void * args){
     int index = -1;
     while(true){
+
+        esperar_prioridad_susp_ready();
         sem_wait(sem_memoria_liberada); // espera a que finalize un proceso
         log_debug(logger, "LPL: Termino un proceso , reintentando cargar en memoria");
         index = cola_fallidos_buscar_smallest();
@@ -143,5 +133,13 @@ bool encolarPeticionLargoPlazo(PCB *pcb){
     else{
         log_debug(logger, "No se pudo cargar proceso nuevo en memoria");
         return false;
+    }
+}
+void esperar_prioridad_susp_ready(){
+    pthread_mutex_lock(lista_procesos_susp_ready->mutex);
+    int lista_vacia = list_is_empty(lista_procesos_susp_ready->lista);
+    pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
+    if (!lista_vacia){
+        esperar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
     }
 }

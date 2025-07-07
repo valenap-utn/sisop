@@ -50,7 +50,7 @@ void PROCESS_EXIT(PCB *pcb) {
     // mando pal lobby al pcb
     pcb_destroy(pcb);
 
-    //post fin_proceso para que largo plazo pueda intentar de nuevo
+    //post memoria_liberada para destrabar largo y mediano plazo
     sem_post(sem_memoria_liberada);
 }
 
