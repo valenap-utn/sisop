@@ -52,6 +52,10 @@ int generar_pid_unico();
 
 void cambiar_estado(PCB *pcb, t_estado estadoNuevo);
 
+void pcb_destroy(PCB *pcb);
+
+void loguear_metricas(PCB *pcb);
+
 long diff_in_milliseconds(struct timespec start, struct timespec end);
 
 void inicializarRegistros(registrosPCB *reg);

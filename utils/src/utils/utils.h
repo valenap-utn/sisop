@@ -47,6 +47,9 @@ enum protocolo_socket
     DUMP_MEM,
     DUMP_MEM_ERROR,
     DISPATCH__CPU,
+    PROCESS_EXIT_CPU,
+    PROCESS_INIT_CPU,
+    DUMP_MEM_CPU,
 };
 typedef enum protocolo_socket protocolo_socket;
 

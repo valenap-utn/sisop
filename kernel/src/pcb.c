@@ -6,7 +6,6 @@
 
 //A chequear...
 int pid_mayor = -1;
-// int pc = 0; pc siempre es 0, podemos hardcodearlo en iniciar_pcb()
 
 //semaforos
 pthread_mutex_t * mutex_pid_mayor;
@@ -48,6 +47,36 @@ void cambiar_estado(PCB *pcb, t_estado estadoNuevo){
     pcb->estado = estadoNuevo;
     pcb->me[estadoNuevo] +=1;
    
+}
+void pcb_destroy(PCB * pcb){
+
+    free(pcb->registros);
+    free(pcb->path_instrucciones);
+
+    free(pcb);
+
+    return;
+}
+
+void loguear_metricas(PCB *pcb){
+    
+    log_info(
+        logger, "## (PID: %d) - Métricas de estado:\n"
+        "NEW (count: %d) (time: %ld)\n"
+        "READY (count: %d) (time: %ld)\n" 
+        "EXEC (count: %d) (time: %ld)\n"
+        "BLOCK (count: %d) (time: %ld)\n"
+        "SUP_BLOCK (count: %d) (time: %ld)\n"
+        "SUP_READY (count: %d) (time: %ld)\n"
+        "EXIT (count: %d) (time: %ld)",
+        pcb->pid,
+        pcb->me[NEW], pcb->mt[NEW],
+        pcb->me[READY], pcb->mt[READY],
+        pcb->me[EXEC], pcb->mt[EXEC],
+        pcb->me[BLOCK], pcb->mt[BLOCK],
+        pcb->me[SUP_BLOCK], pcb->mt[SUP_BLOCK],
+        pcb->me[SUP_READY], pcb->mt[SUP_READY],
+        pcb->me[EXIT], pcb->mt[EXIT]);
 }
 
 long diff_in_milliseconds(struct timespec start, struct timespec end) {

@@ -7,8 +7,8 @@ extern list_struct_t * lista_peticiones_pendientes;
 /// @param arg_server 
 /// @return 
 void *administrador_peticiones_memoria(void* arg_server){
-	t_peticion_largoPlazo *peticion;
-	t_args_peticion_largoPlazo *args_peticion = malloc(sizeof(t_args_peticion_largoPlazo));
+	t_peticion_memoria *peticion;
+	t_args_peticion_memoria *args_peticion = malloc(sizeof(t_args_peticion_memoria));
 	argumentos_thread * args = arg_server;
 	pthread_t aux_thread;
     int socket_memoria = -1;
@@ -30,7 +30,7 @@ void *administrador_peticiones_memoria(void* arg_server){
         //Aca meti una nueva inicializacion, el anterior no queda flotando porque peticion_kernel tiene su direccion y luego hace un free.
         //El nuevo malloc asegura que no se modificara el contenido antes que peticion_kernel pueda guardarlo en su stack local.
         //Asumo que esto ya es suficiente para salvarnos de la posible condicion de carrera, en caso que haya una nueva peticion cercana.
-        args_peticion = malloc(sizeof(t_args_peticion_largoPlazo));
+        args_peticion = malloc(sizeof(t_args_peticion_memoria));
 
 		pthread_detach(aux_thread);
 	}
@@ -38,9 +38,9 @@ void *administrador_peticiones_memoria(void* arg_server){
 }
 
 void *peticion_kernel(void *args) {
-    t_args_peticion_largoPlazo *args_peticion = args;
+    t_args_peticion_memoria *args_peticion = args;
     int socket = args_peticion->socket;
-    t_peticion_largoPlazo *peticion = args_peticion->peticion;
+    t_peticion_memoria *peticion = args_peticion->peticion;
     free(args);
 
     PCB *proceso = peticion->proceso;
@@ -102,7 +102,7 @@ void *peticion_kernel(void *args) {
         //queda en to do, por ahora solo recibe el ok y libera el semaforo
         case DUMP_MEM:
             send_protocolo = crear_paquete(DUMP_MEM);
-			agregar_a_paquete(send_protocolo, peticion->proceso->pid, sizeof(int));
+			agregar_a_paquete(send_protocolo, (void *)&peticion->proceso->pid, sizeof(int));
 			log_debug(logger, "Se envió la peticion de DUMP MEMORY");
            
             enviar_paquete(send_protocolo, socket);

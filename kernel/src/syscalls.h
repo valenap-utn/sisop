@@ -4,6 +4,8 @@
 #include <kernel_utilities.h>
 #include <pcb.h>
 
-#endif
-
 void PROCESS_CREATE(char *instrucciones_path, int tam_proceso);
+
+void PROCESS_EXIT(PCB *pcb);
+
+#endif

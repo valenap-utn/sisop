@@ -49,7 +49,7 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
         
         enviar_a_cpu_dispatch(pcb, socket_cpu);
 
-        esperar_respuesta_cpu(pcb->pid, socket_cpu);
+        esperar_respuesta_cpu(pcb, socket_cpu);
 
     }
 
@@ -77,7 +77,7 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
 /// @brief Queda esperando la devolucion de CPU. Generalmente una syscall o un process_exit.
 /// @param socket_cpu puntero a t_socket_cpu. Se va a leer el valor -> interrupt
 /// @param pid 🤔🤔🤔
-void esperar_respuesta_cpu(int pid, t_socket_cpu *socket_cpu){
+void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
     protocolo_socket motivo;
     
     log_info(logger, "Esperando motivo de devolucion de CPU");
@@ -87,8 +87,11 @@ void esperar_respuesta_cpu(int pid, t_socket_cpu *socket_cpu){
 
     switch (motivo) {
 
+        case PROCESS_EXIT_CPU:
+            break;
+
         default:
-            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pid);
+            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
             list_destroy(paquete_respuesta);
             break;
     }

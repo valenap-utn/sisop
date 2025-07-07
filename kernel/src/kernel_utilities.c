@@ -20,7 +20,6 @@ extern list_struct_t *lista_procesos_exec;
 
 //semaforos auxiliares
 sem_t * sem_proceso_fin;
-sem_t * sem_respuesta_memoria;
 extern pthread_cond_t * sem_all_start_cond;
 extern pthread_mutex_t * mutex_all_start_mutex;
 extern pthread_mutex_t * mutex_pid_mayor;
@@ -130,7 +129,6 @@ void *server_mh_io(void *args){
 }
 void inicializarSemaforos(){
     sem_proceso_fin = inicializarSem(0);
-    sem_respuesta_memoria = inicializarSem(0);
 
     sem_all_start_cond = inicializarCond();
     mutex_all_start_mutex = inicializarMutex();
@@ -167,12 +165,12 @@ enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char * string){
     return -1;
 }
 bool encolarPeticionLargoPlazo(PCB *pcb){
-    t_peticion_largoPlazo * peticion = malloc(sizeof(t_peticion_largoPlazo));
+    t_peticion_memoria * peticion = inicializarPeticionMemoria();
 
     peticion->tipo = PROCESS_CREATE_MEM;
     peticion->proceso = pcb;
     encolarPeticionMemoria(peticion);
-    sem_wait(sem_respuesta_memoria);
+    sem_wait(peticion->peticion_finalizada);
     if (peticion->respuesta_exitosa){
         log_debug(logger, "Se cargo un nuevo proceso en memoria");
         encolar_cola_ready(pcb);
@@ -185,7 +183,7 @@ bool encolarPeticionLargoPlazo(PCB *pcb){
         return false;
     }
 }
-void encolarPeticionMemoria(t_peticion_largoPlazo *peticion){
+void encolarPeticionMemoria(t_peticion_memoria *peticion){
     //codigo
     //sem post a lista de peticiones para memoria
     return;
@@ -270,13 +268,13 @@ void encolar_cola_ready(PCB *pcb){
     // sem_post(lista_procesos_ready->sem); por ahora creo que no hace falta
     return;
 }
-t_peticion_largoPlazo * inicializarPeticionLargoPlazo(){
-    t_peticion_largoPlazo * peticion = malloc(sizeof(t_peticion_largoPlazo));
+t_peticion_memoria * inicializarPeticionMemoria(){
+    t_peticion_memoria * peticion = malloc(sizeof(t_peticion_memoria));
     peticion->peticion_finalizada = inicializarSem(0);
 
     return peticion;
 }
-void liberar_peticionLargoPlazo(t_peticion_largoPlazo * peticion){
+void liberar_peticionLargoPlazo(t_peticion_memoria * peticion){
     sem_destroy(peticion->peticion_finalizada);
     free(peticion);
 }
