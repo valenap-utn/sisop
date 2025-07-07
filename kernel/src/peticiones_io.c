@@ -4,7 +4,10 @@ extern char* puerto_io;
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_susp_block;
+extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_sockets_io;
+
+extern int tiempo_suspension;
 
 void *server_mh_io(void *args){
 
@@ -59,6 +62,7 @@ void * thread_io(void * args){
     PCB * proceso_aux;
     elemento_cola_blocked_io * elemento_cola;
     t_paquete * paquete_send;
+    pthread_t tid_aux;
 
     while(1){
         sem_wait(socket_io->cola_blocked->sem);
@@ -72,8 +76,23 @@ void * thread_io(void * args){
 
         enviar_paquete(paquete_send, socket_io->socket);
 
-        if(recibir_paquete_ok){
+        //arranca el timer de suspend
+        pthread_create(&tid_aux, NULL, timer_suspend, (void*)proceso_aux);
+        pthread_detach(tid_aux);
+
+        if(recibir_paquete_ok()){
             log_error(logger, "El dispositivo IO %s se desconecto prematuramente", socket_io->nombre);
+
+            //si esta en block:
+            pthread_mutex_lock(lista_procesos_block->mutex);
+            if(list_remove_element(lista_procesos_block->lista, proceso_aux)){
+                PROCESS_EXIT(proceso_aux);
+            }
+            //si esta en susp_block
+            else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
+                PROCESS_EXIT(proceso_aux);
+            }pthread_mutex_unlock(lista_procesos_block->mutex);
+            
             liberar_socket_io(socket_io);
             pthread_mutex_lock(lista_sockets_io->mutex);
             list_remove_element(lista_sockets_io->lista, socket_io);
@@ -90,7 +109,7 @@ void * thread_io(void * args){
             }
             //si esta en susp_block
             else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
-                encolar_cola_generico(lista_procesos_susp_block, proceso_aux, -1);
+                encolar_cola_generico(lista_procesos_susp_ready, proceso_aux, -1);
                 cambiar_estado(proceso_aux, SUP_READY);
             }else log_error(logger, "en hilo IO el proceso no esta ni en blocked ni en susp_blocked");
             
@@ -175,4 +194,25 @@ void encolar_cola_blocked(list_struct_t *cola, elemento_cola_blocked_io *elem){
     list_add_in_index(cola, elem, -1);
 
     pthread_mutex_unlock(cola->mutex);
+}
+void * timer_suspend(void * args){
+    PCB * pcb = args;
+
+    PCB *pcb_aux;
+    
+    usleep(tiempo_suspension*1000);
+
+    pthread_mutex_lock(lista_procesos_block->mutex);
+    t_list_iterator *iterator = list_iterator_create(lista_procesos_block->lista);
+
+    while(list_iterator_has_next(iterator)){
+        pcb_aux = list_iterator_next(iterator);
+        if (pcb_aux == pcb){
+            //pcb sigue en block
+            pcb_aux = list_iterator_remove(iterator);
+            encolar_cola_generico(lista_procesos_susp_block, pcb_aux, -1);
+            break;
+        }
+    }
+    pthread_mutex_unlock(lista_procesos_block->mutex);
 }

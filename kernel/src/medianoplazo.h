@@ -5,3 +5,7 @@
 #include <pcb.h>
 
 #endif
+
+void *medianoplazo(void *args);
+
+bool encolar_peticion_medianoPlazo(PCB *pcb);

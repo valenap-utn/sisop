@@ -40,6 +40,7 @@ t_log_level current_log_level;
 char * puerto_dispatch;
 char * puerto_interrupt;
 char * puerto_io;
+int tiempo_suspension;
 enum_algoritmo_largoPlazo algoritmo_largoPlazo;
 
 enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
@@ -71,6 +72,8 @@ void levantarConfig(){
     char * alg_cortoplazo_temp;
     alg_cortoplazo_temp = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
     algoritmo_cortoPlazo = alg_cortoPlazo_from_string(alg_cortoplazo_temp);
+
+    tiempo_suspension = config_get_int_value(config, "TIEMPO_SUSPENSION");
 }
 /// @brief Thread que espera conexiones de CPU nuevas y las agrega a la lista de sockets. Nunca para de esperar y aceptar nuevos
 /// @param args 

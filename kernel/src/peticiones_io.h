@@ -25,4 +25,6 @@ elemento_cola_blocked_io *desencolar_cola_blocked(list_struct_t *cola);
 
 void encolar_cola_blocked(list_struct_t *cola, elemento_cola_blocked_io *elem);
 
+void * timer_suspend(void * args);
+
 #endif
