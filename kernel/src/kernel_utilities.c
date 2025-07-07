@@ -17,6 +17,9 @@ extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_new_fallidos;
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_procesos_exec;
+extern list_struct_t *lista_procesos_block;
+extern list_struct_t *lista_procesos_susp_ready;
+extern list_struct_t *lista_procesos_susp_block;
 
 //semaforos auxiliares
 sem_t * sem_proceso_fin;
@@ -142,6 +145,9 @@ void inicializarListasKernel(){
     lista_procesos_new_fallidos = inicializarLista();
     lista_procesos_ready = inicializarLista();
     lista_procesos_exec = inicializarLista();
+    lista_procesos_block = inicializarLista();
+    lista_procesos_susp_ready = inicializarLista();
+    lista_procesos_susp_block = inicializarLista();
     lista_peticiones_pendientes = inicializarLista();
 
 }
@@ -173,7 +179,7 @@ bool encolarPeticionLargoPlazo(PCB *pcb){
     sem_wait(peticion->peticion_finalizada);
     if (peticion->respuesta_exitosa){
         log_debug(logger, "Se cargo un nuevo proceso en memoria");
-        encolar_cola_ready(pcb);
+        encolar_cola_generico(lista_procesos_ready, pcb, -1);
         cambiar_estado(pcb, READY);
         //sem post a proceso nuevo encolado, revisar si hace falta
         return true;
@@ -191,16 +197,10 @@ void encolarPeticionMemoria(t_peticion_memoria *peticion){
 /// @brief desencola de lista_procesos_new con el index indicado (0 para FIFO)
 /// @param index 
 /// @return el PCB de la posicion index
-PCB *desencolar_cola_new(int index){
-    pthread_mutex_lock(lista_procesos_new->mutex);
-    PCB *pcb = list_remove(lista_procesos_new->lista, index);
-    pthread_mutex_unlock(lista_procesos_new->mutex);
-    return pcb;
-}
-PCB *desencolar_cola_fallidos(int index){
-    pthread_mutex_lock(lista_procesos_new_fallidos->mutex);
-    PCB *pcb = list_remove(lista_procesos_new_fallidos->lista, index);
-    pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
+PCB *desencolar_generico(list_struct_t *cola, int index){
+    pthread_mutex_lock(cola->mutex);
+    PCB *pcb = list_remove(cola->lista, index);
+    pthread_mutex_unlock(cola->mutex);
     return pcb;
 }
 int cola_new_buscar_smallest(){
@@ -244,28 +244,37 @@ int cola_fallidos_buscar_smallest(){
 
     return index;
 }
+/// @param pid 
+/// @param cola -> list_struct_t generico
+/// @return index
+int buscar_en_cola_por_pid(list_struct_t * cola, int pid_buscado){
+
+    pthread_mutex_lock(cola->mutex);
+    if (list_is_empty(cola->lista)){
+        return -1;
+    }
+    t_list_iterator * iterator = list_iterator_create(cola->lista);
+    PCB *pcb;
+    int index = 0;
+    while (list_iterator_has_next(iterator)){
+        pcb = (PCB*)list_iterator_next(iterator);
+        if (pcb->pid == pid_buscado){
+            index = list_iterator_index(iterator);
+            break;
+        }
+    }
+    pthread_mutex_unlock(cola->mutex);
+
+    return index;
+}
 /// @brief Encola de lista_procesos_new
 /// @param pcb 
 /// @param index 0 para inicio de lista, -1 para final
-void encolar_cola_new(PCB *pcb, int index){
-    pthread_mutex_lock(lista_procesos_new->mutex);
-    list_add_in_index(lista_procesos_new->lista, index, pcb);
-    pthread_mutex_unlock(lista_procesos_new->mutex);
-    sem_post(lista_procesos_new->sem);
-    return;
-}
-void encolar_cola_new_fallidos(PCB *pcb, int index){
-    pthread_mutex_lock(lista_procesos_new_fallidos->mutex);
-    list_add_in_index(lista_procesos_new_fallidos->lista, index, pcb);
-    pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
-    sem_post(lista_procesos_new_fallidos->sem);
-    return;
-}
-void encolar_cola_ready(PCB *pcb){
-    pthread_mutex_lock(lista_procesos_ready->mutex);
-    list_add_in_index(lista_procesos_ready->lista, -1, pcb);
-    pthread_mutex_unlock(lista_procesos_ready->mutex);
-    // sem_post(lista_procesos_ready->sem); por ahora creo que no hace falta
+void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index){
+    pthread_mutex_lock(cola->mutex);
+    list_add_in_index(cola->lista, index, pcb);
+    pthread_mutex_unlock(cola->mutex);
+    sem_post(cola->sem);
     return;
 }
 t_peticion_memoria * inicializarPeticionMemoria(){
@@ -274,7 +283,7 @@ t_peticion_memoria * inicializarPeticionMemoria(){
 
     return peticion;
 }
-void liberar_peticionLargoPlazo(t_peticion_memoria * peticion){
+void liberar_peticion_memoria(t_peticion_memoria * peticion){
     sem_destroy(peticion->peticion_finalizada);
     free(peticion);
 }
