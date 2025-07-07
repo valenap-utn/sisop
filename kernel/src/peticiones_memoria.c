@@ -15,9 +15,7 @@ void *administrador_peticiones_memoria(void* arg_server){
 	
 	while(1){
 		sem_wait(lista_peticiones_pendientes->sem);
-		pthread_mutex_lock(lista_peticiones_pendientes->mutex);
-		peticion = list_remove(lista_peticiones_pendientes->lista, 0);
-		pthread_mutex_unlock(lista_peticiones_pendientes->mutex);
+		peticion = desencolarPeticionMemoria();
 		do{
 			socket_memoria = crear_conexion(args->ip, args->puerto);
 			sleep(1);
@@ -141,7 +139,15 @@ void encolarPeticionMemoria(t_peticion_memoria *peticion){
     pthread_mutex_lock(lista_peticiones_pendientes->mutex);
     list_add(lista_peticiones_pendientes->lista, peticion);
     pthread_mutex_unlock(lista_peticiones_pendientes->mutex);
-    sem_post(lista_peticiones_pendientes->sem)
+    sem_post(lista_peticiones_pendientes->sem);
 
     return;
+}
+t_peticion_memoria * desencolarPeticionMemoria(){
+    
+    pthread_mutex_lock(lista_peticiones_pendientes->mutex);
+    t_peticion_memoria * peticion = list_remove(lista_peticiones_pendientes->lista, 0);
+    pthread_mutex_unlock(lista_peticiones_pendientes->mutex);
+
+    return peticion;
 }
