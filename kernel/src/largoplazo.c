@@ -5,6 +5,7 @@ extern t_log *logger;
 extern int flag_all_start;
 
 extern list_struct_t *lista_procesos_new;
+extern list_struct_t *lista_procesos_new_fallidos;
 extern sem_t *sem_proceso_fin;
 
 void *largoPlazo(void *args){
@@ -21,6 +22,7 @@ void *largoPlazo(void *args){
 
         case LPL_SMALL:
             pthread_create(&tid_aux, NULL, largoPlazoFallidos, NULL);
+            pthread_detach(tid_aux);
             largoPlazoSmallFirst();
 
         //Agregar aca mientras se van haciendo
@@ -40,9 +42,9 @@ void largoPlazoFifo(){
     while(true){
         sem_wait(lista_procesos_new->sem); // espera a que haya un nuevo elemento en la cola_new
         log_debug(logger, "Nuevo proceso a crear: Intentando cargar en memoria");
-        PCB * pcb = desencolar_cola_new(0);
+        PCB * pcb = desencolar_generico(lista_procesos_new, 0);
         if(!encolarPeticionLargoPlazo(pcb)){
-            encolar_cola_new(pcb, -1);
+            encolar_cola_generico(lista_procesos_new, pcb, -1);
             sem_wait(sem_proceso_fin); //espera a que un proceso finalize para volver a intentar enviar peticiones a memoria
         }
     }
@@ -68,9 +70,9 @@ void largoPlazoSmallFirst(){
         if (index == -1){
             log_error(logger, "LPL: lista vacia, preparese para la autodestruccion");
         }
-        PCB * pcb = desencolar_cola_new(index);
+        PCB * pcb = desencolar_generico(lista_procesos_new, index);
         if(!encolarPeticionLargoPlazo(pcb)){
-            encolar_cola_new_fallidos(pcb, 0); // se puede reencolar en cualquier lado
+            encolar_cola_generico(lista_procesos_new_fallidos, pcb, 0); // se puede reencolar en cualquier lado
         }
     }
     return;
@@ -86,9 +88,9 @@ void * largoPlazoFallidos(void * args){
         if (index == -1){ // si no hay elementos en la cola, se cancela el proceso
             continue;
         }
-        PCB * pcb = desencolar_cola_fallidos(index);
+        PCB * pcb = desencolar_generico(lista_procesos_new_fallidos, index);
         if(!encolarPeticionLargoPlazo(pcb)){
-            encolar_cola_new_fallidos(pcb, 0); // se puede reencolar en cualquier lado
+            encolar_cola_generico(lista_procesos_new_fallidos, pcb, 0); // se puede reencolar en cualquier lado
         }
     }
     return (void *)EXIT_SUCCESS;
