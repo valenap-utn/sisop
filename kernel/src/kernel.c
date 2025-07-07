@@ -13,6 +13,10 @@ list_struct_t *lista_procesos_new;
 list_struct_t *lista_procesos_new_fallidos;
 list_struct_t *lista_procesos_ready;
 list_struct_t *lista_procesos_exec;
+list_struct_t *lista_procesos_block;
+list_struct_t *lista_procesos_susp_ready;
+list_struct_t *lista_procesos_susp_block;
+
 list_struct_t *lista_peticiones_pendientes;
 
 pthread_cond_t * sem_all_start_cond;
