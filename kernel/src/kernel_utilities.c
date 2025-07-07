@@ -170,30 +170,8 @@ enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char * string){
     log_error(logger, "Config de corto plazo no reconocido");
     return -1;
 }
-bool encolarPeticionLargoPlazo(PCB *pcb){
-    t_peticion_memoria * peticion = inicializarPeticionMemoria();
 
-    peticion->tipo = PROCESS_CREATE_MEM;
-    peticion->proceso = pcb;
-    encolarPeticionMemoria(peticion);
-    sem_wait(peticion->peticion_finalizada);
-    if (peticion->respuesta_exitosa){
-        log_debug(logger, "Se cargo un nuevo proceso en memoria");
-        encolar_cola_generico(lista_procesos_ready, pcb, -1);
-        cambiar_estado(pcb, READY);
-        //sem post a proceso nuevo encolado, revisar si hace falta
-        return true;
-    }
-    else{
-        log_debug(logger, "No se pudo cargar proceso nuevo en memoria");
-        return false;
-    }
-}
-void encolarPeticionMemoria(t_peticion_memoria *peticion){
-    //codigo
-    //sem post a lista de peticiones para memoria
-    return;
-}
+
 /// @brief desencola de lista_procesos_new con el index indicado (0 para FIFO)
 /// @param index 
 /// @return el PCB de la posicion index
@@ -202,6 +180,16 @@ PCB *desencolar_generico(list_struct_t *cola, int index){
     PCB *pcb = list_remove(cola->lista, index);
     pthread_mutex_unlock(cola->mutex);
     return pcb;
+}
+/// @brief Encola de lista_procesos_new
+/// @param pcb 
+/// @param index 0 para inicio de lista, -1 para final
+void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index){
+    pthread_mutex_lock(cola->mutex);
+    list_add_in_index(cola->lista, index, pcb);
+    pthread_mutex_unlock(cola->mutex);
+    sem_post(cola->sem);
+    return;
 }
 int cola_new_buscar_smallest(){
     pthread_mutex_lock(lista_procesos_new->mutex);
@@ -266,16 +254,6 @@ int buscar_en_cola_por_pid(list_struct_t * cola, int pid_buscado){
     pthread_mutex_unlock(cola->mutex);
 
     return index;
-}
-/// @brief Encola de lista_procesos_new
-/// @param pcb 
-/// @param index 0 para inicio de lista, -1 para final
-void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index){
-    pthread_mutex_lock(cola->mutex);
-    list_add_in_index(cola->lista, index, pcb);
-    pthread_mutex_unlock(cola->mutex);
-    sem_post(cola->sem);
-    return;
 }
 t_peticion_memoria * inicializarPeticionMemoria(){
     t_peticion_memoria * peticion = malloc(sizeof(t_peticion_memoria));

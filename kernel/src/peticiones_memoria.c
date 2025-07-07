@@ -136,3 +136,12 @@ void *peticion_kernel(void *args) {
 
     return NULL;
 }
+void encolarPeticionMemoria(t_peticion_memoria *peticion){
+    
+    pthread_mutex_lock(lista_peticiones_pendientes->mutex);
+    list_add(lista_peticiones_pendientes->lista, peticion);
+    pthread_mutex_unlock(lista_peticiones_pendientes->mutex);
+    sem_post(lista_peticiones_pendientes->sem)
+
+    return;
+}

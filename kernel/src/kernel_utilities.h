@@ -32,8 +32,6 @@ void inicializarSemaforos();
 void inicializarListasKernel();
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char *string);
 enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char *string);
-bool encolarPeticionLargoPlazo(PCB *pcb);
-void encolarPeticionMemoria(t_peticion_memoria *peticion);
 PCB *desencolar_generico(list_struct_t * cola, int index);
 int cola_new_buscar_smallest();
 int cola_fallidos_buscar_smallest();

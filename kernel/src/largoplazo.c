@@ -95,3 +95,22 @@ void * largoPlazoFallidos(void * args){
     }
     return (void *)EXIT_SUCCESS;
 }
+bool encolarPeticionLargoPlazo(PCB *pcb){
+    t_peticion_memoria * peticion = inicializarPeticionMemoria();
+
+    peticion->tipo = PROCESS_CREATE_MEM;
+    peticion->proceso = pcb;
+    encolarPeticionMemoria(peticion);
+    sem_wait(peticion->peticion_finalizada);
+    if (peticion->respuesta_exitosa){
+        log_debug(logger, "Se cargo un nuevo proceso en memoria");
+        encolar_cola_generico(lista_procesos_ready, pcb, -1);
+        cambiar_estado(pcb, READY);
+        //sem post a proceso nuevo encolado, revisar si hace falta
+        return true;
+    }
+    else{
+        log_debug(logger, "No se pudo cargar proceso nuevo en memoria");
+        return false;
+    }
+}

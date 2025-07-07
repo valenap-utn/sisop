@@ -14,6 +14,9 @@ void largoPlazoFifo();
 void largoPlazoSmallFirst();
 void *largoPlazoFallidos(void *args);
 
+bool encolarPeticionLargoPlazo(PCB *pcb);
+
+
 #endif
 
 
