@@ -47,100 +47,83 @@ void *peticion_kernel(void *args) {
     t_paquete *send_protocolo;
     protocolo_socket op;
     switch (peticion->tipo) {
-        // //analizar si esta bien
-        // case PROCESS_CREATE_OP:
-        //     send_protocolo = crear_paquete(PROCESS_CREATE_OP);
-        //     agregar_a_paquete(send_protocolo, &proceso->pid, sizeof(proceso->pid));
-        //     agregar_a_paquete(send_protocolo, &proceso->memoria_necesaria, sizeof(proceso->memoria_necesaria));
-        //     agregar_a_paquete(send_protocolo, &proceso->estado, sizeof(proceso->estado));
-		// 	log_info(logger, "Se envió la peticion de PROCESS CREATE del PID: %d Tamaño: %d", proceso->pid, proceso->memoria_necesaria);
-        //     enviar_paquete(send_protocolo, socket);
-        //     op = recibir_operacion(socket);
-        //     switch (op) {
-        //         case SUCCESS:
-        //             log_info(logger, "'SUCCESS' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = true;
-        //             break;
+        case PROCESS_CREATE_MEM:
+            send_protocolo = crear_paquete(PROCESS_CREATE_MEM);
+            agregar_a_paquete(send_protocolo, &proceso->pid, sizeof(proceso->pid));
+            agregar_a_paquete(send_protocolo, &proceso->memoria_necesaria, sizeof(proceso->memoria_necesaria));
+			log_debug(logger, "Se envió la peticion de PROCESS CREATE del PID: %d Tamaño: %d", proceso->pid, proceso->memoria_necesaria);
+            enviar_paquete(send_protocolo, socket);
+            op = recibir_paquete_ok(socket);
+            switch (op) {
+                case OK:
+                    log_debug(logger, "'OK' recibido desde memoria para operación %d", peticion->tipo);
+                    peticion->respuesta_exitosa = true;
+                    break;	
+                case PROCESS_CREATE_MEM_FAIL:
+                    log_debug(logger, "FAIL recibido de memoria para %d", peticion->tipo);
+                    break;
+                default:
+                    log_error(logger, "Código de operación inesperado recibido: %d", op);
+                    peticion->respuesta_exitosa = false;
+                    break;
+            }
+            break;
 
-        //         case ERROR:
-        //             log_info(logger, "'ERROR' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = false;
-        //             break;
+        //same anterior
+        case PROCESS_EXIT_MEM:
+            send_protocolo = crear_paquete(PROCESS_EXIT_MEM);
+            agregar_a_paquete(send_protocolo, &proceso->pid, sizeof(int));
+			log_debug(logger, "Se envió la peticion de PROCESS EXIT del PID: %d", proceso->pid);
+			//sem_post(sem_proceso_finalizado);
+            enviar_paquete(send_protocolo, socket);
+            op = recibir_paquete_ok(socket);
+            switch (op) {
+                case OK:
+                    log_debug(logger, "'OK' recibido desde memoria para operación %d", peticion->tipo);
+                    peticion->respuesta_exitosa = true;
+                    break;	
 
-        //         case OK:
-        //             log_info(logger, "'OK' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = true;
-        //             break;	
+                default:
+                    log_error(logger, "Código de operación inesperado recibido: %d", op);
+                    peticion->respuesta_exitosa = false;
+                    break;
+            }
+            break;
 
-        //         default:
-        //             log_info(logger, "Código de operación desconocido recibido: %d", op);
-        //             peticion->respuesta_exitosa = false;
-        //             break;
-        //     }
-        //     break;
+        //DUMP_MEM Debe enviar la peticion, pasar el proceso a blocked, y devolverlo a ready (o exit)
+        //cuando reciba la respuesta de memoria.
 
-        // //same anterior
-        // case PROCESS_EXIT_OP:
-        //     send_protocolo = crear_paquete(PROCESS_EXIT_OP);
-        //     agregar_a_paquete(send_protocolo, &proceso->pid, sizeof(int));
-		// 	log_info(logger, "Se envió la peticion de PROCESS EXIT del PID: %d", proceso->pid);
-		// 	//sem_post(sem_proceso_finalizado);
-        //     enviar_paquete(send_protocolo, socket);
-        //     op = recibir_operacion(socket);
-        //     switch (op) {
-        //         case SUCCESS:
-        //             log_info(logger, "'SUCCESS' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = true;
-        //             break;
+        //mi propuesta: Pasar a blocked desde syscalls.c y desbloquear desde esta peticion
+        //para que la syscall no sea bloqueante, termine y corto plazo pueda continuar con el siguiente
+        //proceso.
+        //Otra solucion es levantar un nuevo thread que se quede esperando la respuesta de la
+        //peticion desde la misma syscall.
 
-        //         case ERROR:
-        //             log_info(logger, "'ERROR' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = false;
-        //             break;
-
-        //         case OK:
-        //             log_info(logger, "'OK' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = true;
-        //             break;	
-
-        //         default:
-        //             log_info(logger, "Código de operación desconocido recibido: %d", op);
-        //             peticion->respuesta_exitosa = false;
-        //             break;
-        //     }
-        //     break;
-
-        // //redefinir
-        // case DUMP_MEMORY_OP:
-        //     send_protocolo = crear_paquete(DUMP_MEMORY_OP);
-        //     agregar_a_paquete(send_protocolo, &hilo_actual->tid, sizeof(int));
-		// 	agregar_a_paquete(send_protocolo, &proceso_actual->pid, sizeof(int));
-		// 	log_info(logger, "Se envió la peticion de DUMP MEMORY");
+        //queda en to do, por ahora solo recibe el ok y libera el semaforo
+        case DUMP_MEM:
+            send_protocolo = crear_paquete(DUMP_MEM);
+			agregar_a_paquete(send_protocolo, peticion->proceso->pid, sizeof(int));
+			log_debug(logger, "Se envió la peticion de DUMP MEMORY");
            
-        //     enviar_paquete(send_protocolo, socket);
-        //     op = recibir_operacion(socket);
-        //     switch (op) {
-        //         case SUCCESS:
-        //             log_info(logger, "'SUCCESS' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = true;
-        //             break;
+            enviar_paquete(send_protocolo, socket);
+            op = recibir_paquete_ok(socket);
+            switch (op) {
+                case DUMP_MEM_ERROR:
+                    log_debug(logger, "'ERROR' recibido desde memoria para operación %d", peticion->tipo);
+                    peticion->respuesta_exitosa = false;
+                    break;
 
-        //         case ERROR:
-        //             log_info(logger, "'ERROR' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = false;
-        //             break;
+                case OK:
+                    log_debug(logger, "'OK' recibido desde memoria para operación %d", peticion->tipo);
+                    peticion->respuesta_exitosa = true;
+                    break;
 
-        //         case OK:
-        //             log_info(logger, "'OK' recibido desde memoria para operación %d", peticion->tipo);
-        //             peticion->respuesta_exitosa = true;
-        //             break;	
-
-        //         default:
-        //             log_info(logger, "Código de operación desconocido recibido: %d", op);
-        //             peticion->respuesta_exitosa = false;
-        //             break;
-        //     }
-        //     break;
+                default:
+                    log_error(logger, "Código de operación inesperado recibido: %d", op);
+                    peticion->respuesta_exitosa = false;
+                    break;
+            }
+            break;
         default:
             log_error(logger, "En peticion_kernel: Tipo de operación desconocido: %d", peticion->tipo);
             return NULL;

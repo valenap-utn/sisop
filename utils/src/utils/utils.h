@@ -42,7 +42,11 @@ enum protocolo_socket
     NOMBRE_IO,
     DORMIR_IO,
     PROCESS_CREATE_MEM,
-    DISPATCH__CPU
+    PROCESS_CREATE_MEM_FAIL,
+    PROCESS_EXIT_MEM,
+    DUMP_MEM,
+    DUMP_MEM_ERROR,
+    DISPATCH__CPU,
 };
 typedef enum protocolo_socket protocolo_socket;
 
@@ -106,7 +110,8 @@ extern t_log* logger;
     int recibir_operacion(int socket_cliente);
     void* recibir_buffer(int* size, int socket_cliente);
     t_list* recibir_paquete(int socket_cliente);
-    void* serializar_paquete(t_paquete* paquete, int bytes);
+    int recibir_paquete_ok(int socket_cliente);
+    void *serializar_paquete(t_paquete *paquete, int bytes);
     int crear_conexion(char* ip, char* puerto);
     void crear_buffer(t_paquete* paquete);
     t_paquete* crear_paquete(protocolo_socket cod_op); 
