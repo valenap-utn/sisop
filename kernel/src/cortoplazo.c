@@ -20,8 +20,6 @@ void *cortoPlazo (void *args) {
 
     t_socket_cpu * socket_cpu = args;
 
-    esperar_flag_global();
-
     switch (algoritmo_cortoPlazo) {
             case CPL_FIFO:
                 cortoPlazoFifo(socket_cpu);

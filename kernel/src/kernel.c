@@ -19,8 +19,8 @@ list_struct_t *lista_procesos_susp_block;
 
 list_struct_t *lista_peticiones_pendientes;
 
-pthread_cond_t * sem_all_start_cond;
-pthread_mutex_t * mutex_all_start_mutex;
+pthread_cond_t * cond_all_start;
+pthread_mutex_t * mutex_all_start;
 
 //variables globales
 
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     char buffer[2];
     fgets(buffer, sizeof(buffer), stdin);
     //
-    destrabar_flag_global(&flag_all_start);
+    destrabar_flag_global(&flag_all_start, mutex_all_start, cond_all_start);
     log_debug(logger, "Flag global destrabado");
 
     // levanto proceso main

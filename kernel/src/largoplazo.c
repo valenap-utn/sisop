@@ -2,15 +2,26 @@
 
 extern enum_algoritmo_largoPlazo algoritmo_largoPlazo;
 extern t_log *logger;
-extern int flag_all_start;
 
 extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_new_fallidos;
+extern list_struct_t *lista_procesos_ready;
+extern list_struct_t *lista_procesos_susp_ready;
+
+extern pthread_cond_t * cond_all_start;
+extern int flag_all_start;
+extern pthread_mutex_t * mutex_all_start;
+
+
 extern sem_t *sem_proceso_fin;
+extern pthread_cond_t * cond_susp_ready_empty;
+extern int susp_ready_empty;
+extern pthread_mutex_t * mutex_susp_ready_empty;
+
 
 void *largoPlazo(void *args){
 
-    esperar_flag_global(&flag_all_start);
+    esperar_flag_global(&flag_all_start, mutex_all_start, cond_all_start);
     log_debug(logger, "largo plazo arranca");
 
     pthread_t tid_aux;
@@ -42,9 +53,19 @@ void largoPlazoFifo(){
     while(true){
         sem_wait(lista_procesos_new->sem); // espera a que haya un nuevo elemento en la cola_new
         log_debug(logger, "Nuevo proceso a crear: Intentando cargar en memoria");
+        
+        //el planificador queda en pausa hasta que susp_ready este vacia
+        pthread_mutex_lock(lista_procesos_susp_ready->mutex);
+        int lista_vacia = list_is_empty(lista_procesos_susp_ready->lista);
+        pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
+        if (!lista_vacia){
+            esperar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
+        }
+        //
+
         PCB * pcb = desencolar_generico(lista_procesos_new, 0);
         if(!encolarPeticionLargoPlazo(pcb)){
-            encolar_cola_generico(lista_procesos_new, pcb, -1);
+            encolar_cola_generico(lista_procesos_new, pcb, 0);
             sem_wait(sem_proceso_fin); //espera a que un proceso finalize para volver a intentar enviar peticiones a memoria
         }
     }
@@ -66,6 +87,16 @@ void largoPlazoSmallFirst(){
     while(true){
         sem_wait(lista_procesos_new->sem); // espera a que haya un nuevo elemento en la cola_new
         log_debug(logger, "Nuevo proceso a crear: Intentando cargar en memoria");
+
+        //el planificador queda en pausa hasta que susp_ready este vacia
+        pthread_mutex_lock(lista_procesos_susp_ready->mutex);
+        int lista_vacia = list_is_empty(lista_procesos_susp_ready->lista);
+        pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
+        if (!lista_vacia){
+            esperar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
+        }
+        //
+
         index = cola_new_buscar_smallest();
         if (index == -1){
             log_error(logger, "LPL: lista vacia, preparese para la autodestruccion");

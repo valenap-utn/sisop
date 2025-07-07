@@ -6,8 +6,6 @@ extern t_config *config;
 
 int pid_actual;
 
-extern int flag_all_start;
-
 extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
 extern list_struct_t *lista_peticiones_pendientes;
@@ -23,8 +21,17 @@ extern list_struct_t *lista_procesos_susp_block;
 
 //semaforos auxiliares
 sem_t * sem_proceso_fin;
-extern pthread_cond_t * sem_all_start_cond;
-extern pthread_mutex_t * mutex_all_start_mutex;
+
+//condiciones globales
+pthread_cond_t * cond_susp_ready_empty;
+int susp_ready_empty;
+pthread_mutex_t * mutex_susp_ready_empty;
+
+extern pthread_cond_t * cond_all_start;
+extern int flag_all_start;
+extern pthread_mutex_t * mutex_all_start;
+//
+
 extern pthread_mutex_t * mutex_pid_mayor;
 
 //configs
@@ -133,9 +140,15 @@ void *server_mh_io(void *args){
 void inicializarSemaforos(){
     sem_proceso_fin = inicializarSem(0);
 
-    sem_all_start_cond = inicializarCond();
-    mutex_all_start_mutex = inicializarMutex();
+    cond_all_start = inicializarCond();
+    mutex_all_start = inicializarMutex();
+
+    cond_susp_ready_empty = inicializarCond();
+    mutex_susp_ready_empty = inicializarMutex();
+
     mutex_pid_mayor = inicializarMutex();
+
+
     return;    
 }
 void inicializarListasKernel(){
@@ -266,20 +279,20 @@ void liberar_peticion_memoria(t_peticion_memoria * peticion){
     free(peticion);
 }
 
-void esperar_flag_global(int * flag){
+void esperar_flag_global(int * flag, pthread_mutex_t *mutex, pthread_cond_t *cond){
     
-    pthread_mutex_lock(mutex_all_start_mutex);
+    pthread_mutex_lock(mutex);
     while (!*flag) {
-        pthread_cond_wait(sem_all_start_cond, mutex_all_start_mutex);
+        pthread_cond_wait(cond, mutex);
     }
-    pthread_mutex_unlock(mutex_all_start_mutex);
+    pthread_mutex_unlock(mutex);
 
 }
 
-void destrabar_flag_global(int *flag){
+void destrabar_flag_global(int *flag, pthread_mutex_t *mutex, pthread_cond_t *cond){
     
-    pthread_mutex_lock(mutex_all_start_mutex);
+    pthread_mutex_lock(mutex);
     *flag = 1;
-    pthread_cond_broadcast(sem_all_start_cond);
-    pthread_mutex_unlock(mutex_all_start_mutex);
+    pthread_cond_broadcast(cond);
+    pthread_mutex_unlock(mutex);
 }
