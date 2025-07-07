@@ -39,8 +39,6 @@ int buscar_en_cola_por_pid(list_struct_t *cola, int pid_buscado);
 void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index);
 t_peticion_memoria *inicializarPeticionMemoria();
 void liberar_peticion_memoria(t_peticion_memoria *peticion);
-void destrabar_flag_global(int *flag, pthread_mutex_t *mutex, pthread_cond_t *cond);
-void esperar_flag_global(int *flag, pthread_mutex_t *mutex, pthread_cond_t *cond);
 void levantarConfig();
 
 #endif

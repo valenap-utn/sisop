@@ -278,21 +278,3 @@ void liberar_peticion_memoria(t_peticion_memoria * peticion){
     sem_destroy(peticion->peticion_finalizada);
     free(peticion);
 }
-
-void esperar_flag_global(int * flag, pthread_mutex_t *mutex, pthread_cond_t *cond){
-    
-    pthread_mutex_lock(mutex);
-    while (!*flag) {
-        pthread_cond_wait(cond, mutex);
-    }
-    pthread_mutex_unlock(mutex);
-
-}
-
-void destrabar_flag_global(int *flag, pthread_mutex_t *mutex, pthread_cond_t *cond){
-    
-    pthread_mutex_lock(mutex);
-    *flag = 1;
-    pthread_cond_broadcast(cond);
-    pthread_mutex_unlock(mutex);
-}
