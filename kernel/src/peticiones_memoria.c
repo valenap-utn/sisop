@@ -1,6 +1,6 @@
 #include <peticiones_memoria.h>
 
-extern list_struct_t * lista_peticiones_pendientes;
+extern list_struct_t * lista_peticiones_memoria_pendientes;
 
 
 /// @brief Es necesario enviar una peticion a la lista de peticiones, y esperar a que postee el semaforo interno de la peticion. Despues, leer el bool de respuesta_exitosa. Importante recordar de liberar la peticion al recibir la respuesta
@@ -14,7 +14,7 @@ void *administrador_peticiones_memoria(void* arg_server){
     int socket_memoria = -1;
 	
 	while(1){
-		sem_wait(lista_peticiones_pendientes->sem);
+		sem_wait(lista_peticiones_memoria_pendientes->sem);
 		peticion = desencolarPeticionMemoria();
 		do{
 			socket_memoria = crear_conexion(args->ip, args->puerto);
@@ -136,18 +136,18 @@ void *peticion_kernel(void *args) {
 }
 void encolarPeticionMemoria(t_peticion_memoria *peticion){
     
-    pthread_mutex_lock(lista_peticiones_pendientes->mutex);
-    list_add(lista_peticiones_pendientes->lista, peticion);
-    pthread_mutex_unlock(lista_peticiones_pendientes->mutex);
-    sem_post(lista_peticiones_pendientes->sem);
+    pthread_mutex_lock(lista_peticiones_memoria_pendientes->mutex);
+    list_add(lista_peticiones_memoria_pendientes->lista, peticion);
+    pthread_mutex_unlock(lista_peticiones_memoria_pendientes->mutex);
+    sem_post(lista_peticiones_memoria_pendientes->sem);
 
     return;
 }
 t_peticion_memoria * desencolarPeticionMemoria(){
     
-    pthread_mutex_lock(lista_peticiones_pendientes->mutex);
-    t_peticion_memoria * peticion = list_remove(lista_peticiones_pendientes->lista, 0);
-    pthread_mutex_unlock(lista_peticiones_pendientes->mutex);
+    pthread_mutex_lock(lista_peticiones_memoria_pendientes->mutex);
+    t_peticion_memoria * peticion = list_remove(lista_peticiones_memoria_pendientes->lista, 0);
+    pthread_mutex_unlock(lista_peticiones_memoria_pendientes->mutex);
 
     return peticion;
 }

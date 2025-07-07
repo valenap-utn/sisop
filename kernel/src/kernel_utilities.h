@@ -18,6 +18,15 @@ typedef struct
     
 }t_peticion_memoria;
 
+typedef struct 
+{
+    PCB *proceso;
+    t_socket_io io;
+    sem_t * peticion_finalizada;
+    bool respuesta_exitosa;
+    
+}t_peticion_io;
+
 typedef struct
 {
     int socket;
@@ -27,7 +36,6 @@ typedef struct
 
 void inicializarKernel();
 void *server_mh_cpu(void *args);
-void *server_mh_io(void *args);
 void inicializarSemaforos();
 void inicializarListasKernel();
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char *string);
@@ -38,6 +46,7 @@ int cola_fallidos_buscar_smallest();
 int buscar_en_cola_por_pid(list_struct_t *cola, int pid_buscado);
 void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index);
 t_peticion_memoria *inicializarPeticionMemoria();
+t_peticion_io *inicializarPeticionIO();
 void liberar_peticion_memoria(t_peticion_memoria *peticion);
 void levantarConfig();
 

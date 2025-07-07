@@ -1,5 +1,5 @@
-#ifndef KERNEL_PETICIONES_
-#define KERNEL_PETICIONES_
+#ifndef KERNEL_PETICIONES_MEM_
+#define KERNEL_PETICIONES_MEM_
 
 #include <kernel_utilities.h>
 

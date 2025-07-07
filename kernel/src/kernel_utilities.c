@@ -8,7 +8,8 @@ int pid_actual;
 
 extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
-extern list_struct_t *lista_peticiones_pendientes;
+extern list_struct_t *lista_peticiones_memoria_pendientes;
+extern list_struct_t *lista_peticiones_io_pendientes;
 
 //colas_planificadores
 extern list_struct_t *lista_procesos_new;
@@ -100,43 +101,7 @@ void *server_mh_cpu(void *args){
     pthread_join(tid_nuevo_cortoplazo, NULL);
     return (void *)EXIT_SUCCESS;
 }
-void *server_mh_io(void *args){
 
-    int server = iniciar_servidor(puerto_io);
-
-    t_socket_io *socket_nuevo = malloc(sizeof(t_socket_io));
-    t_list *paquete_recv;
-
-    char *nombre_io;
-
-    protocolo_socket cod_op;
-
-    while((socket_nuevo->socket = esperar_cliente(server))){
-
-        cod_op = recibir_operacion(socket_nuevo->socket);
-
-        if(cod_op != NOMBRE_IO){
-            log_error(logger, "Se recibio un protocolo inesperado de IO");
-            return (void*)EXIT_FAILURE;
-        }
-
-        paquete_recv = recibir_paquete(socket_nuevo->socket);
-
-        nombre_io = list_remove(paquete_recv, 0);
-        // socket_nuevo->nombre = nombre_io;
-        socket_nuevo->nombre = nombre_io;
-        
-        pthread_mutex_lock(lista_sockets_io->mutex);
-        list_add(lista_sockets_io->lista, socket_nuevo);
-        pthread_mutex_unlock(lista_sockets_io->mutex);
-
-        log_debug(logger, "%s", socket_nuevo->nombre);
-
-        socket_nuevo = malloc(sizeof(t_socket_io));
-
-    }
-    return (void *)EXIT_SUCCESS;
-}
 void inicializarSemaforos(){
     sem_memoria_liberada = inicializarSem(0);
 
@@ -161,7 +126,7 @@ void inicializarListasKernel(){
     lista_procesos_block = inicializarLista();
     lista_procesos_susp_ready = inicializarLista();
     lista_procesos_susp_block = inicializarLista();
-    lista_peticiones_pendientes = inicializarLista();
+    lista_peticiones_memoria_pendientes = inicializarLista();
 
 }
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
@@ -272,6 +237,12 @@ t_peticion_memoria * inicializarPeticionMemoria(){
     t_peticion_memoria * peticion = malloc(sizeof(t_peticion_memoria));
     peticion->peticion_finalizada = inicializarSem(0);
 
+    return peticion;
+}
+
+t_peticion_io * inicializarPeticionIO(){
+    t_peticion_io * peticion = malloc(sizeof(t_peticion_io));
+    peticion->peticion_finalizada = inicializarSem(0);
     return peticion;
 }
 void liberar_peticion_memoria(t_peticion_memoria * peticion){

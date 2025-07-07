@@ -65,7 +65,8 @@ void DUMP_MEMORY(PCB *pcb) {
     
 
     //se bloquea el proceso automaticamente
-    encolar_cola_generico(lista_procesos_block, pcb, 0);
+    //encolar_cola_generico(lista_procesos_block, pcb, 0);
+    //no encolamos para no ser victimas de mediano plazo
     cambiar_estado(pcb, BLOCK);
 
     // me creo un thread temporal que espera la respuesta, y devuelve el proceso a ready
@@ -82,20 +83,15 @@ void DUMP_MEMORY(PCB *pcb) {
 void * dump_mem_waiter(void *args){
     t_peticion_memoria * peticion = args;
     
-    int index;
-    PCB * pcb_aux;
     sem_wait(peticion->peticion_finalizada);
 
-    index = buscar_en_cola_por_pid(lista_procesos_block, peticion->proceso->pid);
-    pcb_aux = desencolar_generico(lista_procesos_block, index); // para sacarlo de la lista, aunque ya lo tenia en la peticion
-
-    if (peticion->respuesta_exitosa){
-        encolar_cola_generico(lista_procesos_ready, pcb_aux, -1);
-        cambiar_estado(pcb_aux, READY);
+    if (peticion->respuesta_exitosa){        
+        encolar_cola_generico(lista_procesos_ready, peticion->proceso, -1);
+        cambiar_estado(peticion->proceso, READY);
         log_debug(logger, "Dump completado, finalizando thread auxiliar y enviando proceso %d a ready", pcb_aux->pid);
         return;
     }else{
-        PROCESS_EXIT(pcb_aux);
+        PROCESS_EXIT(peticion->proceso);
         log_debug(logger, "El DUMP fallo, finalizando proceso %d", pcb_aux->pid);
     }
     liberar_peticion_memoria(peticion);

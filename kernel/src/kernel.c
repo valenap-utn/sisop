@@ -17,7 +17,9 @@ list_struct_t *lista_procesos_block;
 list_struct_t *lista_procesos_susp_ready;
 list_struct_t *lista_procesos_susp_block;
 
-list_struct_t *lista_peticiones_pendientes;
+list_struct_t *lista_peticiones_memoria_pendientes;
+list_struct_t *lista_peticiones_io_pendientes;
+
 
 pthread_cond_t * cond_all_start;
 pthread_mutex_t * mutex_all_start;
