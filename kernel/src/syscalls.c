@@ -1,6 +1,8 @@
 #include <syscalls.h>
 
 extern list_struct_t *lista_procesos_new;
+extern list_struct_t *lista_procesos_block;
+extern list_struct_t *lista_procesos_ready;
 extern sem_t *sem_proceso_fin;
 
 void PROCESS_CREATE(char *path, int tam_proceso) {
@@ -13,7 +15,7 @@ void PROCESS_CREATE(char *path, int tam_proceso) {
 
     nuevo_pcb->path_instrucciones = path;
     
-    encolar_cola_new(nuevo_pcb, -1);
+    encolar_cola_generico(lista_procesos_new, nuevo_pcb, -1);
 
     sem_post(lista_procesos_new->sem);
 
@@ -36,6 +38,7 @@ void PROCESS_EXIT(PCB *pcb) {
         log_error(logger, "No se pudo eliminar el proceso de memoria");
         return;
     }    
+    liberar_peticion_memoria(peticion);
 
     // el proceso en teoria deberia ya estar fuera de la cola ready, entonces podemos eliminarlo
     //primero cambio el estado para que refleje en las metricas
@@ -49,4 +52,53 @@ void PROCESS_EXIT(PCB *pcb) {
 
     //post fin_proceso para que largo plazo pueda intentar de nuevo
     sem_post(sem_proceso_fin);
+}
+
+void DUMP_MEMORY(PCB *pcb) {
+    
+    // encolar peticion
+    t_peticion_memoria * peticion = inicializarPeticionMemoria();
+
+    peticion->tipo = DUMP_MEM;
+    peticion->proceso = pcb;
+    encolarPeticionMemoria(peticion);
+    
+
+    //se bloquea el proceso automaticamente
+    encolar_cola_generico(lista_procesos_block, pcb, 0);
+    cambiar_estado(pcb, BLOCK);
+
+    // me creo un thread temporal que espera la respuesta, y devuelve el proceso a ready
+    // o lo manda a exit
+    pthread_t tid_aux;
+    pthread_create(&tid_aux, NULL, dump_mem_waiter, (void*)peticion);
+
+    //me desentiendo del thread, porque se que eventualmente va a terminar.
+    pthread_detach(tid_aux);
+
+    //termino la funcion para que el planificador siga su ciclo con el proceso siguiente
+    return;
+}
+void * dump_mem_waiter(void *args){
+    t_peticion_memoria * peticion = args;
+    
+    int index;
+    PCB * pcb_aux;
+    sem_wait(peticion->peticion_finalizada);
+
+    index = buscar_en_cola_por_pid(lista_procesos_block, peticion->proceso->pid);
+    pcb_aux = desencolar_generico(lista_procesos_block, index); // para sacarlo de la lista, aunque ya lo tenia en la peticion
+
+    if (peticion->respuesta_exitosa){
+        encolar_cola_generico(lista_procesos_ready, pcb_aux, -1);
+        cambiar_estado(pcb_aux, READY);
+        log_debug(logger, "Dump completado, finalizando thread auxiliar y enviando proceso %d a ready", pcb_aux->pid);
+        return;
+    }else{
+        PROCESS_EXIT(pcb_aux);
+        log_debug(logger, "El DUMP fallo, finalizando proceso %d", pcb_aux->pid);
+    }
+    liberar_peticion_memoria(peticion);
+
+    return;
 }

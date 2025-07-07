@@ -99,7 +99,7 @@ void *peticion_kernel(void *args) {
         //Otra solucion es levantar un nuevo thread que se quede esperando la respuesta de la
         //peticion desde la misma syscall.
 
-        //queda en to do, por ahora solo recibe el ok y libera el semaforo
+        //al final lo hicimos en el mismo syscall con un thread
         case DUMP_MEM:
             send_protocolo = crear_paquete(DUMP_MEM);
 			agregar_a_paquete(send_protocolo, (void *)&peticion->proceso->pid, sizeof(int));

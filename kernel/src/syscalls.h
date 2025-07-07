@@ -8,4 +8,6 @@ void PROCESS_CREATE(char *instrucciones_path, int tam_proceso);
 
 void PROCESS_EXIT(PCB *pcb);
 
+void *dump_mem_waiter(void *args);
+
 #endif
