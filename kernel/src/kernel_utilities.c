@@ -176,6 +176,7 @@ bool encolarPeticionLargoPlazo(PCB *pcb){
     if (peticion->respuesta_exitosa){
         log_debug(logger, "Se cargo un nuevo proceso en memoria");
         encolar_cola_ready(pcb);
+        cambiar_estado(pcb, READY);
         //sem post a proceso nuevo encolado, revisar si hace falta
         return true;
     }

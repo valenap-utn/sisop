@@ -2,6 +2,10 @@
 #define PCB_H_
 
 #include <utils/utils.h>
+#include <utils/utils.h>
+#include <commons/log.h>
+#include <commons/config.h>
+#include <time.h>
 
 
 
@@ -35,14 +39,20 @@ typedef struct{
     uint32_t base;
     uint32_t limite;
     char* path_instrucciones;
-    list_struct_t* me;
-    list_struct_t* mt;
+    int me[7];
+    long mt[7];
     t_estado estado;
+    struct timespec timestamp_ultimo_estado;
 }PCB;
+
 
 //FUNCIONES
 PCB* iniciar_pcb();
 int generar_pid_unico();
+
+void cambiar_estado(PCB *pcb, t_estado estadoNuevo);
+
+long diff_in_milliseconds(struct timespec start, struct timespec end);
 
 void inicializarRegistros(registrosPCB *reg);
 

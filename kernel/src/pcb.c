@@ -1,13 +1,11 @@
 #include <pcb.h>
-#include <utils/utils.h>
-#include <commons/log.h>
-#include <commons/config.h>
+
 
 //variables globales
 //variables globales
 
 //A chequear...
-int pid_mayor = 0;
+int pid_mayor = -1;
 // int pc = 0; pc siempre es 0, podemos hardcodearlo en iniciar_pcb()
 
 //semaforos
@@ -15,26 +13,13 @@ pthread_mutex_t * mutex_pid_mayor;
 //
 
 PCB* iniciar_pcb(){
-    PCB* pcb = malloc(sizeof(PCB));
+    PCB* pcb = calloc(1, sizeof(PCB));
     pcb->pid = generar_pid_unico();
     //a chequear -> agrego esta linea para que no de warning, para que apunte a memoria valida
-    pcb->registros = malloc(sizeof(registrosPCB));
-    inicializarRegistros(pcb->registros);
-    pcb->base = 0;
-    pcb->limite = 0;
-    pcb->me = inicializarLista();
-    pcb->mt = inicializarLista();
+    pcb->registros = calloc(1, sizeof(registrosPCB));
+    clock_gettime(CLOCK_MONOTONIC, &pcb->timestamp_ultimo_estado);
+    cambiar_estado(pcb, NEW);
     return pcb;
-}
-void inicializarRegistros(registrosPCB *reg){
-    reg->AX=0;
-    reg->BX=0;
-    reg->CX=0;
-    reg->DX=0;
-    reg->EX=0;
-    reg->FX=0;
-    reg->GX=0;
-    reg->HX=0;
 }
 
 int generar_pid_unico() {
@@ -42,4 +27,31 @@ int generar_pid_unico() {
     pid_mayor +=1;
     pthread_mutex_unlock(mutex_pid_mayor);
     return pid_mayor;
+}
+
+/// @brief Calcula y actualiza los valores de las metricas. Hay que usarlo SI O SI cuando cambiamos de estado un pcb
+/// aunque el estado ya este reflejado en la lista a la que pertenece.
+/// @param pcb 
+/// @param estadoNuevo 
+void cambiar_estado(PCB *pcb, t_estado estadoNuevo){
+    
+    struct timespec time_now;
+    clock_gettime(CLOCK_MONOTONIC, &time_now);
+    long tiempo_en_estado = diff_in_milliseconds(pcb->timestamp_ultimo_estado, time_now);
+
+    if (estadoNuevo != NEW){
+        //no hace falta actualizar mt cuando se crea el pcb por primera vez
+        pcb->mt[pcb->estado] += tiempo_en_estado;
+    }
+    
+    pcb->timestamp_ultimo_estado = time_now;
+    pcb->estado = estadoNuevo;
+    pcb->me[estadoNuevo] +=1;
+   
+}
+
+long diff_in_milliseconds(struct timespec start, struct timespec end) {
+    long seconds_diff = end.tv_sec - start.tv_sec;
+    long nanoseconds_diff = end.tv_nsec - start.tv_nsec;
+    return seconds_diff * 1000 + nanoseconds_diff / 1000000;
 }
