@@ -1,7 +1,6 @@
 #include <peticiones_io.h>
 
 extern char* puerto_io;
-extern list_struct_t *lista_peticiones_io_pendientes;
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_susp_block;
@@ -50,10 +49,7 @@ void *server_mh_io(void *args){
     return (void *)EXIT_SUCCESS;
 }
 /// @brief thread principal que maneja las peticiones a io
-void *administrador_peticiones_io(void * args){
 
-
-}
 /// @brief detecta nuevos procesos en su cola blocked y los manda a esperar a su IO
 /// @param args 
 /// @return 
@@ -103,28 +99,9 @@ void * thread_io(void * args){
         }
     }
 }
-void encolar_peticion_io(t_peticion_io * peticion, int index){
-
-    pthread_mutex_lock(lista_peticiones_io_pendientes->mutex);
-    list_add(lista_peticiones_io_pendientes->lista, peticion);
-    pthread_mutex_unlock(lista_peticiones_io_pendientes->mutex);
-    sem_post(lista_peticiones_io_pendientes->sem);
-
-    return;
-
-}
-t_peticion_io * desencolar_peticion_io(){
-
-    pthread_mutex_lock(lista_peticiones_io_pendientes->mutex);
-    t_peticion_io * peticion = list_remove(lista_peticiones_io_pendientes->lista, 0);
-    pthread_mutex_unlock(lista_peticiones_io_pendientes->mutex);
-
-    return peticion;
-}
-t_socket_io * inicializarSocketIO(char * nombre){
+t_socket_io * inicializarSocketIO(){
     t_socket_io * socket_io = calloc(1, sizeof(t_socket_io));
     socket_io->cola_blocked = inicializarLista();
-    socket_io->nombre = nombre;
 
     return socket_io;
 }
@@ -150,7 +127,7 @@ int buscar_io(char * nombre_a_buscar){
 
     while (list_iterator_has_next(iterator)){
         socket_io = list_iterator_next(iterator);
-        if ((socket_io->pid != -1)&&(strcmp(socket_io->nombre, nombre_a_buscar))){
+        if ((list_is_empty(socket_io->cola_blocked->lista))&&(strcmp(socket_io->nombre, nombre_a_buscar))){
             pthread_mutex_unlock(lista_sockets_io->mutex);
             return list_iterator_index(iterator);
         }else socket_io = NULL;
@@ -190,4 +167,12 @@ elemento_cola_blocked_io * desencolar_cola_blocked(list_struct_t *cola){
     pthread_mutex_unlock(cola->mutex);
 
     return elem;
+}
+void encolar_cola_blocked(list_struct_t *cola, elemento_cola_blocked_io *elem){
+
+    pthread_mutex_lock(cola->mutex);
+
+    list_add_in_index(cola, elem, -1);
+
+    pthread_mutex_unlock(cola->mutex);
 }

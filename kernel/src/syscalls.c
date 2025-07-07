@@ -3,6 +3,8 @@
 extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_ready;
+extern list_struct_t *lista_sockets_io;
+
 extern sem_t *sem_memoria_liberada;
 
 void PROCESS_CREATE(char *path, int tam_proceso) {
@@ -88,11 +90,11 @@ void * dump_mem_waiter(void *args){
     if (peticion->respuesta_exitosa){        
         encolar_cola_generico(lista_procesos_ready, peticion->proceso, -1);
         cambiar_estado(peticion->proceso, READY);
-        log_debug(logger, "Dump completado, finalizando thread auxiliar y enviando proceso %d a ready", pcb_aux->pid);
+        log_debug(logger, "Dump completado, finalizando thread auxiliar y enviando proceso %d a ready", peticion->proceso->pid);
         return;
     }else{
         PROCESS_EXIT(peticion->proceso);
-        log_debug(logger, "El DUMP fallo, finalizando proceso %d", pcb_aux->pid);
+        log_debug(logger, "El DUMP fallo, finalizando proceso %d", peticion->proceso->pid);
     }
     liberar_peticion_memoria(peticion);
 
@@ -101,8 +103,19 @@ void * dump_mem_waiter(void *args){
 
 void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
     
-    //recibe los datos, y crea una peticion que es manejada por el admin de peticiones de io
-    //pasa el proceso a blocked, luego termina
+    elemento_cola_blocked_io * elem_blocked_io = malloc(sizeof(elemento_cola_blocked_io));
+
+    elem_blocked_io->pcb = pcb;
+    elem_blocked_io->tiempo = tiempo;
+
+    int index = buscar_io(nombre_io);
+
+    t_socket_io *socket_io = get_socket_io(index);
+
+    encolar_cola_blocked(socket_io->cola_blocked, elem_blocked_io);
+
+    encolar_cola_generico(lista_procesos_block, pcb, -1);
+    cambiar_estado(pcb, BLOCK);
 
     return;
 }
