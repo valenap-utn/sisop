@@ -15,7 +15,7 @@ void * medianoplazo(void * args){
     while(true){
         sem_wait(lista_procesos_susp_ready);
         
-        pcb = desencolar_generico(lista_procesos_susp_ready);
+        pcb = desencolar_generico(lista_procesos_susp_ready, 0);
         
         if(!encolar_peticion_medianoPlazo(pcb)){
             encolar_cola_generico(lista_procesos_susp_ready, pcb, 0);

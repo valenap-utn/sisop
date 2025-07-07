@@ -80,7 +80,7 @@ void * thread_io(void * args){
         pthread_create(&tid_aux, NULL, timer_suspend, (void*)proceso_aux);
         pthread_detach(tid_aux);
 
-        if(recibir_paquete_ok()){
+        if(recibir_paquete_ok(socket_io->socket)){
             log_error(logger, "El dispositivo IO %s se desconecto prematuramente", socket_io->nombre);
 
             //si esta en block:
@@ -92,7 +92,7 @@ void * thread_io(void * args){
             else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
                 PROCESS_EXIT(proceso_aux);
             }pthread_mutex_unlock(lista_procesos_block->mutex);
-            
+
             liberar_socket_io(socket_io);
             pthread_mutex_lock(lista_sockets_io->mutex);
             list_remove_element(lista_sockets_io->lista, socket_io);
@@ -209,7 +209,7 @@ void * timer_suspend(void * args){
         pcb_aux = list_iterator_next(iterator);
         if (pcb_aux == pcb){
             //pcb sigue en block
-            pcb_aux = list_iterator_remove(iterator);
+            list_iterator_remove(iterator);
             encolar_cola_generico(lista_procesos_susp_block, pcb_aux, -1);
             break;
         }
