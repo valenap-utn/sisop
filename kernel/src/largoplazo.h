@@ -17,6 +17,8 @@ void *largoPlazoFallidos(void *args);
 bool encolarPeticionLargoPlazo(PCB *pcb);
 void esperar_prioridad_susp_ready();
 
+bool hay_algo_en_susp_ready();
+
 #endif
 
 

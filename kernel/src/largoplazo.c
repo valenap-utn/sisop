@@ -61,6 +61,13 @@ void largoPlazoFifo(){
         if(!encolarPeticionLargoPlazo(pcb)){
             encolar_cola_generico(lista_procesos_new, pcb, 0);
             sem_wait(sem_memoria_liberada); //espera a que un proceso finalize para volver a intentar enviar peticiones a memoria
+            //si el sem_wait le dio prioridad a largo plazo, se le devuelve la ejecucion a medianoplazo
+            if (hay_algo_en_susp_ready()){
+                log_debug(logger, "LPL: se intento darle prioridad a MP");
+                sem_post(sem_memoria_liberada);
+                sem_wait(sem_memoria_liberada);
+                log_debug(logger, "LPL: se despauso largo plazo luego de dar prioridad a MP");
+            }
         }
     }
     return;
@@ -105,6 +112,14 @@ void * largoPlazoFallidos(void * args){
         esperar_prioridad_susp_ready();
         sem_wait(sem_memoria_liberada); // espera a que finalize un proceso
         log_debug(logger, "LPL: Termino un proceso , reintentando cargar en memoria");
+
+        if (hay_algo_en_susp_ready()){
+            log_debug(logger, "LPL: se intento darle prioridad a MP");
+            sem_post(sem_memoria_liberada);
+            sem_wait(sem_memoria_liberada);
+            log_debug(logger, "LPL: se despauso largo plazo luego de dar prioridad a MP");
+        }
+        
         index = cola_fallidos_buscar_smallest();
         if (index == -1){ // si no hay elementos en la cola, se cancela el proceso
             continue;
@@ -135,11 +150,23 @@ bool encolarPeticionLargoPlazo(PCB *pcb){
         return false;
     }
 }
+/// @brief Se queda esperando que no haya nada en susp_ready
 void esperar_prioridad_susp_ready(){
     pthread_mutex_lock(lista_procesos_susp_ready->mutex);
     int lista_vacia = list_is_empty(lista_procesos_susp_ready->lista);
     pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
     if (!lista_vacia){
         esperar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
-    }
+        return true;
+    }else return false;
+}
+/// @brief idem esperar_prioridad_susp_ready pero no espera 
+/// @return true si hay algo en la cola
+bool hay_algo_en_susp_ready(){
+    pthread_mutex_lock(lista_procesos_susp_ready->mutex);
+    int lista_vacia = list_is_empty(lista_procesos_susp_ready->lista);
+    pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
+    if (!lista_vacia){
+        return true;
+    }else return false;
 }
