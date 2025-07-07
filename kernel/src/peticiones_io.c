@@ -1,21 +1,27 @@
 #include <peticiones_io.h>
 
 extern char* puerto_io;
-extern list_struct_t * lista_peticiones_io_pendientes;
+extern list_struct_t *lista_peticiones_io_pendientes;
+extern list_struct_t *lista_procesos_ready;
+extern list_struct_t *lista_procesos_block;
+extern list_struct_t *lista_procesos_susp_block;
+extern list_struct_t *lista_sockets_io;
 
 void *server_mh_io(void *args){
 
     int server = iniciar_servidor(puerto_io);
+    pthread_t tid_aux;
 
-    t_socket_io *socket_nuevo = malloc(sizeof(t_socket_io));
+    t_socket_io *socket_nuevo;
     t_list *paquete_recv;
 
     char *nombre_io;
 
     protocolo_socket cod_op;
+    socket_nuevo = inicializarSocketIO();
 
     while((socket_nuevo->socket = esperar_cliente(server))){
-
+        
         cod_op = recibir_operacion(socket_nuevo->socket);
 
         if(cod_op != NOMBRE_IO){
@@ -33,9 +39,12 @@ void *server_mh_io(void *args){
         list_add(lista_sockets_io->lista, socket_nuevo);
         pthread_mutex_unlock(lista_sockets_io->mutex);
 
+        pthread_create(&tid_aux, NULL, thread_io, (void *)socket_nuevo);
+        pthread_detach(tid_aux);
+
         log_debug(logger, "%s", socket_nuevo->nombre);
 
-        socket_nuevo = malloc(sizeof(t_socket_io));
+        socket_nuevo = inicializarSocketIO();
 
     }
     return (void *)EXIT_SUCCESS;
@@ -43,32 +52,142 @@ void *server_mh_io(void *args){
 /// @brief thread principal que maneja las peticiones a io
 void *administrador_peticiones_io(void * args){
 
-    t_peticion_io * peticion;
-    pthread_t tid_aux;
 
-	while(1){
-		sem_wait(lista_peticiones_io_pendientes->sem);
-		peticion = desencolar_peticion_io();
-		 
-		pthread_create(&tid_aux, NULL, peticion_io, (void *)peticion);
-        
-        //Aca meti una nueva inicializacion, el anterior no queda flotando porque peticion_kernel tiene su direccion y luego hace un free.
-        //El nuevo malloc asegura que no se modificara el contenido antes que peticion_kernel pueda guardarlo en su stack local.
-        //Asumo que esto ya es suficiente para salvarnos de la posible condicion de carrera, en caso que haya una nueva peticion cercana.
-        peticion = malloc(sizeof(t_args_peticion_memoria));
-
-		pthread_detach(tid_aux);
-	}
-    pthread_exit(EXIT_SUCCESS);
 }
-void * peticion_io(void * args){
+/// @brief detecta nuevos procesos en su cola blocked y los manda a esperar a su IO
+/// @param args 
+/// @return 
+void * thread_io(void * args){
 
-    t_peticion_io * peticion = args;  
+    t_socket_io * socket_io = args;
+    PCB * proceso_aux;
+    elemento_cola_blocked_io * elemento_cola;
+    t_paquete * paquete_send;
 
+    while(1){
+        sem_wait(socket_io->cola_blocked->sem);
+
+        elemento_cola = desencolar_cola_blocked(socket_io->cola_blocked);
+        proceso_aux = elemento_cola->pcb;
+
+        paquete_send = crear_paquete(DORMIR_IO);
+        agregar_a_paquete(paquete_send, &proceso_aux->pid, sizeof(int));
+        agregar_a_paquete(paquete_send, elemento_cola->tiempo, sizeof(int));
+
+        enviar_paquete(paquete_send, socket_io->socket);
+
+        if(recibir_paquete_ok){
+            log_error(logger, "El dispositivo IO %s se desconecto prematuramente", socket_io->nombre);
+            liberar_socket_io(socket_io);
+            pthread_mutex_lock(lista_sockets_io->mutex);
+            list_remove_element(lista_sockets_io->lista, socket_io);
+            pthread_mutex_unlock(lista_sockets_io->mutex);
+            return;
+        }else{
+            log_info(logger, "## (PID: %d) finalizó IO y pasa a READY", proceso_aux->pid);
+            
+            //si esta en block:
+            pthread_mutex_lock(lista_procesos_block->mutex);
+            if(list_remove_element(lista_procesos_block->lista, proceso_aux)){
+                encolar_cola_generico(lista_procesos_ready, proceso_aux, -1);
+                cambiar_estado(proceso_aux, READY);
+            }
+            //si esta en susp_block
+            else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
+                encolar_cola_generico(lista_procesos_susp_block, proceso_aux, -1);
+                cambiar_estado(proceso_aux, SUP_READY);
+            }else log_error(logger, "en hilo IO el proceso no esta ni en blocked ni en susp_blocked");
+            
+            pthread_mutex_unlock(lista_procesos_block->mutex);
+
+        }
+    }
 }
 void encolar_peticion_io(t_peticion_io * peticion, int index){
+
+    pthread_mutex_lock(lista_peticiones_io_pendientes->mutex);
+    list_add(lista_peticiones_io_pendientes->lista, peticion);
+    pthread_mutex_unlock(lista_peticiones_io_pendientes->mutex);
+    sem_post(lista_peticiones_io_pendientes->sem);
+
+    return;
 
 }
 t_peticion_io * desencolar_peticion_io(){
 
+    pthread_mutex_lock(lista_peticiones_io_pendientes->mutex);
+    t_peticion_io * peticion = list_remove(lista_peticiones_io_pendientes->lista, 0);
+    pthread_mutex_unlock(lista_peticiones_io_pendientes->mutex);
+
+    return peticion;
+}
+t_socket_io * inicializarSocketIO(char * nombre){
+    t_socket_io * socket_io = calloc(1, sizeof(t_socket_io));
+    socket_io->cola_blocked = inicializarLista();
+    socket_io->nombre = nombre;
+
+    return socket_io;
+}
+void liberar_socket_io(t_socket_io *socket){
+    list_destroy(socket->cola_blocked->lista);
+    sem_destroy(socket->cola_blocked->sem);
+    pthread_mutex_destroy(socket->cola_blocked->mutex);
+    free (socket->nombre);
+    close(socket->socket);
+
+    free(socket);
+
+}
+/// @param nombre_a_buscar 
+/// @return devuelve el primer io vacio con el nombre buscado.
+/// si no hay vacios, devuelve el primero que tenga el nombre buscado
+int buscar_io(char * nombre_a_buscar){
+
+    pthread_mutex_lock(lista_sockets_io->mutex);
+
+    t_list_iterator * iterator = list_iterator_create(lista_sockets_io->lista);
+    t_socket_io * socket_io = NULL;
+
+    while (list_iterator_has_next(iterator)){
+        socket_io = list_iterator_next(iterator);
+        if ((socket_io->pid != -1)&&(strcmp(socket_io->nombre, nombre_a_buscar))){
+            pthread_mutex_unlock(lista_sockets_io->mutex);
+            return list_iterator_index(iterator);
+        }else socket_io = NULL;
+    }
+    list_iterator_destroy(iterator);
+
+    if (socket_io == NULL){
+        iterator = list_iterator_create(lista_sockets_io->lista);
+
+        while (list_iterator_has_next(iterator)){
+            socket_io = list_iterator_next(iterator);
+            if (strcmp(socket_io->nombre, nombre_a_buscar)){
+                pthread_mutex_unlock(lista_sockets_io->mutex);
+                return list_iterator_index(iterator);
+            }else socket_io = NULL;
+        }
+    }
+    pthread_mutex_unlock(lista_sockets_io->mutex);
+
+    if (socket_io == NULL){
+        return -1;
+    }
+}
+t_socket_io * get_socket_io(int index){
+    pthread_mutex_lock(lista_sockets_io->mutex);
+    t_socket_io * socket_io = list_get(lista_sockets_io->lista, index);
+    pthread_mutex_unlock(lista_sockets_io->mutex);
+    return socket_io;
+}
+elemento_cola_blocked_io * desencolar_cola_blocked(list_struct_t *cola){
+
+    elemento_cola_blocked_io *elem;
+    pthread_mutex_lock(cola->mutex);
+
+    elem = list_remove(cola, 0);
+
+    pthread_mutex_unlock(cola->mutex);
+
+    return elem;
 }

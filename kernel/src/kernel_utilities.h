@@ -21,11 +21,25 @@ typedef struct
 typedef struct 
 {
     PCB *proceso;
-    t_socket_io io;
+    int tiempo;
+    char * nombre;
     sem_t * peticion_finalizada;
     bool respuesta_exitosa;
     
 }t_peticion_io;
+
+typedef struct{
+    int socket;
+    char *nombre;
+    list_struct_t *cola_blocked;
+}t_socket_io;
+
+typedef struct 
+{
+    PCB *pcb;
+    int tiempo;
+    
+}elemento_cola_blocked_io;
 
 typedef struct
 {

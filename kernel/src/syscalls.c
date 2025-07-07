@@ -98,3 +98,11 @@ void * dump_mem_waiter(void *args){
 
     return;
 }
+
+void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
+    
+    //recibe los datos, y crea una peticion que es manejada por el admin de peticiones de io
+    //pasa el proceso a blocked, luego termina
+
+    return;
+}

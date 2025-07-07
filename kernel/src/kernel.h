@@ -2,11 +2,6 @@
 #define KERNEL_MAIN_
 
 typedef struct{
-    int socket;
-    char *nombre;
-}t_socket_io;
-
-typedef struct{
     int dispatch;
     int interrupt;
 }t_socket_cpu;
