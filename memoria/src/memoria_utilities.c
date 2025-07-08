@@ -394,26 +394,26 @@ void * kernel(void* args){
             break;
 
             case SUSPENDER_PROCESO:
-                t_paquete* paquete_send_suspencion_proceso;
+                // t_paquete* paquete_send_suspencion_proceso;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
 
                 //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
                 suspender_proceso(pid);
 
-                eliminar_paquete(paquete_send_suspencion_proceso);
+                // eliminar_paquete(paquete_send_suspencion_proceso);
                 list_destroy_and_destroy_elements(paquete_recv,free);
             break;
 
             case DESSUPENDER_PROCESO:
-                t_paquete* paquete_send_dessuspencion_proceso;
+                // t_paquete* paquete_send_dessuspencion_proceso;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
 
                 //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
                 des_suspender_proceso(pid);
 
-                eliminar_paquete(paquete_send_dessuspencion_proceso);
+                // eliminar_paquete(paquete_send_dessuspencion_proceso);
                 list_destroy_and_destroy_elements(paquete_recv,free);
                 //responder con un OK
             break;
@@ -847,11 +847,46 @@ void des_suspender_proceso(int pid){
     log_info(logger,"## PID: <%d> - Proceso des-suspendido desde SWAP", pid);
 }
 
-int obtener_marco_por_indice(Tabla_Principal* tabla, int nro_pagina_logica){
-    return 1;
+//funciones auxiliares - swap
+
+void obtener_indices_por_nivel(int nro_pagina_logica, int* indices){
+    for(int i = cant_niveles - 1; i >= 0; i--){
+        indices[i] = nro_pagina_logica % entradas_por_tabla;
+        nro_pagina_logica /= entradas_por_tabla;
+    }
 }
 
-void marcar_marco_en_tabla(t_tabla_proceso* proceso,int nro_pagina_logica,int marco){
-    return;
+int obtener_marco_por_indice(Tabla_Principal* tabla, int nro_pagina_logica){
+    int indices[cant_niveles];
+    obtener_indices_por_nivel(nro_pagina_logica,indices); // Descompongo num. de pag. lógica en índices por nivel
+
+    Tabla_Nivel* actual = tabla->niveles[indices[0]];
+    for(int i = 1; i < cant_niveles; i++){
+        if(!actual || actual->es_ultimo_nivel) return -1;
+        actual = actual->sgte_nivel[indices[i]];
+    }
+
+    if(!actual || !actual->esta_presente) return -1;
+
+    return actual->marco;
+}
+
+void marcar_marco_en_tabla(Tabla_Principal* tabla,int nro_pagina_logica,int marco){
+    int indices[cant_niveles];
+    obtener_indices_por_nivel(nro_pagina_logica, indices); // Descompongo num. de pag. lógica en índices por nivel
+
+    Tabla_Nivel* actual = tabla->niveles[indices[0]];
+    for(int i = 1; i < cant_niveles; i++){
+        if(!actual){
+            actual = crear_tabla_nivel(i+1, indices[i]);
+        }
+        if(!actual->sgte_nivel[indices[i]]){
+            actual->sgte_nivel[indices[i]] = crear_tabla_nivel(i+1, indices[i]);
+        }
+        actual = actual->sgte_nivel[indices[i]];
+    }
+
+    actual->marco = marco;
+    actual->esta_presente = true;
 }
 
