@@ -42,7 +42,7 @@ void inicializarMemoria(){
     pthread_create(&tid_cpu, NULL, conexion_server_cpu, NULL);
     
     pthread_join(tid_cpu, NULL);
-    pthread_join(tid_cpu, NULL);
+    // pthread_join(tid_cpu, NULL);
 }
 
 void levantarConfig(){
@@ -60,6 +60,8 @@ void inicializar_mem_prin(){
 
     memoria_principal->cantidad_marcos = tam_memoria/tam_pagina;
     memoria_principal->bitmap_marcos = calloc(memoria_principal->cantidad_marcos,sizeof(bool)); 
+
+    memoria_principal->metadata_swap = list_create();
 }
 
 /*
@@ -180,6 +182,8 @@ void * cpu(void* args){
                 int dir_fisica = *(int*)list_remove(paquete_recv,0);
                 int tipo_acceso = *(int*)list_remove(paquete_recv,0); // lectura || escritura 
 
+                t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
+
                 if(tipo_acceso == 0){ //lectura
                     int valor = *(int*)(memoria_principal->espacio + dir_fisica);
 
@@ -188,7 +192,7 @@ void * cpu(void* args){
                     enviar_paquete(paquete_send,conexion);
 
                     log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
-                    memoria_principal->metricas.cant_lecturas++;
+                    proceso->metricas.cant_lecturas++;
 
                 }else{ //escritura
                     int valor_a_escribir = *(int*)list_remove(paquete_recv,0);
@@ -198,7 +202,7 @@ void * cpu(void* args){
                     enviar_paquete(paquete_send,conexion);
 
                     log_info(logger,"## PID: <%d> - <Escritura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
-                    memoria_principal->metricas.cant_escrituras++;
+                    proceso->metricas.cant_escrituras++;
                 }
                 eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free);
@@ -212,6 +216,8 @@ void * cpu(void* args){
 
                 pid = *(int*)list_remove(paquete_recv,0);
                 int dir_fisica = *(int*)list_remove(paquete_recv,0);
+
+                t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
 
                 if(dir_fisica % tam_pagina != 0){
                     log_error(logger,"La Dirección Física %d no es inicio de página",dir_fisica);
@@ -232,7 +238,7 @@ void * cpu(void* args){
                 enviar_paquete(paquete_send,conexion);
 
                 log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tam_pagina);
-                memoria_principal->metricas.cant_lecturas++;
+                proceso->metricas.cant_lecturas++;
 
                 eliminar_paquete(paquete_send);  
                 list_destroy_and_destroy_elements(paquete_recv,free);  
@@ -245,6 +251,8 @@ void * cpu(void* args){
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int*)list_remove(paquete_recv,0);
                 int dir_fisica = *(int*)list_remove(paquete_recv,0);
+
+                t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
 
                 if(dir_fisica % tam_pagina != 0){
                     log_error(logger,"La Dirección Física %d no es inicio de página",dir_fisica);
@@ -266,7 +274,7 @@ void * cpu(void* args){
                 enviar_paquete(paquete_send,conexion);
 
                 log_info(logger,"## PID: <%d> - <Escritura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tam_pagina);
-                memoria_principal->metricas.cant_escrituras++;
+                proceso->metricas.cant_escrituras++;
 
                 eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free); 
@@ -330,7 +338,7 @@ void * cpu(void* args){
 
                 enviar_paquete(paquete_send, conexion);
 
-                memoria_principal->metricas.cant_instr_sol++; //creo que esto va acá
+                proceso->metricas.cant_instr_sol++; //creo que esto va acá
 
                 log_info(logger, "## PID: <%d> - Obtener instrucción: <%d> - Instrucción: <INSTRUCCIÓN> <%s>", pid, pc, instruccion);
 
@@ -377,6 +385,9 @@ void * kernel(void* args){
                         log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
                     } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
                 } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
+
+                log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>",pid,tamanio);
+
                 eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free);
             }
@@ -386,7 +397,10 @@ void * kernel(void* args){
                 t_paquete* paquete_send_suspencion_proceso;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
+
                 //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
+                suspender_proceso(pid);
+
                 eliminar_paquete(paquete_send_suspencion_proceso);
                 list_destroy_and_destroy_elements(paquete_recv,free);
             break;
@@ -395,7 +409,10 @@ void * kernel(void* args){
                 t_paquete* paquete_send_dessuspencion_proceso;
                 paquete_recv = recibir_paquete(conexion);
                 pid = *(int *)list_remove(paquete_recv, 0);
+
                 //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
+                des_suspender_proceso(pid);
+
                 eliminar_paquete(paquete_send_dessuspencion_proceso);
                 list_destroy_and_destroy_elements(paquete_recv,free);
                 //responder con un OK
@@ -460,7 +477,7 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
     Tabla_Nivel* actual = proceso->tabla_principal->niveles[indices_por_nivel[0]];
 
     for(int nivel = 0; nivel < (cant_niveles-1); nivel++){
-        memoria_principal->metricas.cant_accesos_tdp++;
+        proceso->metricas.cant_accesos_tdp++;
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
         if(!actual || actual->es_ultimo_nivel){
             log_error(logger,"Error al querer acceder al nivel %d para PID %d",nivel,pid);
@@ -470,7 +487,7 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
     }
 
     //Acceso a utlimo nivel
-    memoria_principal->metricas.cant_accesos_tdp++;
+    proceso->metricas.cant_accesos_tdp++;
     usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
 
     if(!actual->esta_presente || actual->marco == -1){
@@ -614,6 +631,7 @@ int inicializar_proceso(int pid, int tamanio){
     t_tabla_proceso* nueva_tabla = malloc(sizeof(t_tabla_proceso));
     nueva_tabla->pid = pid;
     nueva_tabla->tabla_principal = crear_tabla_principal();
+    nueva_tabla->cantidad_paginas = paginas_necesarias;
 
     if (nueva_tabla->tabla_principal == NULL) {
         log_error(logger, "Error al crear tabla principal");
@@ -739,5 +757,101 @@ void liberar_tabla_principal(Tabla_Principal* tabla){
     }
     free(tabla->niveles);
     free(tabla);
+}
+
+/* ------- PROPUESTA para Manejo de SWAP ------- */
+
+void suspender_proceso(int pid){
+    t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
+    if(!proceso){
+        log_error(logger, "Error al buscar el proceso con PID <%d>",pid);
+        return;
+    }
+
+    FILE* f = fopen(path_swapfile,"rb+");
+    if(!f){
+        log_error(logger,"No se pudo abrir el archivo de SWAP");
+        return;
+    }
+
+    int offset_en_paginas = list_size(memoria_principal->metadata_swap);
+    int offset_en_bytes = offset_en_paginas * tam_pagina;
+
+    for(int i = 0; i < proceso->cantidad_paginas; i++){
+        int marco = obtener_marco_por_indice(proceso->tabla_principal, i);
+        void* origen = memoria_principal->espacio + (marco * tam_pagina);
+
+        fseek(f,offset_en_bytes + i * tam_pagina, SEEK_SET);
+        fwrite(origen,1,tam_pagina,f);
+        liberar_marco(marco);
+    }
+
+    t_swap* nueva_entrada = malloc(sizeof(t_swap));
+    nueva_entrada->pid = pid;
+    nueva_entrada->pagina_inicio = offset_en_paginas;
+    nueva_entrada->cantidad_paginas = proceso->cantidad_paginas;
+
+    list_add(memoria_principal->metadata_swap, nueva_entrada);
+
+    fclose(f);
+
+    log_info(logger,"## PID: <%d> - Proceso suspendido, páginas guardadas en SWAP",pid);
+
+}
+
+void des_suspender_proceso(int pid){
+    t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
+    if(!proceso){
+        log_error(logger, "Error al buscar el proceso con PID <%d>",pid);
+        return;
+    }
+
+    t_swap* entrada = NULL;
+
+    for(int i = 0; i < list_size(memoria_principal->metadata_swap);i++){
+        t_swap* entrada_buscada = list_get(memoria_principal->metadata_swap,i);
+        if(entrada_buscada->pid == pid){
+            entrada = entrada_buscada;
+            list_remove(memoria_principal->metadata_swap,i);
+            break;
+        }
+    }
+
+    if(!entrada){
+        log_error(logger,"No se encontró al proceso con pid %d en SWAP", pid);
+        return;
+    }
+
+    FILE* f = fopen(path_swapfile,"rb+");
+    if(!f){
+        log_error(logger,"No se pudo abrir el archivo de SWAP");
+        free(entrada);
+        return;
+    }
+
+    for(int i = 0; i < entrada->cantidad_paginas ;i++){
+        int marco = asignar_marco_libre();
+        if(marco == -1){
+            log_error(logger,"No hay marcos disponibles para des-suspender al proceso con pid %d", pid);
+            break;
+        }
+
+        fseek(f, (entrada->pagina_inicio + i) * tam_pagina, SEEK_SET);
+        void* destino = memoria_principal->espacio + marco * tam_pagina;
+        fread(destino,1,tam_pagina,f);
+
+        marcar_marco_en_tabla(proceso->tabla_principal,i,marco);
+    }
+    fclose(f);
+    free(entrada);
+    log_info(logger,"## PID: <%d> - Proceso des-suspendido desde SWAP", pid);
+}
+
+int obtener_marco_por_indice(Tabla_Principal* tabla, int nro_pagina_logica){
+    return 1;
+}
+
+void marcar_marco_en_tabla(t_tabla_proceso* proceso,int nro_pagina_logica,int marco){
+    return;
 }
 

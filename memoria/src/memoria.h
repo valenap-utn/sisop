@@ -28,7 +28,7 @@ typedef struct t_memoria{
     t_list *tablas_por_proceso; //cambio nombre de tabla_paginas a tablas_por_proceso | Lista de t_tabla_proceso*
     bool* bitmap_marcos;       //bitmap de marcos ocupados
     int cantidad_marcos;      //total marcos disponibles
-    t_metricas metricas;
+    t_list* metadata_swap;   //lista de t_swap*
 }t_memoria;
 
 // Agrego estructura para asociar tablas con procesos
@@ -36,6 +36,8 @@ typedef struct t_tabla_proceso{
     int pid;
     struct Tabla_Principal* tabla_principal;
     t_list* instrucciones;
+    t_metricas metricas; //metricas por proceso!!!
+    int cantidad_paginas;
 }t_tabla_proceso;
 
 
@@ -57,6 +59,15 @@ typedef struct Tabla_Nivel{
         int marco; //si es ultimo nivel
     };
 }Tabla_Nivel;
+
+
+/* ------- PROPUESTA para SWAP ------- */
+
+typedef struct t_swap{
+    int  pid;
+    int pagina_inicio;     //nro. pagina en archivo swap
+    int cantidad_paginas; //cant. paginas que se guardaron
+}t_swap;
 
 
 

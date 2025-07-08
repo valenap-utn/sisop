@@ -43,9 +43,13 @@ void liberar_tabla_nivel(Tabla_Nivel* tabla);
 void liberar_tabla_principal(Tabla_Principal* tabla);
 
 //FUTURAS (sin implementar ni nada aún)
-void suspender_proceso();
-void des_suspender_proceso();
-void finalizar_proceso();
+void suspender_proceso(int pid);
+void des_suspender_proceso(int pid);
+
+int obtener_marco_por_indice(Tabla_Principal* tabla, int nro_pagina_logica);
+void marcar_marco_en_tabla(t_tabla_proceso* proceso,int nro_pagina_logica,int marco);
+
+void finalizar_proceso(int pid);
 
 // void acceder_a_espacio_usuario();
 // void leer_pagina_completa();
