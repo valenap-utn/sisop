@@ -1,10 +1,12 @@
 #include <instrucciones.h>
 extern t_log *logger;
 
-extern int socket_interrupt, socket_dispatch;
+extern int socket_interrupt, socket_dispatch, socket_memoria;
 
 int pid;
 int pc;
+t_paquete * paquete_send;
+int conexion;
 
 void* ciclo_instruccion(void * arg){
     char * instrSTR;
@@ -49,10 +51,7 @@ int instrStringMap(char opcodeStr []){
 };
 
 char * Fetch(){
-    char * opcode = "NOOP  "; // Para cambiar en el futuro por el valor posta
-    int conexion = *(int *)args;
-
-    t_paquete * paquete;
+    char * opcode = "NOOP"; // Para cambiar en el futuro por el valor posta
     // t_list *paquete_recv;
     
     // t_paquete *paquete_send;
@@ -62,17 +61,19 @@ char * Fetch(){
     // pc = *(int *)list_remove(paquete_recv,0); //no entiendo muy bien como es esto...
 
     int dato_a_enviar = 1;
-    paquete = crear_paquete(OBTENER_INSTRUCCION);
-    agregar_a_paquete(paquete, dato_a_enviar, sizeof(int));
 
-    enviar_paquete(paquete, socket_conexion_memoria);
+    t_paquete* paquete_send = crear_paquete(OBTENER_INSTRUCCION);
+    agregar_a_paquete(paquete_send, &dato_a_enviar, sizeof(int));
+    enviar_paquete(paquete_send, conexion);
+    eliminar_paquete(paquete_send);
+
     //paquete enviado
 
     //respuesta
-
-    cod_op = recibir_operacion(socket_conexion_memoria);
+    protocolo_socket cod_op;
+    cod_op = recibir_operacion(socket_memoria);
     t_list * paquete_recv;
-    paquete_recv = recibir_paquete(socket_conexion_memoria);
+    paquete_recv = recibir_paquete(socket_memoria);
     int dato = *(int*)list_remove(paquete_recv, 0);
     int dato2 = list_remove(paquete_recv, 0);
     // etc

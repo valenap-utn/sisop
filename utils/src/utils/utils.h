@@ -52,6 +52,7 @@ enum protocolo_socket
     PROCESS_EXIT_CPU,
     PROCESS_INIT_CPU,
     DUMP_MEM_CPU,
+    READ_MEM,
 };
 typedef enum protocolo_socket protocolo_socket;
 
@@ -71,6 +72,7 @@ enum comu_cpu{
     PEDIR_INSTRUCCIONES,
     OBTENER_INSTRUCCION,
     DEVOLVER_INSTRUCCION,
+    PEDIR_INSTRUCCION,
 }typedef comu_cpu;
 
 enum comu_kernel{
