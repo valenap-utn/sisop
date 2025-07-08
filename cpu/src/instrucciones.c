@@ -1,4 +1,5 @@
 #include <instrucciones.h>
+#include "../../kernel/src/pcb.h"
 extern t_log *logger;
 
 extern int socket_interrupt, socket_dispatch, socket_memoria;
@@ -33,16 +34,16 @@ int instrStringMap(char opcodeStr []){
         opCode = DUMP_MEMORY;
     }
     else if (strcmp(opcodeStr,"EXIT") == 0) {
-        opCode = EXIT;
+        opCode = EXIT_I;
     }
     else if (strcmp(opcodeStr,"NOOP") == 0) {
         opCode = NOOP;
     }
     else if (strcmp(opcodeStr,"WRITE") == 0) {
-        opCode = WRITE;
+        opCode = WRITE_I;
     }
     else if (strcmp(opcodeStr,"READ") == 0) {
-        opCode = READ;
+        opCode = READ_I;
     }
     else if (strcmp(opcodeStr,"GOTO") == 0) {
         opCode = GOTO;
@@ -62,10 +63,9 @@ char * Fetch(){
 
     int dato_a_enviar = 1;
 
-    t_paquete* paquete_send = crear_paquete(OBTENER_INSTRUCCION);
+    t_paquete* paquete_send = crear_paquete(PEDIR_INSTRUCCION);
     agregar_a_paquete(paquete_send, &dato_a_enviar, sizeof(int));
     enviar_paquete(paquete_send, conexion);
-    eliminar_paquete(paquete_send);
 
     //paquete enviado
 
@@ -74,9 +74,10 @@ char * Fetch(){
     cod_op = recibir_operacion(socket_memoria);
     t_list * paquete_recv;
     paquete_recv = recibir_paquete(socket_memoria);
-    int dato = *(int*)list_remove(paquete_recv, 0);
+    int dato =  list_remove(paquete_recv, 0);
     int dato2 = list_remove(paquete_recv, 0);
     // etc
+    eliminar_paquete(paquete_send);
     list_destroy(paquete_recv);
     
 
@@ -100,16 +101,16 @@ instruccion_t Decode(char * instr){
         case DUMP_MEMORY:
                 current_instr.tipo = SYSCALL;
         break;
-        case EXIT:
+        case EXIT_I:
                 current_instr.tipo = SYSCALL;
         break;
         case NOOP:
                 current_instr.tipo = USUARIO;
         break;
-        case WRITE:
+        case WRITE_I:
                 current_instr.tipo = USUARIO;
         break;
-        case READ:
+        case READ_I:
                 current_instr.tipo = USUARIO;
         break;
         case GOTO:
@@ -120,7 +121,7 @@ instruccion_t Decode(char * instr){
              exit(EXIT_FAILURE);
                 break;
         }
-        if (current_instr.opCode == IO || current_instr.opCode == INIT_PROC || current_instr.opCode ==  WRITE ||  current_instr.opCode ==  READ){
+        if (current_instr.opCode == IO || current_instr.opCode == INIT_PROC || current_instr.opCode ==  WRITE_I ||  current_instr.opCode ==  READ_I){
             if(!current_instr.data[0] || !current_instr.data[1]){                 
                 log_info(logger, "Instrucción no tiene los 2 parametros: %s", *current_instr.data);
                 exit(EXIT_FAILURE);
@@ -143,25 +144,26 @@ void Execute(instruccion_t instr){
             case GOTO:
                 goto_(atoi(instr.data[0]));
             break;
-            case WRITE:
-                write_(0 , 0); // Falta poner los valores posta
+            case WRITE_I:
+                write_((uint32_t *)atoi(instr.data[0]) , atoi(instr.data[1])); // Falta poner los valores posta
             break;
-            case READ:
-                read_(0,1);
+            case READ_I:
+
+                read_((uint32_t *)atoi(instr.data[0]) , atoi(instr.data[1]));
             break;
             //----- SYSCALLS
             case IO:
-                io();
+                io(instr.data[0],atoi(instr.data[1]));
             break;
             case INIT_PROC:
-                init_proc();
+                init_proc(instr.data[0],atoi(instr.data[1]));
             break;
 
             case DUMP_MEMORY:
                 dump_memory();
             
             break;
-            case EXIT:
+            case EXIT_I:
                 exit_();
             break;
         default:
@@ -179,7 +181,7 @@ void MMU(uint32_t*direccion){
 
 };
 
-void write_(uint32_t* direccion , uint32_t*  datos){
+void write_(uint32_t* direccion , int datos){
 
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Write ”:",pid);
 
@@ -201,18 +203,36 @@ void  noop(){
 };
 
 void goto_(int direccion){
+    // buscar_pid();
     pc = direccion;
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: GOTO ”:",pid);
 };
 
+// int buscar_pid(t_list lista, int pid){
+//     PCB * elemento;
+//     t_list_iterator * iterator = list_iterator_create(lista);
+    
+
+//     while(list_iterator_has_next(iterator)){
+//         elemento = list_iterator_next(iterator);
+//         if(elemento->pid == pid){
+
+//             elemento->pid = ;
+//             return list_iterator_index(iterator);
+//         }
+//     }
+//     list_iterator_destroy(iterator);
+//     return -1;
+// };
+
 //--- SYSCALLS
-void io(){
+void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo) 
 
 
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: IO ”:",pid);
 
 };
-void init_proc(){
+void init_proc(char * Dispositivo, int tamanno){ //(Archivo de instrucciones, Tamaño)
     
 
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: INIT_PROC ”:",pid);

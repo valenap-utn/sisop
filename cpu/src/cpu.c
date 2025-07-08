@@ -7,6 +7,10 @@ int socket_interrupt, socket_dispatch;
 //variables globales
 
 int main(int argc, char* argv[]) {
-    inicializarCpu();
+    if (argc < 2 || strcmp(argv[1], " ") == 0){
+        printf("No se pudo cargar los logs de cpu\n");
+        exit(EXIT_FAILURE);
+    };
+    inicializarCpu(argv[1]);
     return 0;
 }

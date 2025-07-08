@@ -13,12 +13,16 @@ char * puerto_memoria;
 char * ip_kernel;
 char * ip_memoria;
 
-void inicializarCpu(){
+void inicializarCpu(char *nombreCpuLog){
+    char * NewnombreCpuLog = (char*) malloc(strlen(nombreCpuLog)+16);
+    sprintf(NewnombreCpuLog,"%s.log", nombreCpuLog); // FIJARSE QUE NO TENGA MEMORY LEAKS
+
+    sprintf(NewnombreCpuLog,"%s.log", nombreCpuLog); // FIJARSE QUE NO TENGA MEMORY LEAKS
 
     config = config_create("./cpu.config");
     levantarConfig();
 
-    logger = log_create("cpu.log", "CPU", 1, current_log_level);
+    logger = log_create(NewnombreCpuLog, "CPU", 1, current_log_level);
 
     pthread_t tid_conexion_kernel;
     pthread_t tid_conexion_memoria;

@@ -25,19 +25,19 @@ typedef enum {
     IO,
     INIT_PROC,
     DUMP_MEMORY,
-    EXIT,
+    EXIT_I,
     // No Syscalls
     NOOP,
-    WRITE,
-    READ,
+    WRITE_I,
+    READ_I,
     GOTO
 }intrucciones_t ;
 
 
 void noop();
-void write_(uint32_t* , uint32_t* );
+void write_(uint32_t* , int );
 void read_(uint32_t* , int );
-void goto_(int valor);
+void goto_(int);
 void noop();
 void io();
 void init_proc();
