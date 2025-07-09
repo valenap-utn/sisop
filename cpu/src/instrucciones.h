@@ -35,8 +35,8 @@ typedef enum {
 
 
 void noop();
-void write_(uint32_t* , int );
-void read_(uint32_t* , int );
+void write_(uint32_t , int );
+void read_(uint32_t , int );
 void goto_(int);
 void noop();
 void io();
@@ -49,7 +49,8 @@ instruccion_t Decode(char *);
 void Execute(instruccion_t);
 void Check_Int();
 int instrStringMap(char []);
-void MMU(uint32_t*direccion);
+void MMU(uint32_t);
+uint32_t TLB(uint32_t);
 void * ciclo_instruccion(void *);
 
 #endif

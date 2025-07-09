@@ -4,6 +4,13 @@ extern t_log *logger;
 
 extern int socket_interrupt, socket_dispatch, socket_memoria;
 
+extern int estradas_tlb;
+extern char * remplazo_tlb;
+ 
+extern int entradas_cache;
+extern char * remplazo_cache;
+extern int retrardo_cache;
+
 int pid;
 int pc;
 t_paquete * paquete_send;
@@ -51,8 +58,9 @@ int instrStringMap(char opcodeStr []){
     return opCode;
 };
 
-char * Fetch(){
-    char * opcode = "NOOP"; // Para cambiar en el futuro por el valor posta
+char * Fetch(){ // Le pasa la intruccion completa 
+    char * InstruccionCompleta = "NOOP"; // Para cambiar en el futuro por el valor posta
+    
     // t_list *paquete_recv;
     
     // t_paquete *paquete_send;
@@ -61,28 +69,32 @@ char * Fetch(){
     // pid = *(int *)list_remove(paquete_recv, 0);
     // pc = *(int *)list_remove(paquete_recv,0); //no entiendo muy bien como es esto...
 
-    int dato_a_enviar = 1;
 
     t_paquete* paquete_send = crear_paquete(PEDIR_INSTRUCCION);
-    agregar_a_paquete(paquete_send, &dato_a_enviar, sizeof(int));
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
+    agregar_a_paquete(paquete_send, &pc, sizeof(int));
+
     enviar_paquete(paquete_send, conexion);
 
     //paquete enviado
 
-    //respuesta
-    protocolo_socket cod_op;
-    cod_op = recibir_operacion(socket_memoria);
+    //respuesta DEVOLVER_INSTRUCCION
+    protocolo_socket cod_op = recibir_operacion(socket_memoria); //
+
     t_list * paquete_recv;
     paquete_recv = recibir_paquete(socket_memoria);
-    int dato =  list_remove(paquete_recv, 0);
-    int dato2 = list_remove(paquete_recv, 0);
+
+    int pid =  *(int *)list_remove(paquete_recv, 0);
+    int pc  =  *(int *)list_remove(paquete_recv, 0);
     // etc
     eliminar_paquete(paquete_send);
-    list_destroy(paquete_recv);
-    
+    // list_destroy(paquete_recv);
+
+    // eliminar_paquete(paquete_send);
+    list_destroy_and_destroy_elements(paquete_recv,free); 
 
     log_info(logger,"## PID: %d PC: %d- FETCH ",pid,pc);
-    return opcode ;
+    return InstruccionCompleta ;
 };
 
 instruccion_t Decode(char * instr){
@@ -145,11 +157,11 @@ void Execute(instruccion_t instr){
                 goto_(atoi(instr.data[0]));
             break;
             case WRITE_I:
-                write_((uint32_t *)atoi(instr.data[0]) , atoi(instr.data[1])); // Falta poner los valores posta
+                write_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0])); // Falta poner los valores posta
             break;
             case READ_I:
 
-                read_((uint32_t *)atoi(instr.data[0]) , atoi(instr.data[1]));
+                read_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0]));
             break;
             //----- SYSCALLS
             case IO:
@@ -177,16 +189,12 @@ void Check_Int(){
 
 };
 
-void MMU(uint32_t*direccion){
+void write_(uint32_t direccion , int datos){
+
+    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Write DIR = %ls TAM = %d”: ",pid,direccion,datos);
 
 };
-
-void write_(uint32_t* direccion , int datos){
-
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Write ”:",pid);
-
-};
-void read_(uint32_t*direccion , int size ){
+void read_(uint32_t direccion , int size ){
     t_paquete * paquete;
 
     paquete = crear_paquete(READ_MEM); //Falta hacer al traduccion
@@ -195,7 +203,7 @@ void read_(uint32_t*direccion , int size ){
     enviar_paquete(paquete, socket_dispatch);
     //paquete enviado
 
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Read ”:",pid);
+    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Read DIR = %d TAM = %d”:",pid,(int *)direccion,size);
 
 };
 void  noop(){
@@ -259,4 +267,15 @@ void dump_memory(){
 };
 void exit_(){
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: EXIT ”:",pid);
+};
+
+
+void MMU(uint32_t direccion){
+    
+};
+
+
+uint32_t TLB(uint32_t  Direccion){
+    int * tabla = (int *) malloc(sizeof(uint32_t) * estradas_tlb);
+    return 0;
 };

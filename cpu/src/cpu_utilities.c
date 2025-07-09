@@ -13,6 +13,14 @@ char * puerto_memoria;
 char * ip_kernel;
 char * ip_memoria;
 
+int estradas_tlb;
+char * remplazo_tlb;
+
+int entradas_cache;
+char * remplazo_cache;
+int retrardo_cache;
+
+
 void inicializarCpu(char *nombreCpuLog){
     char * NewnombreCpuLog = (char*) malloc(strlen(nombreCpuLog)+16);
     sprintf(NewnombreCpuLog,"%s.log", nombreCpuLog); // FIJARSE QUE NO TENGA MEMORY LEAKS
@@ -27,13 +35,15 @@ void inicializarCpu(char *nombreCpuLog){
     pthread_t tid_conexion_kernel;
     pthread_t tid_conexion_memoria;
     pthread_t tid_ciclo_inst;
+    
+    
+    pthread_create(&tid_conexion_memoria, NULL, conexion_cliente_memoria, NULL);
+    pthread_join(tid_conexion_memoria, NULL);
+    pthread_create(&tid_conexion_kernel, NULL, conexion_cliente_kernel, NULL);
+    pthread_join(tid_conexion_kernel, NULL);
+    
     pthread_create(&tid_ciclo_inst, NULL, ciclo_instruccion, NULL);
     pthread_join(tid_ciclo_inst, NULL);
-
-    pthread_create(&tid_conexion_kernel, NULL, conexion_cliente_kernel, NULL);
-    pthread_create(&tid_conexion_memoria, NULL, conexion_cliente_memoria, NULL);
-    pthread_join(tid_conexion_kernel, NULL);
-    pthread_join(tid_conexion_memoria, NULL);
 
 }
 void levantarConfig(){
@@ -46,6 +56,13 @@ void levantarConfig(){
     puerto_dispatch = config_get_string_value(config, "PUERTO_KERNEL_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_KERNEL_INTERRUPT");
     puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
+
+    estradas_tlb = config_get_int_value(config, "ENTRADAS_TLB");
+    // remplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
+
+    // entradas_cache = config_get_int_value(config, "ENTRADAS_CACHE");
+    // remplazo_cache = config_get_string_value(config, "REEMPLAZO_CACHE");
+    // retrardo_cache= config_get_int_value(config, "RETARDO_CACHE");
 
 }
 void *conexion_cliente_kernel(void *args){
