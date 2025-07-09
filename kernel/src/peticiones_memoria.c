@@ -50,6 +50,7 @@ void *peticion_kernel(void *args) {
             send_protocolo = crear_paquete(PROCESS_CREATE_MEM);
             agregar_a_paquete(send_protocolo, &proceso->pid, sizeof(proceso->pid));
             agregar_a_paquete(send_protocolo, &proceso->memoria_necesaria, sizeof(proceso->memoria_necesaria));
+            agregar_a_paquete(send_protocolo, proceso->path_instrucciones, strlen(proceso->path_instrucciones)+1);
 			log_debug(logger, "Se envió la peticion de PROCESS CREATE del PID: %d Tamaño: %d", proceso->pid, proceso->memoria_necesaria);
             enviar_paquete(send_protocolo, socket);
             op = recibir_paquete_ok(socket);

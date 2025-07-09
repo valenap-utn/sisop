@@ -25,8 +25,6 @@ void inicializarCpu(char *nombreCpuLog){
     char * NewnombreCpuLog = (char*) malloc(strlen(nombreCpuLog)+16);
     sprintf(NewnombreCpuLog,"%s.log", nombreCpuLog); // FIJARSE QUE NO TENGA MEMORY LEAKS
 
-    sprintf(NewnombreCpuLog,"%s.log", nombreCpuLog); // FIJARSE QUE NO TENGA MEMORY LEAKS
-
     config = config_create("./cpu.config");
     levantarConfig();
 

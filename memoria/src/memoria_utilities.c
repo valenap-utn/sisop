@@ -402,28 +402,27 @@ void peticion_kernel(int socket_kernel){
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
 
         int pid;
+        char *nombreArchivo;
 
         switch(peticion){
             case PROCESS_CREATE_MEM:
             {
                 int tamanio;
 
-                t_paquete* paquete_send;
                 paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
                 tamanio = *(int *)list_remove(paquete_recv,0); 
+                nombreArchivo = (char *)list_remove(paquete_recv,0); 
 
                 if(hay_espacio_en_mem(tamanio)){
-                    if(inicializar_proceso(pid,tamanio) == 0){
-                        paquete_send = crear_paquete_ok();
-                        enviar_paquete(paquete_send,socket_kernel);
+                    if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){
+                        enviar_paquete_ok(socket_kernel);
                         log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
                     } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
                 } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
 
                 log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>",pid,tamanio);
 
-                eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free);
             }
             break;
@@ -658,10 +657,10 @@ void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual)
 
 /* ------- + PROPUESTA by valucha ------- */
 
-int inicializar_proceso(int pid, int tamanio){
+int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
     int paginas_necesarias = (tamanio + tam_pagina - 1) / tam_pagina;
 
-    if(contar_marcos_libres() < paginas_necesarias) return -1;
+    if (contar_marcos_libres() < paginas_necesarias) return -1;
 
     t_tabla_proceso* nueva_tabla = malloc(sizeof(t_tabla_proceso));
     nueva_tabla->pid = pid;
@@ -673,19 +672,21 @@ int inicializar_proceso(int pid, int tamanio){
         free(nueva_tabla);
         return -1;
     }
-
-    nueva_tabla->instrucciones = cargar_instrucciones_desde_archivo(path_instrucciones);
-    if(nueva_tabla->instrucciones == NULL){
-        log_error(logger,"Error al cargar instrucciones del proceso %d", pid);
+    char *path_completo = malloc(strlen(path_instrucciones) + strlen(nombreArchivo) + 1);
+    strcat(path_completo,path_instrucciones);
+    strcat(path_completo,nombreArchivo);
+    nueva_tabla->instrucciones = cargar_instrucciones_desde_archivo(path_completo);
+    if (nueva_tabla->instrucciones == NULL) {
+        log_error(logger, "Error al cargar instrucciones del proceso %d", pid);
         liberar_tabla_principal(nueva_tabla->tabla_principal);
         free(nueva_tabla);
         return -1;
     }
 
     list_add(memoria_principal->tablas_por_proceso, nueva_tabla);
-
     return 0;
 }
+
 
 //BITMAP
 

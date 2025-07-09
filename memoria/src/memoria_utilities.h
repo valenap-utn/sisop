@@ -31,7 +31,7 @@ int cargar_archivo(int pid);
 void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual);
 void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual);
 
-int inicializar_proceso(int pid, int tamanio);
+int inicializar_proceso(int pid, int tamanio, char* nombreArchivo);
 
 //BITMAP
 int contar_marcos_libres();
