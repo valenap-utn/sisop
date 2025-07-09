@@ -91,14 +91,13 @@ void * dump_mem_waiter(void *args){
         encolar_cola_generico(lista_procesos_ready, peticion->proceso, -1);
         cambiar_estado(peticion->proceso, READY);
         log_debug(logger, "Dump completado, finalizando thread auxiliar y enviando proceso %d a ready", peticion->proceso->pid);
-        return;
     }else{
         PROCESS_EXIT(peticion->proceso);
         log_debug(logger, "El DUMP fallo, finalizando proceso %d", peticion->proceso->pid);
     }
     liberar_peticion_memoria(peticion);
 
-    return;
+    return (void*) EXIT_SUCCESS;
 }
 
 void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {

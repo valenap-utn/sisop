@@ -4,6 +4,7 @@ extern t_log *logger;
 extern t_config *config;
 extern t_log_level current_log_level;
 char * puerto_cpu;
+char * puerto_kernel;
 extern list_struct_t *lista_sockets_cpu;
 char* path_instrucciones;
 int tam_memoria;
@@ -47,6 +48,7 @@ void inicializarMemoria(){
 
 void levantarConfig(){
     puerto_cpu = config_get_string_value(config, "PUERTO_ESCUCHA_CPU");
+    puerto_kernel = config_get_string_value(config, "PUERTO_ESCUCHA_KERNEL");
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
     printf("%d", current_log_level);
@@ -105,13 +107,43 @@ void *conexion_server_cpu(void *args) {
         //MANEJA LAS INSTRUCCIONES
         // cpu(socket_nuevo);(void*)socket_nuevo
         //pthread_create();
-        sleep(0.5);
+        socket_nuevo = malloc(sizeof(int));
     }
     
     
 
     close(*socket_nuevo);
     close(server_cpu);
+    pthread_exit(NULL);
+}
+
+
+void *conexion_server_kernel(void *args) {
+    
+    int server_kernel = iniciar_servidor(puerto_kernel);
+
+    int socket_nuevo;
+    pthread_t tid_kernel;
+
+
+    log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente kernel..", puerto_kernel);
+    while ((socket_nuevo = esperar_cliente(server_kernel))){
+        
+        // será error del cliente?
+        if (socket_nuevo == -1) {
+            log_error(logger, "Fallo al aceptar conexión del cliente KERNEL");
+            close(server_kernel);
+            pthread_exit(NULL);
+        }
+
+        peticion_kernel(socket_nuevo);
+       
+    }
+    
+    
+
+    close(socket_nuevo);
+    close(server_kernel);
     pthread_exit(NULL);
 }
 
@@ -352,15 +384,14 @@ void * cpu(void* args){
     }
 }
 
-void * kernel(void* args){
+void peticion_kernel(int socket_kernel){
     //hanshake
 
-    int conexion = *(int *)args;
     comu_kernel peticion;
     t_list *paquete_recv;
 
     while(1){
-        peticion = recibir_operacion(conexion);
+        peticion = recibir_operacion(socket_kernel);
 
         //retardo para peticiones 
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
@@ -373,14 +404,14 @@ void * kernel(void* args){
                 int tamanio;
 
                 t_paquete* paquete_send;
-                paquete_recv = recibir_paquete(conexion);
+                paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
                 tamanio = *(int *)list_remove(paquete_recv,0); 
 
                 if(hay_espacio_en_mem(tamanio)){
                     if(inicializar_proceso(pid,tamanio) == 0){
                         paquete_send = crear_paquete_ok();
-                        enviar_paquete(paquete_send,conexion);
+                        enviar_paquete(paquete_send,socket_kernel);
                         eliminar_paquete(paquete_send);
                         log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
                     } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
@@ -395,7 +426,7 @@ void * kernel(void* args){
 
             case SUSPENDER_PROCESO:
                 // t_paquete* paquete_send_suspencion_proceso;
-                paquete_recv = recibir_paquete(conexion);
+                paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
 
                 //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
@@ -407,7 +438,7 @@ void * kernel(void* args){
 
             case DESSUPENDER_PROCESO:
                 // t_paquete* paquete_send_dessuspencion_proceso;
-                paquete_recv = recibir_paquete(conexion);
+                paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
 
                 //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
@@ -429,7 +460,7 @@ void * kernel(void* args){
 //Sería así la funcion para calcular el espacio en memoria ?
 int hay_espacio_en_mem(int tamanio_proceso) {
     int paginas_necesarias = (tamanio_proceso + tam_pagina - 1) / tam_pagina;
-    int marcos_libres = contar_marcos_libres(memoria_principal);
+    int marcos_libres = contar_marcos_libres();
 
     return (paginas_necesarias <= marcos_libres);
 }

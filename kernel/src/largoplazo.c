@@ -157,8 +157,8 @@ void esperar_prioridad_susp_ready(){
     pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
     if (!lista_vacia){
         esperar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
-        return true;
-    }else return false;
+        return;
+    }
 }
 /// @brief idem esperar_prioridad_susp_ready pero no espera 
 /// @return true si hay algo en la cola

@@ -13,7 +13,7 @@ void * medianoplazo(void * args){
     PCB * pcb;
     //proceso llega a cola susp_ready
     while(true){
-        sem_wait(lista_procesos_susp_ready);
+        sem_wait(lista_procesos_susp_ready->sem);
         
         pcb = desencolar_generico(lista_procesos_susp_ready, 0);
         

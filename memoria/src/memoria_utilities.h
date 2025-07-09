@@ -13,11 +13,13 @@ void inicializar_mem_prin();
 
 void *conexion_server_cpu(void *args);
 
+void *conexion_server_kernel(void *args);
+
 void inicializarListasMemoria();
 
 void *cpu(void* conexion);
 
-void *kernel(void* conexion);
+void peticion_kernel(int socket_kernel);
 
 int hay_espacio_en_mem(int tamanio_proceso);
 t_list* cargar_instrucciones_desde_archivo(char* path_instrucciones);

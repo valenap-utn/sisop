@@ -1,13 +1,9 @@
 #ifndef KERNEL_UTILITIES_
 #define KERNEL_UTILITIES_
 
-
 #include <kernel.h>
 #include <utils/utils.h>
-#include <largoplazo.h>
-#include <cortoplazo.h>
 #include <pcb.h>
-#include <peticiones_io.h>
 
 //elemento de la lista de peticiones para Kernel Largo plazo
 typedef struct 
@@ -35,6 +31,12 @@ typedef struct
     t_peticion_memoria *peticion;
 
 }t_args_peticion_memoria;
+
+#include <largoplazo.h>
+#include <cortoplazo.h>
+#include <peticiones_io.h>
+#include <peticiones_memoria.h>
+
 
 
 void inicializarKernel();

@@ -3,6 +3,7 @@
 
 #include <kernel.h>
 #include <kernel_utilities.h>
+#include <peticiones_memoria.h>
 #include <pcb.h>
 
 

@@ -72,7 +72,7 @@ void * thread_io(void * args){
 
         paquete_send = crear_paquete(DORMIR_IO);
         agregar_a_paquete(paquete_send, &proceso_aux->pid, sizeof(int));
-        agregar_a_paquete(paquete_send, elemento_cola->tiempo, sizeof(int));
+        agregar_a_paquete(paquete_send, &elemento_cola->tiempo, sizeof(int));
 
         enviar_paquete(paquete_send, socket_io->socket);
 
@@ -97,7 +97,7 @@ void * thread_io(void * args){
             pthread_mutex_lock(lista_sockets_io->mutex);
             list_remove_element(lista_sockets_io->lista, socket_io);
             pthread_mutex_unlock(lista_sockets_io->mutex);
-            return;
+            return (void *)EXIT_FAILURE;
         }else{
             log_info(logger, "## (PID: %d) finalizó IO y pasa a READY", proceso_aux->pid);
             
@@ -181,7 +181,7 @@ elemento_cola_blocked_io * desencolar_cola_blocked(list_struct_t *cola){
     elemento_cola_blocked_io *elem;
     pthread_mutex_lock(cola->mutex);
 
-    elem = list_remove(cola, 0);
+    elem = list_remove(cola->lista, 0);
 
     pthread_mutex_unlock(cola->mutex);
 
@@ -191,7 +191,7 @@ void encolar_cola_blocked(list_struct_t *cola, elemento_cola_blocked_io *elem){
 
     pthread_mutex_lock(cola->mutex);
 
-    list_add_in_index(cola, elem, -1);
+    list_add_in_index(cola->lista, -1, elem);
 
     pthread_mutex_unlock(cola->mutex);
 }
