@@ -40,9 +40,14 @@ void inicializarMemoria(){
     inicializar_mem_prin();
 
     pthread_t tid_cpu;
+    pthread_t tid_kernel;
+    
     pthread_create(&tid_cpu, NULL, conexion_server_cpu, NULL);
+    pthread_create(&tid_kernel, NULL, conexion_server_kernel, NULL);
+    
     
     pthread_join(tid_cpu, NULL);
+    pthread_join(tid_kernel, NULL);
     // pthread_join(tid_cpu, NULL);
 }
 
@@ -387,7 +392,7 @@ void * cpu(void* args){
 void peticion_kernel(int socket_kernel){
     //hanshake
 
-    comu_kernel peticion;
+    protocolo_socket peticion;
     t_list *paquete_recv;
 
     while(1){
@@ -399,7 +404,7 @@ void peticion_kernel(int socket_kernel){
         int pid;
 
         switch(peticion){
-            case INICIALIZAR_PROCESO:
+            case PROCESS_CREATE_MEM:
             {
                 int tamanio;
 
@@ -412,7 +417,6 @@ void peticion_kernel(int socket_kernel){
                     if(inicializar_proceso(pid,tamanio) == 0){
                         paquete_send = crear_paquete_ok();
                         enviar_paquete(paquete_send,socket_kernel);
-                        eliminar_paquete(paquete_send);
                         log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
                     } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
                 } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
@@ -424,7 +428,7 @@ void peticion_kernel(int socket_kernel){
             }
             break;
 
-            case SUSPENDER_PROCESO:
+            case SUSP_MEM:
                 // t_paquete* paquete_send_suspencion_proceso;
                 paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
@@ -436,7 +440,7 @@ void peticion_kernel(int socket_kernel){
                 list_destroy_and_destroy_elements(paquete_recv,free);
             break;
 
-            case DESSUPENDER_PROCESO:
+            case UNSUSPEND_MEM:
                 // t_paquete* paquete_send_dessuspencion_proceso;
                 paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
@@ -449,7 +453,7 @@ void peticion_kernel(int socket_kernel){
                 //responder con un OK
             break;
 
-            case FINALIZAR_PROCESO:
+            case PROCESS_EXIT_MEM:
             break;
             default: log_warning(logger,"Petición %d desconocida",peticion);
             break;

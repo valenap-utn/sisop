@@ -40,6 +40,8 @@ t_log_level current_log_level;
 char * puerto_dispatch;
 char * puerto_interrupt;
 char * puerto_io;
+char * puerto_memoria;
+char * ip_memoria;
 int tiempo_suspension;
 enum_algoritmo_largoPlazo algoritmo_largoPlazo;
 
@@ -66,6 +68,8 @@ void levantarConfig(){
     puerto_dispatch = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
     puerto_io = config_get_string_value(config, "PUERTO_ESCUCHA_IO");
+    puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
+    ip_memoria = config_get_string_value(config, "IP_MEMORIA");
     char * alg_largoplazo_temp;
     alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_COLA_NEW");
     algoritmo_largoPlazo = alg_largoPlazo_from_string(alg_largoplazo_temp);

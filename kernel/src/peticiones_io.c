@@ -199,6 +199,7 @@ void * timer_suspend(void * args){
     PCB * pcb = args;
 
     PCB *pcb_aux;
+    t_peticion_memoria * peticion;
     
     usleep(tiempo_suspension*1000);
 
@@ -211,6 +212,9 @@ void * timer_suspend(void * args){
             //pcb sigue en block
             list_iterator_remove(iterator);
             encolar_cola_generico(lista_procesos_susp_block, pcb_aux, -1);
+            peticion->proceso = pcb_aux;
+            peticion->tipo = SUSP_MEM;
+            encolarPeticionMemoria(peticion);
             break;
         }
     }

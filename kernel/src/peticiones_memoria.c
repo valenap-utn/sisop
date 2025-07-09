@@ -1,6 +1,8 @@
 #include <peticiones_memoria.h>
 
 extern list_struct_t * lista_peticiones_memoria_pendientes;
+extern char * ip_memoria;
+extern char * puerto_memoria;
 
 
 /// @brief Es necesario enviar una peticion a la lista de peticiones, y esperar a que postee el semaforo interno de la peticion. Despues, leer el bool de respuesta_exitosa. Importante recordar de liberar la peticion al recibir la respuesta
@@ -9,7 +11,6 @@ extern list_struct_t * lista_peticiones_memoria_pendientes;
 void *administrador_peticiones_memoria(void* arg_server){
 	t_peticion_memoria *peticion;
 	t_args_peticion_memoria *args_peticion = malloc(sizeof(t_args_peticion_memoria));
-	argumentos_thread * args = arg_server;
 	pthread_t aux_thread;
     int socket_memoria = -1;
 	
@@ -17,7 +18,7 @@ void *administrador_peticiones_memoria(void* arg_server){
 		sem_wait(lista_peticiones_memoria_pendientes->sem);
 		peticion = desencolarPeticionMemoria();
 		do{
-			socket_memoria = crear_conexion(args->ip, args->puerto);
+			socket_memoria = crear_conexion(ip_memoria, puerto_memoria);
 			sleep(1);
 
 		}while(socket_memoria == -1);

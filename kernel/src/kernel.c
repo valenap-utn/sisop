@@ -32,6 +32,7 @@ int main(int argc, char* argv[]) {
     pthread_t tid_server_mh_cpu;
     pthread_t tid_server_mh_io;
     pthread_t tid_largoplazo;
+    pthread_t tid_peticiones_memoria;
     
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
@@ -40,6 +41,9 @@ int main(int argc, char* argv[]) {
     //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
     // Al final, lo manejamos con el flag_all_start y las funciones de esperar y destrabar
     pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
+    pthread_create(&tid_peticiones_memoria, NULL, administrador_peticiones_memoria, NULL);
+    
+    
     
     //enter to continue:
     char buffer[2];
@@ -60,6 +64,7 @@ int main(int argc, char* argv[]) {
     pthread_join(tid_server_mh_cpu, NULL);
     pthread_join(tid_server_mh_io, NULL);
     pthread_join(tid_largoplazo, NULL);
+    pthread_join(tid_peticiones_memoria, NULL);    
 
     return 0;
 }
