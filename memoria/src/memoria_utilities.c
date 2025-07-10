@@ -128,7 +128,7 @@ void *conexion_server_kernel(void *args) {
     int server_kernel = iniciar_servidor(puerto_kernel);
 
     int socket_nuevo;
-    pthread_t tid_kernel;
+    // pthread_t tid_kernel;
 
 
     log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente kernel..", puerto_kernel);
@@ -416,7 +416,12 @@ void peticion_kernel(int socket_kernel){
 
                 if(hay_espacio_en_mem(tamanio)){
                     if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){
-                        enviar_paquete_ok(socket_kernel);
+
+                        // enviar_paquete_ok(socket_kernel);
+
+                        t_paquete* paquete_send = crear_paquete_ok();
+                        enviar_paquete(paquete_send,socket_kernel);
+
                         log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
                     } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
                 } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
@@ -918,7 +923,7 @@ void finalizar_proceso(int pid){
 
     eliminar_de_lista_por_criterio(pid,memoria_principal->metadata_swap,criterio_para_swap,free); //libera swap
 
-    eliminar_de_lista_por_criterio(pid,memoria_principal->tablas_por_proceso,criterio_para_tabla,free); //libera tabla 
+    eliminar_de_lista_por_criterio(pid,memoria_principal->tablas_por_proceso,criterio_para_proceso,free); //libera proceso
 
     log_info(logger,"## PID: <%d> - Proceso finalizado y recursos liberados",pid);
 }
@@ -940,7 +945,7 @@ bool criterio_para_swap(void* elemento, int pid){
     return buscado->pid == pid;
 }
 
-bool criterio_para_tabla(void* elemento, int pid){
+bool criterio_para_proceso(void* elemento, int pid){
     t_tabla_proceso* buscado = (t_tabla_proceso*) elemento;
     return buscado->pid == pid;
 }

@@ -54,10 +54,9 @@ void marcar_marco_en_tabla(Tabla_Principal* proceso,int nro_pagina_logica,int ma
 
 void finalizar_proceso(int pid);
 
-// void acceder_a_espacio_usuario();
-// void leer_pagina_completa();
-// void actualizar_pagina_completa();
-// void memory_dump();
+void eliminar_de_lista_por_criterio(int pid, t_list* lista, bool(*criterio)(void *,int), void(*destructor)(void*));
+bool criterio_para_swap(void* elemento,int pid);
+bool criterio_para_proceso(void* elemento, int pid);
 
 
 #endif
