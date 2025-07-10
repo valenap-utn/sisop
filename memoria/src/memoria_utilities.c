@@ -599,25 +599,10 @@ int cargar_archivo(int pid){
     }
 
     log_info(logger, "## PID: <%d> - Memory Dump solicitado en %s", pid, ruta_completa);
-
-    // esta parte del enunciado me queda retumbando en la cabeza:
-    // crear un nuevo archivo con el TAMANIO TOTAL de 
-    // la memoria reservada por el proceso
-    // y debe escribir en dicho archivo todo el contenido 
-    // actual de la memoria del mismo
-
-    //existe algo para obtener el contenido en memoria? y tamanio? osea tipo el largo del proceso,
-    //no se si me explico bien, si podemos obtener eso ya creo que estamos, y lo armamos tipo tabla 
-
-    //lo cargamos como texto plano
-
-    //PID? | TAMANIO TOTAL de memoria reservada | contenido de memoria
     
     // Realizar dump
     Tabla_Nivel** niveles = proceso->tabla_principal->niveles;
     
-
-
     dump_tabla_nivel_completo(f, niveles, 1);
 
     // Limpieza
@@ -626,23 +611,6 @@ int cargar_archivo(int pid){
     free(ruta_completa);
 
     return 0;
-}
-
-
-void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual){ //recorre recursivamente los niveles y guarda el contenido de marcos presentes
-    for(int i = 0 ; i < entradas_por_tabla ; i++){
-        Tabla_Nivel* entrada = niveles[i];
-        if(entrada == NULL) continue;
-
-        if(entrada->es_ultimo_nivel){
-            if(entrada->esta_presente && entrada->marco != -1){
-                int offset = entrada->marco * tam_pagina;
-                fwrite((char*)memoria_principal->espacio + offset, 1, tam_pagina,f);
-            }
-        }else{
-            dump_tabla_nivel(f,entrada->sgte_nivel,nivel_actual+1);
-        }
-    }
 }
 
 //Guarda TODAS las páginas reservadas del proceso, incluso si la 

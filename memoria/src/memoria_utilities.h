@@ -28,7 +28,6 @@ struct t_tabla_proceso* buscar_proceso_por_pid(int pid);
 int acceder_a_tdp(int pid, int* indices_por_nivel);
 
 int cargar_archivo(int pid);
-void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual);
 void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual);
 
 int inicializar_proceso(int pid, int tamanio, char* nombreArchivo);
