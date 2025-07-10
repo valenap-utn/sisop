@@ -976,14 +976,29 @@ void marcar_marco_en_tabla(Tabla_Principal* tabla,int nro_pagina_logica,int marc
     int indices[cant_niveles];
     obtener_indices_por_nivel(nro_pagina_logica, indices); // Descompongo num. de pag. lógica en índices por nivel
 
+    //chequeo que existe el primer nivel
+    if(tabla->niveles[indices[0]] == NULL){
+        tabla->niveles[indices[0]] = crear_tabla_nivel(2,indices[0]);
+        if(tabla->niveles[indices[0]]==NULL){
+            log_error(logger,"Error al crear el nivel 2 de la tabla");
+            return;
+        }
+    }
+
     Tabla_Nivel* actual = tabla->niveles[indices[0]];
     for(int i = 1; i < cant_niveles; i++){
-        if(!actual){
-            actual = crear_tabla_nivel(i+1, indices[i]);
+        if(actual->sgte_nivel == NULL){
+            actual->sgte_nivel = malloc(sizeof(Tabla_Nivel*) * entradas_por_tabla);
+            for(int j = 0; j < entradas_por_tabla; j++){
+                actual->sgte_nivel[j] = NULL;
+            }
         }
-        if(!actual->sgte_nivel[indices[i]]){
-            actual->sgte_nivel[indices[i]] = crear_tabla_nivel(i+1, indices[i]);
+
+        if(actual->sgte_nivel[indices[i]]==NULL){
+            actual->sgte_nivel[indices[i]] = crear_tabla_nivel(2 + i, indices[i]);
+            if(!actual->sgte_nivel[indices[i]]) return;
         }
+
         actual = actual->sgte_nivel[indices[i]];
     }
 
