@@ -428,6 +428,7 @@ void peticion_kernel(int socket_kernel){
             break;
 
             case SUSP_MEM:
+            {
                 // t_paquete* paquete_send_suspencion_proceso;
                 paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
@@ -437,9 +438,11 @@ void peticion_kernel(int socket_kernel){
 
                 // eliminar_paquete(paquete_send_suspencion_proceso);
                 list_destroy_and_destroy_elements(paquete_recv,free);
+            }
             break;
 
             case UNSUSPEND_MEM:
+            {
                 // t_paquete* paquete_send_dessuspencion_proceso;
                 paquete_recv = recibir_paquete(socket_kernel);
                 pid = *(int *)list_remove(paquete_recv, 0);
@@ -450,9 +453,18 @@ void peticion_kernel(int socket_kernel){
                 // eliminar_paquete(paquete_send_dessuspencion_proceso);
                 list_destroy_and_destroy_elements(paquete_recv,free);
                 //responder con un OK
+            }
             break;
 
             case PROCESS_EXIT_MEM:
+            {
+                paquete_recv = recibir_paquete(socket_kernel);
+                pid = *(int*)list_remove(paquete_recv,0);
+
+                finalizar_proceso(pid);
+
+                list_destroy_and_destroy_elements(paquete_recv,free);
+            }
             break;
             default: log_warning(logger,"Petición %d desconocida",peticion);
             break;
@@ -684,6 +696,8 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
     }
 
     list_add(memoria_principal->tablas_por_proceso, nueva_tabla);
+
+    free(path_completo);
     return 0;
 }
 
@@ -883,7 +897,53 @@ void des_suspender_proceso(int pid){
     log_info(logger,"## PID: <%d> - Proceso des-suspendido desde SWAP", pid);
 }
 
+void finalizar_proceso(int pid){
+    t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
+    if(!proceso){
+        log_error(logger,"No se pudo encontrar al proceso con PID <%d>",pid);
+        return;
+    }
+
+    //Métricas 
+    log_info(logger,"## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>",pid,proceso->metricas.cant_accesos_tdp);
+    log_info(logger,"Inst.Sol.: <%d>",proceso->metricas.cant_instr_sol);
+    log_info(logger,"SWAP: <%d>",proceso->metricas.cant_bajadas_swap);
+    log_info(logger,"Mem.Prin.: <%d>",proceso->metricas.cant_subidas_memoria);
+    log_info(logger,"Lec.Mem.: <%d>",proceso->metricas.cant_lecturas);
+    log_info(logger,"Esc.Mem.: <%d>",proceso->metricas.cant_escrituras);
+
+    liberar_tabla_principal(proceso->tabla_principal);
+    
+    list_destroy_and_destroy_elements(proceso->instrucciones, free);
+
+    eliminar_de_lista_por_criterio(pid,memoria_principal->metadata_swap,criterio_para_swap,free); //libera swap
+
+    eliminar_de_lista_por_criterio(pid,memoria_principal->tablas_por_proceso,criterio_para_tabla,free); //libera tabla 
+
+    log_info(logger,"## PID: <%d> - Proceso finalizado y recursos liberados",pid);
+}
+
 //funciones auxiliares - swap
+
+void eliminar_de_lista_por_criterio(int pid, t_list* lista, bool (*criterio)(void*, int), void (*destructor)(void*)){
+    for(int i = 0; i < list_size(lista);i++){
+        void* buscado = list_get(lista,i);
+        if(criterio(buscado,pid)){
+            list_remove_and_destroy_element(lista,i,destructor);
+            break;
+        }
+    }
+}
+
+bool criterio_para_swap(void* elemento, int pid){
+    t_swap* buscado = (t_swap*)elemento;
+    return buscado->pid == pid;
+}
+
+bool criterio_para_tabla(void* elemento, int pid){
+    t_tabla_proceso* buscado = (t_tabla_proceso*) elemento;
+    return buscado->pid == pid;
+}
 
 void obtener_indices_por_nivel(int nro_pagina_logica, int* indices){
     for(int i = cant_niveles - 1; i >= 0; i--){
