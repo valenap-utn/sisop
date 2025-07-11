@@ -16,6 +16,7 @@ int pid;
 int pc;
 t_paquete * paquete_send;
 int conexion;
+bool pc_actualizado = false;
 
 //variables para MMU
 int tam_pag, cant_niv, entradas_x_tabla;
@@ -24,9 +25,12 @@ void* ciclo_instruccion(void * arg){
     char * instrSTR;
     instruccion_t instr;
         while ((1)){
-            instrSTR = Fetch();
-            instr = Decode(instrSTR);
-            Execute(instr);
+            // while (!flag_hay_interrupcion){
+                instrSTR = Fetch();
+                instr = Decode(instrSTR);
+                Execute(instr);
+                Actualizar_pc();
+            // }
             Check_Int();
         }
         return (void *)EXIT_SUCCESS;
@@ -161,10 +165,10 @@ void Execute(instruccion_t instr){
                 goto_(atoi(instr.data[0]));
             break;
             case WRITE_I:
-                write_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0])); // Falta poner los valores posta
+                write_(atoi(instr.data[1]) , atoi(instr.data[0]));
             break;
             case READ_I:
-                read_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0]));
+                read_(atoi(instr.data[1]) , atoi(instr.data[0]));
             break;
             //----- SYSCALLS
             case IO:
@@ -258,7 +262,9 @@ void noop(){
 };
 
 void goto_(int nuevo_pc){
+
     pc = nuevo_pc;
+    pc_actualizado = true;
     log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: GOTO :",pid);
 };
 
@@ -277,6 +283,13 @@ void exit_(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: EXIT ”:",pid);
 };
 
+void Actualizar_pc(){
+    if (pc_actualizado == false){
+        pc++;
+    } else{
+       pc_actualizado = false;
+    }
+};
 
 void recibir_valores_memoria(int socket_memoria){
     t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
@@ -343,6 +356,11 @@ int MMU(int dir_logica){
 
 
 int TLB(int Direccion){
-    int * tabla = (int *) malloc(sizeof(int) * estradas_tlb);
+    TLB_t * tabla = (TLB_t *) malloc(sizeof(TLB_t) * estradas_tlb);
+
+    for (int i = 0; i < sizeof(tabla); i++){
+        
+    }
+    
     return 0;
 };

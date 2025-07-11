@@ -20,6 +20,14 @@ typedef struct
 }
 instruccion_t;
 
+typedef struct
+{
+    int pagina;
+    int marco;
+
+}
+TLB_t;
+
 typedef enum {
     // Syscalls
     IO,
@@ -51,6 +59,9 @@ void Check_Int();
 int instrStringMap(char []);
 int MMU(int dir_logica);
 int TLB(int Direccion);
+int Cache_paginas(int Direccion);
+
 void * ciclo_instruccion(void *);
+void Actualizar_pc();
 
 #endif
