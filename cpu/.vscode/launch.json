@@ -31,7 +31,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/${workspaceFolderBasename}",
-      "args": ["Rodolfo1"],
+      "args": ["cpu1"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

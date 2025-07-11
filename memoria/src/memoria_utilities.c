@@ -161,7 +161,7 @@ void * cpu(void* args){
     //realizar handshake
 
     int conexion = *(int *)args;
-    comu_cpu peticion;
+    protocolo_socket peticion;
     t_list *paquete_recv;
 
     while(1){
@@ -174,6 +174,18 @@ void * cpu(void* args){
         int pc;
 
         switch(peticion){
+            case ENVIAR_VALORES:
+            {
+                t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
+                agregar_a_paquete(paquete_send,&tam_pagina,sizeof(int));
+                agregar_a_paquete(paquete_send, &cant_niveles, sizeof(int));
+                agregar_a_paquete(paquete_send, &entradas_por_tabla, sizeof(int));
+                
+                enviar_paquete(paquete_send,conexion);
+                eliminar_paquete(paquete_send);
+            }
+            break;
+
             case ACCEDER_A_TDP:
             {
                 t_paquete* paquete_send;
@@ -338,14 +350,6 @@ void * cpu(void* args){
                 list_destroy_and_destroy_elements(paquete_recv,free);
             }    
             break;
-
-            // case OBTENER_INSTRUCCION:
-            // {
-            //     t_paquete* paquete_send;
-            //     paquete_recv = recibir_paquete(conexion);
-            //     pid = *(int*)list_remove(paquete_recv,0);
-            // }
-            // break;
             
             //A CHEQUEAR que esté bien
             case PEDIR_INSTRUCCION:
@@ -416,9 +420,6 @@ void peticion_kernel(int socket_kernel){
 
                 if(hay_espacio_en_mem(tamanio)){
                     if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){
-
-                        // enviar_paquete_ok(socket_kernel);
-
                         t_paquete* paquete_send = crear_paquete_ok();
                         enviar_paquete(paquete_send,socket_kernel);
 
@@ -477,7 +478,7 @@ void peticion_kernel(int socket_kernel){
     }
 }
 
-//Sería así la funcion para calcular el espacio en memoria ?
+//funcion para calcular el espacio en memoria
 int hay_espacio_en_mem(int tamanio_proceso) {
     int paginas_necesarias = (tamanio_proceso + tam_pagina - 1) / tam_pagina;
     int marcos_libres = contar_marcos_libres();
@@ -640,7 +641,6 @@ void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual)
     }
 }
 
-/* ------- + PROPUESTA by valucha ------- */
 
 int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
     int paginas_necesarias = (tamanio + tam_pagina - 1) / tam_pagina;
@@ -703,7 +703,7 @@ void liberar_marco(int marco){
     }
 }
 
-/* ------- PROPUESTA by valucha para TDP ------- */
+/* ------- TDP ------- */
 
 struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina){
     Tabla_Nivel* tabla = malloc(sizeof(Tabla_Nivel));
@@ -782,7 +782,7 @@ void liberar_tabla_principal(Tabla_Principal* tabla){
     free(tabla);
 }
 
-/* ------- PROPUESTA para Manejo de SWAP ------- */
+/* ------- SWAP ------- */
 
 void suspender_proceso(int pid){
     t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
@@ -817,7 +817,7 @@ void suspender_proceso(int pid){
     list_add(memoria_principal->metadata_swap, nueva_entrada);
 
     fclose(f);
-
+    proceso->metricas.cant_bajadas_swap++;
     log_info(logger,"## PID: <%d> - Proceso suspendido, páginas guardadas en SWAP",pid);
 
 }
@@ -867,6 +867,7 @@ void des_suspender_proceso(int pid){
     }
     fclose(f);
     free(entrada);
+    proceso->metricas.cant_subidas_memoria++;
     log_info(logger,"## PID: <%d> - Proceso des-suspendido desde SWAP", pid);
 }
 

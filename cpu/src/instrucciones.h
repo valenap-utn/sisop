@@ -35,9 +35,9 @@ typedef enum {
 
 
 void noop();
-void write_(uint32_t , int );
-void read_(uint32_t , int );
-void goto_(int);
+void write_(int dir_logica , int datos);
+void read_(int dir_logica , int tamanio);
+void goto_(int nuevo_pc);
 void noop();
 void io();
 void init_proc();
@@ -45,12 +45,12 @@ void dump_memory();
 void exit_();
 
 char * Fetch();
-instruccion_t Decode(char *);
+instruccion_t Decode(char * instr);
 void Execute(instruccion_t);
 void Check_Int();
 int instrStringMap(char []);
-void MMU(uint32_t);
-uint32_t TLB(uint32_t);
+int MMU(int dir_logica);
+int TLB(int Direccion);
 void * ciclo_instruccion(void *);
 
 #endif

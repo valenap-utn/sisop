@@ -1,4 +1,5 @@
 #include <instrucciones.h>
+#include <math.h>
 #include "../../kernel/src/pcb.h"
 extern t_log *logger;
 
@@ -15,6 +16,9 @@ int pid;
 int pc;
 t_paquete * paquete_send;
 int conexion;
+
+//variables para MMU
+int tam_pag, cant_niv, entradas_x_tabla;
 
 void* ciclo_instruccion(void * arg){
     char * instrSTR;
@@ -160,7 +164,6 @@ void Execute(instruccion_t instr){
                 write_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0])); // Falta poner los valores posta
             break;
             case READ_I:
-
                 read_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0]));
             break;
             //----- SYSCALLS
@@ -189,93 +192,157 @@ void Check_Int(){
 
 };
 
-void write_(uint32_t direccion , int datos){
+void write_(int dir_logica , int datos){
+    uint32_t dir_fisica = MMU(dir_logica);
 
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Write DIR = %ls TAM = %d”: ",pid,direccion,datos);
-
-};
-void read_(uint32_t direccion , int size ){
-    t_paquete * paquete;
-
-    paquete = crear_paquete(READ_MEM); //Falta hacer al traduccion
-    agregar_a_paquete(paquete, &direccion, sizeof(uint32_t));
-    agregar_a_paquete(paquete, &size, sizeof(int));
-    enviar_paquete(paquete, socket_dispatch);
-    //paquete enviado
-
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Read DIR = %d TAM = %d”:",pid,(int *)direccion,size);
-
-};
-void  noop(){
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: NOOP ”:",pid);
-};
-
-void goto_(int direccion){
-    // buscar_pid();
-    pc = direccion;
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: GOTO ”:",pid);
-};
-
-// int buscar_pid(t_list lista, int pid){
-//     PCB * elemento;
-//     t_list_iterator * iterator = list_iterator_create(lista);
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
     
+    int tamanio = sizeof(int);
+    int tipo_de_acceso = 1; // 1 = escritura 
 
-//     while(list_iterator_has_next(iterator)){
-//         elemento = list_iterator_next(iterator);
-//         if(elemento->pid == pid){
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
+    agregar_a_paquete(paquete_send, &tamanio, sizeof(int));
+    agregar_a_paquete(paquete_send, &dir_fisica, sizeof(uint32_t)); //cambiar en memoria el tipo int -> uint32_t
+    agregar_a_paquete(paquete_send, &tipo_de_acceso, sizeof(int));
+    agregar_a_paquete(paquete_send, &datos, sizeof(int));
 
-//             elemento->pid = ;
-//             return list_iterator_index(iterator);
-//         }
-//     }
-//     list_iterator_destroy(iterator);
-//     return -1;
-// };
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    //Espera de OK
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != OK){
+        log_error(logger,"Memoria no confirmó escritura.");
+        return;
+    }
+
+
+    log_info(logger, "PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>",pid,dir_fisica,datos);
+
+};
+
+void read_(int dir_logica , int tamanio){
+    int dir_fisica = MMU(dir_logica);
+
+    t_paquete * paquete_send;
+
+    paquete_send = crear_paquete(READ_MEM); //Falta hacer al traduccion
+
+    int tipo_de_acceso = 0; // 0 = lectura
+
+    agregar_a_paquete(paquete_send, &pid,sizeof(int));
+    agregar_a_paquete(paquete_send, &tamanio, sizeof(int));
+    agregar_a_paquete(paquete_send, &dir_fisica, sizeof(int));
+    agregar_a_paquete(paquete_send, &tipo_de_acceso, sizeof(int));
+
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    //Recibir valor
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != DEVOLVER_VALOR){
+        log_error(logger,"No se pudo obtener el valor desde memoria");
+        return;
+    }
+
+    t_list* respuesta = recibir_paquete(socket_memoria);
+    int valor = *(int*)list_remove(respuesta,0);
+    list_destroy_and_destroy_elements(respuesta,free);
+
+    log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>",pid,dir_fisica,valor);
+
+};
+
+void noop(){
+    log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: NOOP :",pid);
+};
+
+void goto_(int nuevo_pc){
+    pc = nuevo_pc;
+    log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: GOTO :",pid);
+};
+
 
 //--- SYSCALLS
-void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo) 
-
-
+void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: IO ”:",pid);
-
 };
-void init_proc(char * Dispositivo, int tamanno){ //(Archivo de instrucciones, Tamaño)
-    
-
+void init_proc(char * Dispositivo, int tamanno){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: INIT_PROC ”:",pid);
 };
-void dump_memory(){
-    t_paquete * paquete;
-
-    // paquete = crear_paquete(MEMORY_DUMP);
-    // agregar_a_paquete(paquete, &direccion, sizeof(uint32_t));
-    // enviar_paquete(paquete, socket_dispatch);
-    // //paquete enviado
-
-    //respuesta
-
-    // cod_op = recibir_operacion(socket_conexion_memoria);
-    // t_list * paquete_recv;
-    // paquete_recv = recibir_paquete(socket_conexion_memoria);
-    // int dato = list_remove(paquete_recv, 0);
-    // int dato2 = list_remove(paquete_recv, 0);
-
-    // list_destroy(paquete_recv);
-
+void dump_memory(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: DUMP_MEMORY ”:",pid);
 };
-void exit_(){
+void exit_(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: EXIT ”:",pid);
 };
 
 
-void MMU(uint32_t direccion){
-    
+void recibir_valores_memoria(int socket_memoria){
+    t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != ENVIAR_VALORES){
+        log_error(logger,"Error al recibir valores desde memoria");
+        return;
+    }
+
+    t_list* paquete_recv = recibir_paquete(socket_memoria);
+
+    int* tam_pagina_ptr = list_remove(paquete_recv,0);
+    int* cant_niveles_ptr = list_remove(paquete_recv,0);
+    int* entradas_por_tabla_ptr = list_remove(paquete_recv,0);
+
+    tam_pag = *tam_pagina_ptr;
+    cant_niv = *cant_niveles_ptr;
+    entradas_x_tabla = *entradas_por_tabla_ptr;
+
+    free(tam_pagina_ptr);
+    free(cant_niveles_ptr);
+    free(entradas_por_tabla_ptr);
+    list_destroy(paquete_recv);
+}
+
+int MMU(int dir_logica){
+    int nro_pagina = dir_logica / tam_pag;
+    int offset = dir_logica % tam_pag;
+
+    //Calculamos indices por nivel
+    int* indices_por_nivel = malloc(sizeof(int) * cant_niv);
+    for(int i = 0; i < cant_niv; i++){
+        indices_por_nivel[i] = (nro_pagina / (int)pow(entradas_x_tabla,cant_niv - 1 - i)) % entradas_x_tabla;
+    }
+
+    //Armar paquete para pedir marco 
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_TDP);
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
+    for(int i = 0; i < cant_niv; i++){
+        agregar_a_paquete(paquete_send,&indices_por_nivel[i],sizeof(int));
+    }
+
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
+    free(indices_por_nivel);
+
+    //Esperar rta
+    t_paquete* paquete_recv = recibir_paquete(socket_memoria);
+    int marco = *(int*)list_remove(paquete_recv,0);
+    list_destroy_and_destroy_elements(paquete_recv,free);
+
+    if(marco == -1){
+        log_warning(logger,"Marco no presente para PID <%d>", pid);
+        return -1;
+    }
+
+    int dir_fisica = (marco * tam_pag + offset);
+
+    return dir_fisica;
 };
 
 
-uint32_t TLB(uint32_t  Direccion){
-    int * tabla = (int *) malloc(sizeof(uint32_t) * estradas_tlb);
+int TLB(int Direccion){
+    int * tabla = (int *) malloc(sizeof(int) * estradas_tlb);
     return 0;
 };
