@@ -1,28 +1,45 @@
 #include <instrucciones.h>
+#include <math.h>
 #include "../../kernel/src/pcb.h"
 extern t_log *logger;
 
 extern int socket_interrupt, socket_dispatch, socket_memoria;
 
-extern int estradas_tlb;
-extern char * remplazo_tlb;
+/* ------ TLB ------ */
+extern int entradas_tlb;
+extern char * reemplazo_tlb;
+TLB_t * TLB_tabla = *(TLB_t *) malloc((sizeof(TLB_t) * entradas_tlb));
+// TLB_tabla = { .ocuapdo = false, };
+int reloj_lru = 0;
+
+int cant_ocupada_TLB = 0;
+
+extern list_struct_t* tlb; //TLB con mutex
  
+/* ------ CACHÉ ------ */
 extern int entradas_cache;
-extern char * remplazo_cache;
+extern char * reemplazo_cache;
 extern int retrardo_cache;
 
 int pid;
 int pc;
 t_paquete * paquete_send;
 int conexion;
+bool pc_actualizado = false;
+
+//variables para MMU
+int tam_pag, cant_niv, entradas_x_tabla;
 
 void* ciclo_instruccion(void * arg){
     char * instrSTR;
     instruccion_t instr;
         while ((1)){
-            instrSTR = Fetch();
-            instr = Decode(instrSTR);
-            Execute(instr);
+            // while (!flag_hay_interrupcion){
+                instrSTR = Fetch();
+                instr = Decode(instrSTR);
+                Execute(instr);
+                Actualizar_pc();
+            // }
             Check_Int();
         }
         return (void *)EXIT_SUCCESS;
@@ -61,15 +78,6 @@ int instrStringMap(char opcodeStr []){
 char * Fetch(){ // Le pasa la intruccion completa 
     char * InstruccionCompleta = "NOOP"; // Para cambiar en el futuro por el valor posta
     
-    // t_list *paquete_recv;
-    
-    // t_paquete *paquete_send;
-
-    // paquete_recv = recibir_paquete(conexion);
-    // pid = *(int *)list_remove(paquete_recv, 0);
-    // pc = *(int *)list_remove(paquete_recv,0); //no entiendo muy bien como es esto...
-
-
     t_paquete* paquete_send = crear_paquete(PEDIR_INSTRUCCION);
     agregar_a_paquete(paquete_send, &pid, sizeof(int));
     agregar_a_paquete(paquete_send, &pc, sizeof(int));
@@ -77,23 +85,26 @@ char * Fetch(){ // Le pasa la intruccion completa
     enviar_paquete(paquete_send, conexion);
 
     //paquete enviado
+    log_info(logger,"## PID: %d PC: %d- FETCH ",pid,pc);
 
     //respuesta DEVOLVER_INSTRUCCION
-    protocolo_socket cod_op = recibir_operacion(socket_memoria); //
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
 
-    t_list * paquete_recv;
-    paquete_recv = recibir_paquete(socket_memoria);
+    if (cod_op == DEVOLVER_INSTRUCCION){
+        t_list * paquete_recv;
+        paquete_recv = recibir_paquete(socket_memoria);
 
-    int pid =  *(int *)list_remove(paquete_recv, 0);
-    int pc  =  *(int *)list_remove(paquete_recv, 0);
-    // etc
+        // int pid =  *(int *)list_remove(paquete_recv, 0);
+        // int pc  =  *(int *)list_remove(paquete_recv, 0);
+        InstruccionCompleta = *(char **)list_remove(paquete_recv, 0);
+        // etc
+        // list_destroy(paquete_recv);
+        
+        // eliminar_paquete(paquete_send);
+        list_destroy_and_destroy_elements(paquete_recv,free); 
+    };
     eliminar_paquete(paquete_send);
-    // list_destroy(paquete_recv);
-
-    // eliminar_paquete(paquete_send);
-    list_destroy_and_destroy_elements(paquete_recv,free); 
-
-    log_info(logger,"## PID: %d PC: %d- FETCH ",pid,pc);
+    
     return InstruccionCompleta ;
 };
 
@@ -157,11 +168,10 @@ void Execute(instruccion_t instr){
                 goto_(atoi(instr.data[0]));
             break;
             case WRITE_I:
-                write_((uint32_t)atoi(instr.data[1]) , atoi(instr.data[0])); // Falta poner los valores posta
+                write_(atoi(instr.data[1]) , atoi(instr.data[0]));
             break;
             case READ_I:
-
-                read_((uint32_t)atoi(instr.data[1]) , atoi(instr.data[0]));
+                read_(atoi(instr.data[1]) , atoi(instr.data[0]));
             break;
             //----- SYSCALLS
             case IO:
@@ -187,95 +197,269 @@ void Execute(instruccion_t instr){
 
 void Check_Int(){
 
-};
+    t_paquete* paquete_send = crear_paquete(DISPATCH__CPU); // Manarle a kernel. A Revisar
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
+    agregar_a_paquete(paquete_send, &pc, sizeof(int));
 
-void write_(uint32_t direccion , int datos){
+    enviar_paquete(paquete_send, conexion);
 
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Write DIR = %ls TAM = %d”: ",pid,direccion,datos);
-
-};
-void read_(uint32_t direccion , int size ){
-    t_paquete * paquete;
-
-    paquete = crear_paquete(READ_MEM); //Falta hacer al traduccion
-    agregar_a_paquete(paquete, &direccion, sizeof(uint32_t));
-    agregar_a_paquete(paquete, &size, sizeof(int));
-    enviar_paquete(paquete, socket_dispatch);
     //paquete enviado
 
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: Read DIR = %d TAM = %d”:",pid,(int *)direccion,size);
-
-};
-void  noop(){
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: NOOP ”:",pid);
-};
-
-void goto_(int direccion){
-    // buscar_pid();
-    pc = direccion;
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: GOTO ”:",pid);
-};
-
-// int buscar_pid(t_list lista, int pid){
-//     PCB * elemento;
-//     t_list_iterator * iterator = list_iterator_create(lista);
+    eliminar_paquete(paquete_send);
     
+    log_info(logger, "## Llega interrupción al puerto Interrupt");
 
-//     while(list_iterator_has_next(iterator)){
-//         elemento = list_iterator_next(iterator);
-//         if(elemento->pid == pid){
+};
 
-//             elemento->pid = ;
-//             return list_iterator_index(iterator);
-//         }
-//     }
-//     list_iterator_destroy(iterator);
-//     return -1;
-// };
+void write_(int dir_logica , int datos){
+    uint32_t dir_fisica = MMU(dir_logica);
+
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+    
+    int tamanio = sizeof(int);
+    int tipo_de_acceso = ESCRITURA_AC; // 1 = escritura 
+
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
+    agregar_a_paquete(paquete_send, &tamanio, sizeof(int));
+    agregar_a_paquete(paquete_send, &dir_fisica, sizeof(uint32_t)); //cambiar en memoria el tipo int -> uint32_t
+    agregar_a_paquete(paquete_send, &tipo_de_acceso, sizeof(int));
+    agregar_a_paquete(paquete_send, &datos, sizeof(int));
+
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    //Espera de OK
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != OK){
+        log_error(logger,"Memoria no confirmó escritura.");
+        return;
+    }
+
+
+    log_info(logger, "PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>",pid,dir_fisica,datos);
+
+};
+
+void read_(int dir_logica , int tamanio){
+    int dir_fisica = MMU(dir_logica);
+
+    t_paquete * paquete_send;
+
+    paquete_send = crear_paquete(READ_MEM); //Falta hacer al traduccion
+
+    int tipo_de_acceso = LECTURA_AC; // 0 = lectura
+
+    agregar_a_paquete(paquete_send, &pid,sizeof(int));
+    agregar_a_paquete(paquete_send, &tamanio, sizeof(int));
+    agregar_a_paquete(paquete_send, &dir_fisica, sizeof(int));
+    agregar_a_paquete(paquete_send, &tipo_de_acceso, sizeof(int));
+
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    //Recibir valor
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != DEVOLVER_VALOR){
+        log_error(logger,"No se pudo obtener el valor desde memoria");
+        return;
+    }
+
+    t_list* respuesta = recibir_paquete(socket_memoria);
+    int valor = *(int*)list_remove(respuesta,0);
+    list_destroy_and_destroy_elements(respuesta,free);
+
+    log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>",pid,dir_fisica,valor);
+
+};
+
+void noop(){
+    log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: NOOP :",pid);
+};
+
+void goto_(int nuevo_pc){
+
+    pc = nuevo_pc;
+    pc_actualizado = true;
+    log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: GOTO :",pid);
+};
+
 
 //--- SYSCALLS
-void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo) 
-
-
+void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: IO ”:",pid);
-
 };
-void init_proc(char * Dispositivo, int tamanno){ //(Archivo de instrucciones, Tamaño)
-    
-
+void init_proc(char * Dispositivo, int tamanno){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: INIT_PROC ”:",pid);
 };
-void dump_memory(){
-    t_paquete * paquete;
-
-    // paquete = crear_paquete(MEMORY_DUMP);
-    // agregar_a_paquete(paquete, &direccion, sizeof(uint32_t));
-    // enviar_paquete(paquete, socket_dispatch);
-    // //paquete enviado
-
-    //respuesta
-
-    // cod_op = recibir_operacion(socket_conexion_memoria);
-    // t_list * paquete_recv;
-    // paquete_recv = recibir_paquete(socket_conexion_memoria);
-    // int dato = list_remove(paquete_recv, 0);
-    // int dato2 = list_remove(paquete_recv, 0);
-
-    // list_destroy(paquete_recv);
-
+void dump_memory(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: DUMP_MEMORY ”:",pid);
 };
-void exit_(){
+void exit_(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: EXIT ”:",pid);
 };
 
-
-void MMU(uint32_t direccion){
-    
+void Actualizar_pc(){
+    if (pc_actualizado == false){
+        pc++;
+    } else{
+       pc_actualizado = false;
+    }
 };
 
+void recibir_valores_memoria(int socket_memoria){
+    t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
 
-uint32_t TLB(uint32_t  Direccion){
-    int * tabla = (int *) malloc(sizeof(uint32_t) * estradas_tlb);
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != ENVIAR_VALORES){
+        log_error(logger,"Error al recibir valores desde memoria");
+        return;
+    }
+
+    t_list* paquete_recv = recibir_paquete(socket_memoria);
+
+    int* tam_pagina_ptr = list_remove(paquete_recv,0);
+    int* cant_niveles_ptr = list_remove(paquete_recv,0);
+    int* entradas_por_tabla_ptr = list_remove(paquete_recv,0);
+
+    tam_pag = *tam_pagina_ptr;
+    cant_niv = *cant_niveles_ptr;
+    entradas_x_tabla = *entradas_por_tabla_ptr;
+
+    free(tam_pagina_ptr);
+    free(cant_niveles_ptr);
+    free(entradas_por_tabla_ptr);
+    list_destroy(paquete_recv);
+}
+
+int MMU(int dir_logica){
+    int nro_pagina = dir_logica / tam_pag;
+    int offset = dir_logica % tam_pag;
+
+    // 1. Consultar la TLB (si está habilitada)
+    if (entradas_tlb > 0) {
+        int marco = buscar_en_TLB(pid, nro_pagina);
+        if (marco != -1) {
+            log_info(logger, "TLB HIT - PID <%d> - Página <%d> - Marco <%d>", pid, nro_pagina, marco);
+            return marco * tam_pag + offset;
+        } else {
+            log_info(logger, "TLB MISS - PID <%d> - Página <%d>", pid, nro_pagina);
+        }
+    }
+
+    // 2. Calcular índices para acceso a TDP
+    int* indices = malloc(sizeof(int) * cant_niv);
+    int temp_pagina = nro_pagina;
+    for (int i = cant_niv - 1; i >= 0; i--) {
+        indices[i] = temp_pagina % entradas_x_tabla;
+        temp_pagina /= entradas_x_tabla;
+    }
+
+    // 3. Armar y enviar el paquete a memoria
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_TDP);
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
+    for (int i = 0; i < cant_niv; i++)
+        agregar_a_paquete(paquete_send, &indices[i], sizeof(int));
+
+    enviar_paquete(paquete_send, socket_memoria);
+    eliminar_paquete(paquete_send);
+    free(indices);
+
+    // 4. Recibir el marco
+    t_paquete* paquete_recv = recibir_paquete(socket_memoria);
+    int marco = *(int*)list_remove(paquete_recv, 0);
+    list_destroy_and_destroy_elements(paquete_recv, free);
+
+    if (marco == -1) {
+        log_error(logger, "No se pudo traducir dirección: marco no presente");
+        return -1;
+    }
+
+    // 5. Actualizar TLB
+    if (entradas_tlb > 0) {
+        actualizar_TLB(pid, nro_pagina, marco);
+    }
+
+    return marco * tam_pag + offset;
+}
+
+
+/* ------ TLB ------ */
+
+int TLB(int Direccion){
+    // TLB_t * tabla = (TLB_t *) malloc(sizeof(TLB_t) * entradas_tlb);
+
+    // for (int i = 0; i < sizeof(TLB_tabla); i++){
+        
+    // }
+
+    
+    buscar_en_tlb(pagina);
     return 0;
 };
+
+int buscar_en_tlb(int pagina_buscada){
+    // if(entradas_tlb == 0 || tlb == NULL)return -1; // No hay TLB
+
+    // pthread_mutex_lock(tlb->mutex);
+    // for(int i = 0; i < list_size(tlb->lista);i++){
+    //     TLB_t* entrada_tlb = list_get(tlb->lista,i);
+    //     if(entrada_tlb->pagina == pagina){
+    //         if(strcmp(reemplazo_tlb,"LRU") == 0){
+    //             entrada_tlb->timestamp = time(NULL); //actualizamos uso
+    //         }
+    //         int marco = entrada_tlb->marco;
+    //         pthread_mutex_unlock(tlb->mutex);
+    //         return marco; //TLB Hit
+    //     }
+    // }
+    // pthread_mutex_unlock(tlb->mutex);
+    // return -1; //TLB Miss
+
+    for (int i = 0; i < entradas_tlb; i++) {
+        if (TLB_tabla[i].ocupado && TLB_tabla[i].pagina == pagina_buscada) {
+            // TLB HIT
+            if (strcmp(reemplazo_tlb, "LRU") == 0)
+                TLB_tabla[i].timestamp = get_timestamp(); // actualizar uso
+            return TLB_tabla[i].marco;
+        }
+    }
+    return -1; // TLB MISS
+}
+void remplazar_TLB(){
+
+}
+
+void agregar_a_tlb(int pagina, int marco){
+    // Buscar espacio libre
+    for (int i = 0; i < entradas_tlb; i++) {
+        if (!TLB_tabla[i].ocupado) {
+            TLB_tabla[i].pagina = pagina;
+            TLB_tabla[i].marco = marco;
+            TLB_tabla[i].ocupado = true;
+            TLB_tabla[i].timestamp = get_timestamp();
+            return;
+        }
+    }
+
+    // Si no hay lugar, aplicar reemplazo
+    int victima = 0;
+    if (strcmp(reemplazo_tlb, "FIFO") == 0) {
+        victima = siguiente_fifo(); // mantenés un puntero o índice global
+    } else if (strcmp(reemplazo_tlb, "LRU") == 0) {
+        victima = buscar_mas_viejo(); // comparás timestamps
+    }
+
+    TLB_tabla[victima].pagina = pagina;
+    TLB_tabla[victima].marco = marco;
+    TLB_tabla[victima].ocupado = true;
+    TLB_tabla[victima].timestamp = get_timestamp();
+}
+
+
+int get_timestamp() {
+    return reloj_lru++;
+}
+
+/* ------ CACHÉ ------ */

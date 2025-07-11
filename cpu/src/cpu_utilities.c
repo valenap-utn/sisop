@@ -13,11 +13,16 @@ char * puerto_memoria;
 char * ip_kernel;
 char * ip_memoria;
 
-int estradas_tlb;
-char * remplazo_tlb;
 
+/* ------ TLB ------ */
+int entradas_tlb;
+char* reemplazo_tlb;
+list_struct_t* tlb = NULL;
+
+
+/* ------ CACHÉ ------ */
 int entradas_cache;
-char * remplazo_cache;
+char * reemplazo_cache;
 int retrardo_cache;
 
 
@@ -43,6 +48,11 @@ void inicializarCpu(char *nombreCpuLog){
     pthread_create(&tid_ciclo_inst, NULL, ciclo_instruccion, NULL);
     pthread_join(tid_ciclo_inst, NULL);
 
+    //TLB
+    if(entradas_tlb > 0){
+        tlb = inicializarLista();
+    }
+
 }
 void levantarConfig(){
 
@@ -55,11 +65,11 @@ void levantarConfig(){
     puerto_interrupt = config_get_string_value(config, "PUERTO_KERNEL_INTERRUPT");
     puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
 
-    estradas_tlb = config_get_int_value(config, "ENTRADAS_TLB");
-    // remplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
+    entradas_tlb = config_get_int_value(config, "ENTRADAS_TLB");
+    // reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
 
     // entradas_cache = config_get_int_value(config, "ENTRADAS_CACHE");
-    // remplazo_cache = config_get_string_value(config, "REEMPLAZO_CACHE");
+    // reemplazo_cache = config_get_string_value(config, "REEMPLAZO_CACHE");
     // retrardo_cache= config_get_int_value(config, "RETARDO_CACHE");
 
 }

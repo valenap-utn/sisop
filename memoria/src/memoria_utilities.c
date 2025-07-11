@@ -128,7 +128,7 @@ void *conexion_server_kernel(void *args) {
     int server_kernel = iniciar_servidor(puerto_kernel);
 
     int socket_nuevo;
-    pthread_t tid_kernel;
+    // pthread_t tid_kernel;
 
 
     log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente kernel..", puerto_kernel);
@@ -161,7 +161,7 @@ void * cpu(void* args){
     //realizar handshake
 
     int conexion = *(int *)args;
-    comu_cpu peticion;
+    protocolo_socket peticion;
     t_list *paquete_recv;
 
     while(1){
@@ -174,6 +174,18 @@ void * cpu(void* args){
         int pc;
 
         switch(peticion){
+            case ENVIAR_VALORES:
+            {
+                t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
+                agregar_a_paquete(paquete_send,&tam_pagina,sizeof(int));
+                agregar_a_paquete(paquete_send, &cant_niveles, sizeof(int));
+                agregar_a_paquete(paquete_send, &entradas_por_tabla, sizeof(int));
+                
+                enviar_paquete(paquete_send,conexion);
+                eliminar_paquete(paquete_send);
+            }
+            break;
+
             case ACCEDER_A_TDP:
             {
                 t_paquete* paquete_send;
@@ -338,14 +350,6 @@ void * cpu(void* args){
                 list_destroy_and_destroy_elements(paquete_recv,free);
             }    
             break;
-
-            // case OBTENER_INSTRUCCION:
-            // {
-            //     t_paquete* paquete_send;
-            //     paquete_recv = recibir_paquete(conexion);
-            //     pid = *(int*)list_remove(paquete_recv,0);
-            // }
-            // break;
             
             //A CHEQUEAR que esté bien
             case PEDIR_INSTRUCCION:
@@ -424,39 +428,52 @@ void peticion_kernel(int socket_kernel){
         }
         break;
 
-        case SUSP_MEM:
-            // t_paquete* paquete_send_suspencion_proceso;
-            paquete_recv = recibir_paquete(socket_kernel);
-            pid = *(int *)list_remove(paquete_recv, 0);
+            case SUSP_MEM:
+            {
+                // t_paquete* paquete_send_suspencion_proceso;
+                paquete_recv = recibir_paquete(socket_kernel);
+                pid = *(int *)list_remove(paquete_recv, 0);
 
             //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
             suspender_proceso(pid);
 
-            // eliminar_paquete(paquete_send_suspencion_proceso);
-            list_destroy_and_destroy_elements(paquete_recv,free);
-        break;
+                // eliminar_paquete(paquete_send_suspencion_proceso);
+                list_destroy_and_destroy_elements(paquete_recv,free);
+            }
+            break;
 
-        case UNSUSPEND_MEM:
-            // t_paquete* paquete_send_dessuspencion_proceso;
-            paquete_recv = recibir_paquete(socket_kernel);
-            pid = *(int *)list_remove(paquete_recv, 0);
+            case UNSUSPEND_MEM:
+            {
+                // t_paquete* paquete_send_dessuspencion_proceso;
+                paquete_recv = recibir_paquete(socket_kernel);
+                pid = *(int *)list_remove(paquete_recv, 0);
 
             //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
             des_suspender_proceso(pid);
 
-            // eliminar_paquete(paquete_send_dessuspencion_proceso);
-            list_destroy_and_destroy_elements(paquete_recv,free);
-            //responder con un OK
-        break;
+                // eliminar_paquete(paquete_send_dessuspencion_proceso);
+                list_destroy_and_destroy_elements(paquete_recv,free);
+                //responder con un OK
+            }
+            break;
 
-        case PROCESS_EXIT_MEM:
-        break;
-        default: log_warning(logger,"Petición %d desconocida",peticion);
-        break;
+            case PROCESS_EXIT_MEM:
+            {
+                paquete_recv = recibir_paquete(socket_kernel);
+                pid = *(int*)list_remove(paquete_recv,0);
+
+                finalizar_proceso(pid);
+
+                list_destroy_and_destroy_elements(paquete_recv,free);
+            }
+            break;
+            default: log_warning(logger,"Petición %d desconocida",peticion);
+            break;
+        }
     }
 }
 
-//Sería así la funcion para calcular el espacio en memoria ?
+//funcion para calcular el espacio en memoria
 int hay_espacio_en_mem(int tamanio_proceso) {
     int paginas_necesarias = (tamanio_proceso + tam_pagina - 1) / tam_pagina;
     int marcos_libres = contar_marcos_libres();
@@ -578,25 +595,10 @@ int cargar_archivo(int pid){
     }
 
     log_info(logger, "## PID: <%d> - Memory Dump solicitado en %s", pid, ruta_completa);
-
-    // esta parte del enunciado me queda retumbando en la cabeza:
-    // crear un nuevo archivo con el TAMANIO TOTAL de 
-    // la memoria reservada por el proceso
-    // y debe escribir en dicho archivo todo el contenido 
-    // actual de la memoria del mismo
-
-    //existe algo para obtener el contenido en memoria? y tamanio? osea tipo el largo del proceso,
-    //no se si me explico bien, si podemos obtener eso ya creo que estamos, y lo armamos tipo tabla 
-
-    //lo cargamos como texto plano
-
-    //PID? | TAMANIO TOTAL de memoria reservada | contenido de memoria
     
     // Realizar dump
     Tabla_Nivel** niveles = proceso->tabla_principal->niveles;
     
-
-
     dump_tabla_nivel_completo(f, niveles, 1);
 
     // Limpieza
@@ -605,23 +607,6 @@ int cargar_archivo(int pid){
     free(ruta_completa);
 
     return 0;
-}
-
-
-void dump_tabla_nivel(FILE* f, Tabla_Nivel** niveles, int nivel_actual){ //recorre recursivamente los niveles y guarda el contenido de marcos presentes
-    for(int i = 0 ; i < entradas_por_tabla ; i++){
-        Tabla_Nivel* entrada = niveles[i];
-        if(entrada == NULL) continue;
-
-        if(entrada->es_ultimo_nivel){
-            if(entrada->esta_presente && entrada->marco != -1){
-                int offset = entrada->marco * tam_pagina;
-                fwrite((char*)memoria_principal->espacio + offset, 1, tam_pagina,f);
-            }
-        }else{
-            dump_tabla_nivel(f,entrada->sgte_nivel,nivel_actual+1);
-        }
-    }
 }
 
 //Guarda TODAS las páginas reservadas del proceso, incluso si la 
@@ -651,7 +636,6 @@ void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual)
     }
 }
 
-/* ------- + PROPUESTA by valucha ------- */
 
 int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
     int paginas_necesarias = (tamanio + tam_pagina - 1) / tam_pagina;
@@ -680,6 +664,8 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
     }
 
     list_add(memoria_principal->tablas_por_proceso, nueva_tabla);
+
+    free(path_completo);
     return 0;
 }
 
@@ -712,7 +698,7 @@ void liberar_marco(int marco){
     }
 }
 
-/* ------- PROPUESTA by valucha para TDP ------- */
+/* ------- TDP ------- */
 
 struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina){
     Tabla_Nivel* tabla = malloc(sizeof(Tabla_Nivel));
@@ -791,7 +777,7 @@ void liberar_tabla_principal(Tabla_Principal* tabla){
     free(tabla);
 }
 
-/* ------- PROPUESTA para Manejo de SWAP ------- */
+/* ------- SWAP ------- */
 
 void suspender_proceso(int pid){
     t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
@@ -826,7 +812,7 @@ void suspender_proceso(int pid){
     list_add(memoria_principal->metadata_swap, nueva_entrada);
 
     fclose(f);
-
+    proceso->metricas.cant_bajadas_swap++;
     log_info(logger,"## PID: <%d> - Proceso suspendido, páginas guardadas en SWAP",pid);
 
 }
@@ -876,10 +862,57 @@ void des_suspender_proceso(int pid){
     }
     fclose(f);
     free(entrada);
+    proceso->metricas.cant_subidas_memoria++;
     log_info(logger,"## PID: <%d> - Proceso des-suspendido desde SWAP", pid);
 }
 
+void finalizar_proceso(int pid){
+    t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
+    if(!proceso){
+        log_error(logger,"No se pudo encontrar al proceso con PID <%d>",pid);
+        return;
+    }
+
+    //Métricas 
+    log_info(logger,"## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>",pid,proceso->metricas.cant_accesos_tdp);
+    log_info(logger,"Inst.Sol.: <%d>",proceso->metricas.cant_instr_sol);
+    log_info(logger,"SWAP: <%d>",proceso->metricas.cant_bajadas_swap);
+    log_info(logger,"Mem.Prin.: <%d>",proceso->metricas.cant_subidas_memoria);
+    log_info(logger,"Lec.Mem.: <%d>",proceso->metricas.cant_lecturas);
+    log_info(logger,"Esc.Mem.: <%d>",proceso->metricas.cant_escrituras);
+
+    liberar_tabla_principal(proceso->tabla_principal);
+    
+    list_destroy_and_destroy_elements(proceso->instrucciones, free);
+
+    eliminar_de_lista_por_criterio(pid,memoria_principal->metadata_swap,criterio_para_swap,free); //libera swap
+
+    eliminar_de_lista_por_criterio(pid,memoria_principal->tablas_por_proceso,criterio_para_proceso,free); //libera proceso
+
+    log_info(logger,"## PID: <%d> - Proceso finalizado y recursos liberados",pid);
+}
+
 //funciones auxiliares - swap
+
+void eliminar_de_lista_por_criterio(int pid, t_list* lista, bool (*criterio)(void*, int), void (*destructor)(void*)){
+    for(int i = 0; i < list_size(lista);i++){
+        void* buscado = list_get(lista,i);
+        if(criterio(buscado,pid)){
+            list_remove_and_destroy_element(lista,i,destructor);
+            break;
+        }
+    }
+}
+
+bool criterio_para_swap(void* elemento, int pid){
+    t_swap* buscado = (t_swap*)elemento;
+    return buscado->pid == pid;
+}
+
+bool criterio_para_proceso(void* elemento, int pid){
+    t_tabla_proceso* buscado = (t_tabla_proceso*) elemento;
+    return buscado->pid == pid;
+}
 
 void obtener_indices_por_nivel(int nro_pagina_logica, int* indices){
     for(int i = cant_niveles - 1; i >= 0; i--){
@@ -907,14 +940,29 @@ void marcar_marco_en_tabla(Tabla_Principal* tabla,int nro_pagina_logica,int marc
     int indices[cant_niveles];
     obtener_indices_por_nivel(nro_pagina_logica, indices); // Descompongo num. de pag. lógica en índices por nivel
 
+    //chequeo que existe el primer nivel
+    if(tabla->niveles[indices[0]] == NULL){
+        tabla->niveles[indices[0]] = crear_tabla_nivel(2,indices[0]);
+        if(tabla->niveles[indices[0]]==NULL){
+            log_error(logger,"Error al crear el nivel 2 de la tabla");
+            return;
+        }
+    }
+
     Tabla_Nivel* actual = tabla->niveles[indices[0]];
     for(int i = 1; i < cant_niveles; i++){
-        if(!actual){
-            actual = crear_tabla_nivel(i+1, indices[i]);
+        if(actual->sgte_nivel == NULL){
+            actual->sgte_nivel = malloc(sizeof(Tabla_Nivel*) * entradas_por_tabla);
+            for(int j = 0; j < entradas_por_tabla; j++){
+                actual->sgte_nivel[j] = NULL;
+            }
         }
-        if(!actual->sgte_nivel[indices[i]]){
-            actual->sgte_nivel[indices[i]] = crear_tabla_nivel(i+1, indices[i]);
+
+        if(actual->sgte_nivel[indices[i]]==NULL){
+            actual->sgte_nivel[indices[i]] = crear_tabla_nivel(2 + i, indices[i]);
+            if(!actual->sgte_nivel[indices[i]]) return;
         }
+
         actual = actual->sgte_nivel[indices[i]];
     }
 
