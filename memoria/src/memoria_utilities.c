@@ -395,68 +395,64 @@ void peticion_kernel(int socket_kernel){
     protocolo_socket peticion;
     t_list *paquete_recv;
 
-    while(1){
-        peticion = recibir_operacion(socket_kernel);
+    peticion = recibir_operacion(socket_kernel);
 
-        //retardo para peticiones 
-        usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
+    //retardo para peticiones 
+    usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
 
-        int pid;
-        char *nombreArchivo;
+    int pid;
+    char *nombreArchivo;
 
-        switch(peticion){
-            case PROCESS_CREATE_MEM:
-            {
-                int tamanio;
+    switch(peticion){
+        case PROCESS_CREATE_MEM:
+        {
+            int tamanio;
 
-                paquete_recv = recibir_paquete(socket_kernel);
-                pid = *(int *)list_remove(paquete_recv, 0);
-                tamanio = *(int *)list_remove(paquete_recv,0); 
-                nombreArchivo = (char *)list_remove(paquete_recv,0); 
+            paquete_recv = recibir_paquete(socket_kernel);
+            pid = *(int *)list_remove(paquete_recv, 0);
+            tamanio = *(int *)list_remove(paquete_recv,0); 
+            nombreArchivo = (char *)list_remove(paquete_recv,0); 
 
-                if(hay_espacio_en_mem(tamanio)){
-                    if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){
-                        enviar_paquete_ok(socket_kernel);
-                        log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
-                    } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
-                } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
+            if(hay_espacio_en_mem(tamanio)){
+                if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){
+                    enviar_paquete_ok(socket_kernel);
+                    log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
+                } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
+            } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
 
-                log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>",pid,tamanio);
-
-                list_destroy_and_destroy_elements(paquete_recv,free);
-            }
-            break;
-
-            case SUSP_MEM:
-                // t_paquete* paquete_send_suspencion_proceso;
-                paquete_recv = recibir_paquete(socket_kernel);
-                pid = *(int *)list_remove(paquete_recv, 0);
-
-                //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
-                suspender_proceso(pid);
-
-                // eliminar_paquete(paquete_send_suspencion_proceso);
-                list_destroy_and_destroy_elements(paquete_recv,free);
-            break;
-
-            case UNSUSPEND_MEM:
-                // t_paquete* paquete_send_dessuspencion_proceso;
-                paquete_recv = recibir_paquete(socket_kernel);
-                pid = *(int *)list_remove(paquete_recv, 0);
-
-                //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
-                des_suspender_proceso(pid);
-
-                // eliminar_paquete(paquete_send_dessuspencion_proceso);
-                list_destroy_and_destroy_elements(paquete_recv,free);
-                //responder con un OK
-            break;
-
-            case PROCESS_EXIT_MEM:
-            break;
-            default: log_warning(logger,"Petición %d desconocida",peticion);
-            break;
+            list_destroy_and_destroy_elements(paquete_recv,free);
         }
+        break;
+
+        case SUSP_MEM:
+            // t_paquete* paquete_send_suspencion_proceso;
+            paquete_recv = recibir_paquete(socket_kernel);
+            pid = *(int *)list_remove(paquete_recv, 0);
+
+            //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
+            suspender_proceso(pid);
+
+            // eliminar_paquete(paquete_send_suspencion_proceso);
+            list_destroy_and_destroy_elements(paquete_recv,free);
+        break;
+
+        case UNSUSPEND_MEM:
+            // t_paquete* paquete_send_dessuspencion_proceso;
+            paquete_recv = recibir_paquete(socket_kernel);
+            pid = *(int *)list_remove(paquete_recv, 0);
+
+            //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
+            des_suspender_proceso(pid);
+
+            // eliminar_paquete(paquete_send_dessuspencion_proceso);
+            list_destroy_and_destroy_elements(paquete_recv,free);
+            //responder con un OK
+        break;
+
+        case PROCESS_EXIT_MEM:
+        break;
+        default: log_warning(logger,"Petición %d desconocida",peticion);
+        break;
     }
 }
 

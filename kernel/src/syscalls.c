@@ -19,8 +19,6 @@ void PROCESS_CREATE(char *path, int tam_proceso) {
     
     encolar_cola_generico(lista_procesos_new, nuevo_pcb, -1);
 
-    sem_post(lista_procesos_new->sem);
-
 }
 void PROCESS_EXIT(PCB *pcb) {
     

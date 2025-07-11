@@ -39,8 +39,8 @@ void write_(uint32_t , int );
 void read_(uint32_t , int );
 void goto_(int);
 void noop();
-void io();
-void init_proc();
+void io(char * Dispositivo, int tiempo);
+void init_proc(char * Dispositivo, int tamanno);
 void dump_memory();
 void exit_();
 

@@ -127,7 +127,8 @@ extern t_log* logger;
     t_paquete* crear_paquete_ok(void); 
     void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio);
     void enviar_paquete(t_paquete* paquete, int socket_cliente);
-    void eliminar_paquete(t_paquete* paquete);
+    void enviar_paquete_ok(int socket_cliente);
+    void eliminar_paquete(t_paquete *paquete);
     void liberar_conexion(int socket_cliente);
     
 //socket

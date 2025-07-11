@@ -157,11 +157,11 @@ void Execute(instruccion_t instr){
                 goto_(atoi(instr.data[0]));
             break;
             case WRITE_I:
-                write_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0])); // Falta poner los valores posta
+                write_((uint32_t)atoi(instr.data[1]) , atoi(instr.data[0])); // Falta poner los valores posta
             break;
             case READ_I:
 
-                read_((uint32_t *)atoi(instr.data[1]) , atoi(instr.data[0]));
+                read_((uint32_t)atoi(instr.data[1]) , atoi(instr.data[0]));
             break;
             //----- SYSCALLS
             case IO:
