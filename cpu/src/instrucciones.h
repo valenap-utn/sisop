@@ -12,6 +12,11 @@ typedef enum {
     USUARIO,
 }priv_instrucion_t ;
 
+typedef enum { //tipo_de_acceso
+    LECTURA_AC,
+    ESCRITURA_AC,
+}acceso_t ;
+
 typedef struct
 {
     int opCode;
@@ -25,6 +30,7 @@ typedef struct TLB_t
     int pid; //o proceso ? (para saber a quién pertenece)
     int pagina;
     int marco;
+    bool ocupado;
     uint64_t timestamp; //para LRU
 }
 TLB_t;
@@ -59,10 +65,19 @@ void Execute(instruccion_t);
 void Check_Int();
 int instrStringMap(char []);
 int MMU(int dir_logica);
-int TLB(int Direccion);
 int Cache_paginas(int Direccion);
+void recibir_valores_memoria(int socket_memoria);
 
 void * ciclo_instruccion(void *);
 void Actualizar_pc();
+
+//TLB
+int TLB(int Direccion);
+int buscar_en_tlb(int pagina);
+void agregar_a_tlb(int pagina, int marco);
+void remplazar_TLB();
+int get_timestamp();
+
+int buscar_en_TLB();
 
 #endif
