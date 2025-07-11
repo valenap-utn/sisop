@@ -5,11 +5,15 @@ extern t_log *logger;
 
 extern int socket_interrupt, socket_dispatch, socket_memoria;
 
-extern int estradas_tlb;
-extern char * remplazo_tlb;
+/* ------ TLB ------ */
+extern int entradas_tlb;
+extern char * reemplazo_tlb;
+
+extern list_struct_t* tlb; //TLB con mutex
  
+/* ------ CACHÉ ------ */
 extern int entradas_cache;
-extern char * remplazo_cache;
+extern char * reemplazo_cache;
 extern int retrardo_cache;
 
 int pid;
@@ -355,8 +359,10 @@ int MMU(int dir_logica){
 };
 
 
+/* ------ TLB ------ */
+
 int TLB(int Direccion){
-    TLB_t * tabla = (TLB_t *) malloc(sizeof(TLB_t) * estradas_tlb);
+    TLB_t * tabla = (TLB_t *) malloc(sizeof(TLB_t) * entradas_tlb);
 
     for (int i = 0; i < sizeof(tabla); i++){
         
@@ -364,3 +370,34 @@ int TLB(int Direccion){
     
     return 0;
 };
+
+int buscar_en_tlb(int pagina){
+    if(entradas_tlb == 0 || tlb == NULL)return -1; // No hay TLB
+
+    pthread_mutex_lock(tlb->mutex);
+    for(int i = 0; i < list_size(tlb->lista);i++){
+        TLB_t* entrada_tlb = list_get(tlb->lista,i);
+        if(entrada_tlb->pagina == pagina){
+            if(strcmp(reemplazo_tlb,"LRU") == 0){
+                entrada_tlb->timestamp = time(NULL); //actualizamos uso
+            }
+            int marco = entrada_tlb->marco;
+            pthread_mutex_unlock(tlb->mutex);
+            return marco; //TLB Hit
+        }
+    }
+    pthread_mutex_unlock(tlb->mutex);
+    return -1; //TLB Miss
+}
+
+void agregar_a_tlb(int pagina, int marco){
+    if(entradas_tlb == 0 || tlb == NULL)return;
+
+    pthread_mutex_lock(tlb->mutex);
+    if(list_size(tlb->lista) >= entradas_tlb){
+        
+    }
+}
+
+
+/* ------ CACHÉ ------ */

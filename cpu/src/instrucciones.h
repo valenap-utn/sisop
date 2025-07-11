@@ -20,11 +20,12 @@ typedef struct
 }
 instruccion_t;
 
-typedef struct
+typedef struct TLB_t
 {
+    int pid; //o proceso ? (para saber a quién pertenece)
     int pagina;
     int marco;
-
+    uint64_t timestamp; //para LRU
 }
 TLB_t;
 
