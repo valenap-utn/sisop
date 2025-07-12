@@ -324,13 +324,12 @@ void read_(int dir_logica , int tamanio){
     int offset;
     traducir_DL(dir_logica,&nro_pagina,&offset);
 
-    int dir_fisica = nro_pagina * tam_pag + offset;
     int valor;
 
     //Consultamos la Caché
-    if(entradas_cache > 0 && buscar_en_cache(pid,dir_fisica,&valor)){
+    if(entradas_cache > 0 && buscar_en_cache(pid,dir_logica,&valor)){
         log_info(logger,"PID: <%d> - Cache Hit - Pagina: <%d>", pid, nro_pagina);
-        log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, valor);
+        log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%d>", pid, dir_logica, valor);
         return;
     }
 
@@ -338,7 +337,7 @@ void read_(int dir_logica , int tamanio){
 
     //Obtenemos marco desde TLB
     int marco = obtener_marco(pid,nro_pagina,offset);
-    dir_fisica = obtener_DF(marco,offset);
+    int dir_fisica = obtener_DF(marco,offset);
 
     //Enviamos a memoria
     t_paquete* paquete_send = crear_paquete(READ_MEM);

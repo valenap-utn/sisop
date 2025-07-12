@@ -34,7 +34,7 @@ typedef struct t_memoria{
 // Agrego estructura para asociar tablas con procesos
 typedef struct t_tabla_proceso{
     int pid;
-    struct Tabla_Principal* tabla_principal;
+    struct Tabla_Principal** tabla_principal;
     t_list* instrucciones;
     t_metricas metricas; //metricas por proceso!!!
     int cantidad_paginas;
@@ -46,12 +46,11 @@ char* crear_directorio();
 /* ------- TDP ------- */
 
 typedef struct Tabla_Principal{
-    int nro_pagina;
     struct Tabla_Nivel** niveles; //array de punteros al nivel 2 
 }Tabla_Principal; //tabla_global
 
 typedef struct Tabla_Nivel{
-    int nro_pagina;
+    int paginas_contenidas;
     int esta_presente; //bool
     int es_ultimo_nivel; //bool
     union{

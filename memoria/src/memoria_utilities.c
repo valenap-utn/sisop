@@ -12,7 +12,7 @@ int tam_memoria;
 //variables para tdp
 int  tam_pagina, entradas_por_tabla, cant_niveles;
 
-t_memoria *memoria_principal;
+t_memoria memoria_principal;
 
 //variable para manejo de SWAP
 char* path_swapfile;
@@ -61,14 +61,13 @@ void levantarConfig(){
 }
 
 void inicializar_mem_prin(){
-    memoria_principal = malloc(sizeof(t_memoria));
-    memoria_principal->espacio = malloc(sizeof(uint32_t)*tam_memoria);
-    memoria_principal->tablas_por_proceso = list_create();
+    memoria_principal.espacio = calloc(tam_memoria);
+    memoria_principal.tablas_por_proceso = list_create();
 
-    memoria_principal->cantidad_marcos = tam_memoria/tam_pagina;
-    memoria_principal->bitmap_marcos = calloc(memoria_principal->cantidad_marcos,sizeof(bool)); 
+    memoria_principal.cantidad_marcos = tam_memoria/tam_pagina;
+    memoria_principal.bitmap_marcos = calloc(memoria_principal.cantidad_marcos,sizeof(bool)); 
 
-    memoria_principal->metadata_swap = list_create();
+    memoria_principal.metadata_swap = list_create();
 }
 
 /*
@@ -234,7 +233,7 @@ void * cpu(void* args){
                 t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
 
                 if(tipo_acceso == 0){ //lectura
-                    int valor = *(int*)(memoria_principal->espacio + dir_fisica);
+                    int valor = *(int*)(memoria_principal.espacio + dir_fisica);
 
                     paquete_send = crear_paquete(DEVOLVER_VALOR);
                     agregar_a_paquete(paquete_send,&valor,sizeof(int));
@@ -245,7 +244,7 @@ void * cpu(void* args){
 
                 }else{ //escritura
                     int valor_a_escribir = *(int*)list_remove(paquete_recv,0);
-                    memcpy(memoria_principal->espacio + dir_fisica,&valor_a_escribir,sizeof(int));
+                    memcpy(memoria_principal.espacio + dir_fisica,&valor_a_escribir,sizeof(int));
 
                     paquete_send = crear_paquete(OK);
                     enviar_paquete(paquete_send,conexion);
@@ -280,7 +279,7 @@ void * cpu(void* args){
                     break;
                 }
 
-                void* contenido_pagina = memoria_principal->espacio + dir_fisica;
+                void* contenido_pagina = memoria_principal.espacio + dir_fisica;
 
                 paquete_send = crear_paquete(DEVOLVER_PAGINA);
                 agregar_a_paquete(paquete_send,contenido_pagina,tam_pagina);
@@ -316,7 +315,7 @@ void * cpu(void* args){
                 }
 
                 void* datos = list_remove(paquete_recv,0);
-                memcpy(memoria_principal->espacio + dir_fisica, datos, tam_pagina); //escribo sobre el espacio de usuario
+                memcpy(memoria_principal.espacio + dir_fisica, datos, tam_pagina); //escribo sobre el espacio de usuario
                 free(datos);
 
                 paquete_send = crear_paquete_ok();
@@ -504,8 +503,8 @@ t_list* cargar_instrucciones_desde_archivo(char* path) {
 }
 
 struct t_tabla_proceso* buscar_proceso_por_pid(int pid) {
-    for (int i = 0; i < list_size(memoria_principal->tablas_por_proceso); i++) {
-        t_tabla_proceso* proceso = list_get(memoria_principal->tablas_por_proceso, i);
+    for (int i = 0; i < list_size(memoria_principal.tablas_por_proceso); i++) {
+        t_tabla_proceso* proceso = list_get(memoria_principal.tablas_por_proceso, i);
         if (proceso->pid == pid) {
             return proceso;
         }
@@ -623,7 +622,7 @@ void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual)
         if(entrada->es_ultimo_nivel){
             if(entrada->marco != -1 && entrada->esta_presente){
                 int offset = entrada->marco * tam_pagina;
-                fwrite((char*)memoria_principal->espacio + offset, 1, tam_pagina,f);
+                fwrite((char*)memoria_principal.espacio + offset, 1, tam_pagina,f);
             }else{ //pagina no presente o sin marco
                 char buffer_ceros[tam_pagina];
                 memset(buffer_ceros,0,tam_pagina);
@@ -643,7 +642,7 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
 
     t_tabla_proceso* nueva_tabla = malloc(sizeof(t_tabla_proceso));
     nueva_tabla->pid = pid;
-    nueva_tabla->tabla_principal = crear_tabla_principal();
+    nueva_tabla->tabla_principal = crear_tabla_principal(paginas_necesarias);
     nueva_tabla->cantidad_paginas = paginas_necesarias;
 
     if (nueva_tabla->tabla_principal == NULL) {
@@ -662,7 +661,7 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
         return -1;
     }
 
-    list_add(memoria_principal->tablas_por_proceso, nueva_tabla);
+    list_add(memoria_principal.tablas_por_proceso, nueva_tabla);
 
     free(path_completo);
     return 0;
@@ -673,8 +672,8 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
 
 int contar_marcos_libres(){
     int m_libres = 0;
-    for(int i = 0; i < memoria_principal->cantidad_marcos; i++){
-        if(!memoria_principal->bitmap_marcos[i]){
+    for(int i = 0; i < memoria_principal.cantidad_marcos; i++){
+        if(!memoria_principal.bitmap_marcos[i]){
             m_libres++;
         }
     }
@@ -682,9 +681,9 @@ int contar_marcos_libres(){
 }
 
 int asignar_marco_libre(){
-    for(int i = 0; i < memoria_principal->cantidad_marcos; i++){
-        if(!memoria_principal->bitmap_marcos[i]){
-            memoria_principal->bitmap_marcos[i] = true;
+    for(int i = 0; i < memoria_principal.cantidad_marcos; i++){
+        if(!memoria_principal.bitmap_marcos[i]){
+            memoria_principal.bitmap_marcos[i] = true;
             return i; //devuelve el marco asignado
         }
     }
@@ -692,16 +691,16 @@ int asignar_marco_libre(){
 }
 
 void liberar_marco(int marco){
-    if(marco >= 0 && marco < memoria_principal->cantidad_marcos){
-        memoria_principal->bitmap_marcos[marco] = false;
+    if(marco >= 0 && marco < memoria_principal.cantidad_marcos){
+        memoria_principal.bitmap_marcos[marco] = false;
     }
 }
 
 /* ------- TDP ------- */
 
-struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina){
-    Tabla_Nivel* tabla = malloc(sizeof(Tabla_Nivel));
-    tabla->nro_pagina = nro_pagina;
+struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias){
+    Tabla_Nivel* tabla = calloc(sizeof(Tabla_Nivel));
+    tabla->paginas_contenidas = 0;
     tabla->esta_presente = false; 
     tabla->es_ultimo_nivel = (nivel_actual == cant_niveles);
 
@@ -713,10 +712,12 @@ struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina){
         }
         tabla->marco = marco;
         tabla->esta_presente = true;
+        tabla->paginas_contenidas = 1;
     }else{
+        int paginas_restantes = paginas_necesarias;
         tabla->sgte_nivel = malloc(sizeof(Tabla_Nivel*)* entradas_por_tabla);
-        for(int i = 0; i < entradas_por_tabla; i++){
-            tabla->sgte_nivel[i] = crear_tabla_nivel((nivel_actual + 1),i);
+        for(int i = 0; i < entradas_por_tabla && paginas_restantes > 0; i++){
+            tabla->sgte_nivel[i] = crear_tabla_nivel((nivel_actual + 1),paginas_restantes);
             if(!tabla->sgte_nivel[i]){ //liberamos lo creado hasta ahora, si hay fallo en la rama
                 for(int j = 0; j < i; j++){
                     liberar_tabla_nivel(tabla->sgte_nivel[j]);
@@ -725,26 +726,29 @@ struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int nro_pagina){
                 free(tabla);
                 return NULL;
             }
+            paginas_restantes -= tabla->sgte_nivel[i]->paginas_contenidas;
         }
     }
 
     return tabla;
 }
 
-struct Tabla_Principal* crear_tabla_principal(){
+struct Tabla_Principal* crear_tabla_principal(int paginas_necesarias){
     Tabla_Principal* tabla = malloc(sizeof(Tabla_Principal));
-    tabla->niveles = malloc(sizeof(Tabla_Nivel*)*entradas_por_tabla);
+    tabla->niveles = calloc(sizeof(Tabla_Nivel*)*entradas_por_tabla);
+    int paginas_restantes = paginas_necesarias;
 
     for(int i = 0; i < entradas_por_tabla; i++){
-        tabla->niveles[i] = crear_tabla_nivel(2,i);
+        tabla->niveles[i] = crear_tabla_nivel(1,paginas_restantes);
         if(!tabla->niveles[i]){ //liberamos lo creado hasta ahora, si hay fallo en la rama
-                for(int j = 0; j < i; j++){
+                for(int j = 0; j < i && paginas_restantes > 0; j++){
                     liberar_tabla_nivel(tabla->niveles[j]);
                 }
                 free(tabla->niveles);
                 free(tabla);
                 return NULL;
             }
+        paginas_restantes -= tabla->niveles[i]->paginas_contenidas;
     }
 
     return tabla;
@@ -791,12 +795,12 @@ void suspender_proceso(int pid){
         return;
     }
 
-    int offset_en_paginas = list_size(memoria_principal->metadata_swap);
+    int offset_en_paginas = list_size(memoria_principal.metadata_swap);
     int offset_en_bytes = offset_en_paginas * tam_pagina;
 
     for(int i = 0; i < proceso->cantidad_paginas; i++){
         int marco = obtener_marco_por_indice(proceso->tabla_principal, i);
-        void* origen = memoria_principal->espacio + (marco * tam_pagina);
+        void* origen = memoria_principal.espacio + (marco * tam_pagina);
 
         fseek(f,offset_en_bytes + i * tam_pagina, SEEK_SET);
         fwrite(origen,1,tam_pagina,f);
@@ -808,7 +812,7 @@ void suspender_proceso(int pid){
     nueva_entrada->pagina_inicio = offset_en_paginas;
     nueva_entrada->cantidad_paginas = proceso->cantidad_paginas;
 
-    list_add(memoria_principal->metadata_swap, nueva_entrada);
+    list_add(memoria_principal.metadata_swap, nueva_entrada);
 
     fclose(f);
     proceso->metricas.cant_bajadas_swap++;
@@ -825,11 +829,11 @@ void des_suspender_proceso(int pid){
 
     t_swap* entrada = NULL;
 
-    for(int i = 0; i < list_size(memoria_principal->metadata_swap);i++){
-        t_swap* entrada_buscada = list_get(memoria_principal->metadata_swap,i);
+    for(int i = 0; i < list_size(memoria_principal.metadata_swap);i++){
+        t_swap* entrada_buscada = list_get(memoria_principal.metadata_swap,i);
         if(entrada_buscada->pid == pid){
             entrada = entrada_buscada;
-            list_remove(memoria_principal->metadata_swap,i);
+            list_remove(memoria_principal.metadata_swap,i);
             break;
         }
     }
@@ -854,7 +858,7 @@ void des_suspender_proceso(int pid){
         }
 
         fseek(f, (entrada->pagina_inicio + i) * tam_pagina, SEEK_SET);
-        void* destino = memoria_principal->espacio + marco * tam_pagina;
+        void* destino = memoria_principal.espacio + marco * tam_pagina;
         fread(destino,1,tam_pagina,f);
 
         marcar_marco_en_tabla(proceso->tabla_principal,i,marco);
@@ -884,9 +888,9 @@ void finalizar_proceso(int pid){
     
     list_destroy_and_destroy_elements(proceso->instrucciones, free);
 
-    eliminar_de_lista_por_criterio(pid,memoria_principal->metadata_swap,criterio_para_swap,free); //libera swap
+    eliminar_de_lista_por_criterio(pid,memoria_principal.metadata_swap,criterio_para_swap,free); //libera swap
 
-    eliminar_de_lista_por_criterio(pid,memoria_principal->tablas_por_proceso,criterio_para_proceso,free); //libera proceso
+    eliminar_de_lista_por_criterio(pid,memoria_principal.tablas_por_proceso,criterio_para_proceso,free); //libera proceso
 
     log_info(logger,"## PID: <%d> - Proceso finalizado y recursos liberados",pid);
 }
