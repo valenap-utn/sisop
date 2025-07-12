@@ -137,4 +137,5 @@ void encolar_interrupcion_generico(list_struct_t * cola, interrupcion_t * interr
     pthread_mutex_lock(cola->mutex);
     list_add_in_index(cola->lista, interrupcion, index);
     pthread_mutex_lock(cola->mutex);
+    sem_post(cola->sem);
 }
