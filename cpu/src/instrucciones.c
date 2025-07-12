@@ -3,16 +3,19 @@
 #include "../../kernel/src/pcb.h"
 extern t_log *logger;
 
+list_struct_t * cola_interrupciones;
+
 extern int socket_interrupt, socket_dispatch, socket_memoria;
 
 /* ------ TLB ------ */
 extern int entradas_tlb;
 extern char * reemplazo_tlb;
-TLB_t * TLB_tabla = *(TLB_t *) malloc((sizeof(TLB_t) * entradas_tlb));
-// TLB_tabla = { .ocuapdo = false, };
-int reloj_lru = 0;
+extern TLB_t * TLB_tabla;
 
-int cant_ocupada_TLB = 0;
+int reloj_lru = 0;
+int fifo_index = 0;
+
+// int cant_ocupada_TLB = 0;
 
 extern list_struct_t* tlb; //TLB con mutex
  
@@ -34,6 +37,7 @@ void* ciclo_instruccion(void * arg){
     char * instrSTR;
     instruccion_t instr;
         while ((1)){
+            sem_wait
             // while (!flag_hay_interrupcion){
                 instrSTR = Fetch();
                 instr = Decode(instrSTR);
@@ -197,6 +201,16 @@ void Execute(instruccion_t instr){
 
 void Check_Int(){
 
+    interrupcion_t *interrupcion = desencolar();
+
+    // if cola_interrupciones < 1
+    //     pc --;
+    // else
+
+    swtich(interrupcion->tipo){
+        asdasd
+    }
+
     t_paquete* paquete_send = crear_paquete(DISPATCH__CPU); // Manarle a kernel. A Revisar
     agregar_a_paquete(paquete_send, &pid, sizeof(int));
     agregar_a_paquete(paquete_send, &pc, sizeof(int));
@@ -287,6 +301,9 @@ void goto_(int nuevo_pc){
 //--- SYSCALLS
 void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: IO ”:",pid);
+    
+    encolar_interrupcion(tipo, par1, par22);
+    
 };
 void init_proc(char * Dispositivo, int tamanno){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: INIT_PROC ”:",pid);
@@ -378,7 +395,7 @@ int MMU(int dir_logica){
 
     // 5. Actualizar TLB
     if (entradas_tlb > 0) {
-        actualizar_TLB(pid, nro_pagina, marco);
+        agregar_a_tlb(pid, nro_pagina, marco);
     }
 
     return marco * tam_pag + offset;
@@ -387,54 +404,27 @@ int MMU(int dir_logica){
 
 /* ------ TLB ------ */
 
-int TLB(int Direccion){
-    // TLB_t * tabla = (TLB_t *) malloc(sizeof(TLB_t) * entradas_tlb);
-
-    // for (int i = 0; i < sizeof(TLB_tabla); i++){
-        
-    // }
-
-    
-    buscar_en_tlb(pagina);
-    return 0;
-};
-
-int buscar_en_tlb(int pagina_buscada){
-    // if(entradas_tlb == 0 || tlb == NULL)return -1; // No hay TLB
-
-    // pthread_mutex_lock(tlb->mutex);
-    // for(int i = 0; i < list_size(tlb->lista);i++){
-    //     TLB_t* entrada_tlb = list_get(tlb->lista,i);
-    //     if(entrada_tlb->pagina == pagina){
-    //         if(strcmp(reemplazo_tlb,"LRU") == 0){
-    //             entrada_tlb->timestamp = time(NULL); //actualizamos uso
-    //         }
-    //         int marco = entrada_tlb->marco;
-    //         pthread_mutex_unlock(tlb->mutex);
-    //         return marco; //TLB Hit
-    //     }
-    // }
-    // pthread_mutex_unlock(tlb->mutex);
-    // return -1; //TLB Miss
-
-    for (int i = 0; i < entradas_tlb; i++) {
-        if (TLB_tabla[i].ocupado && TLB_tabla[i].pagina == pagina_buscada) {
-            // TLB HIT
-            if (strcmp(reemplazo_tlb, "LRU") == 0)
-                TLB_tabla[i].timestamp = get_timestamp(); // actualizar uso
-            return TLB_tabla[i].marco;
+int buscar_en_tlb(int pid_actual, int pagina_buscada){
+    for(int i = 0; i < entradas_tlb; i++){
+        if(TLB_tabla[i].pid == pid_actual && TLB_tabla[i].ocupado && TLB_tabla[i].pagina == pagina_buscada){
+            if(strcmp(reemplazo_tlb, "LRU") == 0){
+                TLB_tabla[i].timestamp = get_timestamp();
+            }
+            return TLB_tabla[i].marco; //TLB Hit
         }
     }
-    return -1; // TLB MISS
-}
-void remplazar_TLB(){
-
+    return -1; //TLB Miss
 }
 
-void agregar_a_tlb(int pagina, int marco){
+int get_timestamp() {
+    return reloj_lru++;
+}
+
+void agregar_a_tlb(int pid_actual, int pagina, int marco){
     // Buscar espacio libre
     for (int i = 0; i < entradas_tlb; i++) {
         if (!TLB_tabla[i].ocupado) {
+            TLB_tabla[i].pid = pid_actual;
             TLB_tabla[i].pagina = pagina;
             TLB_tabla[i].marco = marco;
             TLB_tabla[i].ocupado = true;
@@ -446,20 +436,38 @@ void agregar_a_tlb(int pagina, int marco){
     // Si no hay lugar, aplicar reemplazo
     int victima = 0;
     if (strcmp(reemplazo_tlb, "FIFO") == 0) {
-        victima = siguiente_fifo(); // mantenés un puntero o índice global
+        victima = buscar_victima_FIFO(); // mantenés un puntero o índice global
     } else if (strcmp(reemplazo_tlb, "LRU") == 0) {
-        victima = buscar_mas_viejo(); // comparás timestamps
+        victima = buscar_victima_LRU(); // comparás timestamps
     }
 
+    TLB_tabla[victima].pid = pid_actual;
     TLB_tabla[victima].pagina = pagina;
     TLB_tabla[victima].marco = marco;
     TLB_tabla[victima].ocupado = true;
     TLB_tabla[victima].timestamp = get_timestamp();
 }
 
+int buscar_victima_LRU(){
+    int min = TLB_tabla[0].timestamp;
+    int pos = 0;
 
-int get_timestamp() {
-    return reloj_lru++;
+    for(int i = 1; i < entradas_tlb;i++){
+        if(TLB_tabla[i].timestamp < min){
+            min = TLB_tabla[i].timestamp;
+            pos = i;
+        }
+    }
+    return pos;
 }
+
+int buscar_victima_FIFO(){
+    int victima = fifo_index;
+    fifo_index = (fifo_index + 1) % entradas_tlb;
+    return victima;
+}
+
+void 
+impiar_entradas_tlb
 
 /* ------ CACHÉ ------ */

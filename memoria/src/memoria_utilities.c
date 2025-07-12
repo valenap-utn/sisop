@@ -428,48 +428,47 @@ void peticion_kernel(int socket_kernel){
         }
         break;
 
-            case SUSP_MEM:
-            {
-                // t_paquete* paquete_send_suspencion_proceso;
-                paquete_recv = recibir_paquete(socket_kernel);
-                pid = *(int *)list_remove(paquete_recv, 0);
+        case SUSP_MEM:
+        {
+            // t_paquete* paquete_send_suspencion_proceso;
+            paquete_recv = recibir_paquete(socket_kernel);
+            pid = *(int *)list_remove(paquete_recv, 0);
 
-            //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
-            suspender_proceso(pid);
+        //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
+        suspender_proceso(pid);
 
-                // eliminar_paquete(paquete_send_suspencion_proceso);
-                list_destroy_and_destroy_elements(paquete_recv,free);
-            }
-            break;
-
-            case UNSUSPEND_MEM:
-            {
-                // t_paquete* paquete_send_dessuspencion_proceso;
-                paquete_recv = recibir_paquete(socket_kernel);
-                pid = *(int *)list_remove(paquete_recv, 0);
-
-            //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
-            des_suspender_proceso(pid);
-
-                // eliminar_paquete(paquete_send_dessuspencion_proceso);
-                list_destroy_and_destroy_elements(paquete_recv,free);
-                //responder con un OK
-            }
-            break;
-
-            case PROCESS_EXIT_MEM:
-            {
-                paquete_recv = recibir_paquete(socket_kernel);
-                pid = *(int*)list_remove(paquete_recv,0);
-
-                finalizar_proceso(pid);
-
-                list_destroy_and_destroy_elements(paquete_recv,free);
-            }
-            break;
-            default: log_warning(logger,"Petición %d desconocida",peticion);
-            break;
+            // eliminar_paquete(paquete_send_suspencion_proceso);
+            list_destroy_and_destroy_elements(paquete_recv,free);
         }
+        break;
+
+        case UNSUSPEND_MEM:
+        {
+            // t_paquete* paquete_send_dessuspencion_proceso;
+            paquete_recv = recibir_paquete(socket_kernel);
+            pid = *(int *)list_remove(paquete_recv, 0);
+
+        //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
+        des_suspender_proceso(pid);
+
+            // eliminar_paquete(paquete_send_dessuspencion_proceso);
+            list_destroy_and_destroy_elements(paquete_recv,free);
+            //responder con un OK
+        }
+        break;
+
+        case PROCESS_EXIT_MEM:
+        {
+            paquete_recv = recibir_paquete(socket_kernel);
+            pid = *(int*)list_remove(paquete_recv,0);
+
+            finalizar_proceso(pid);
+
+            list_destroy_and_destroy_elements(paquete_recv,free);
+        }
+        break;
+        default: log_warning(logger,"Petición %d desconocida",peticion);
+        break;
     }
 }
 

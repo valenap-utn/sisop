@@ -54,6 +54,7 @@ enum protocolo_socket
     PROCESS_EXIT_CPU,
     PROCESS_INIT_CPU,
     DUMP_MEM_CPU,
+    IO_CPU,
     READ_MEM,
     ACCEDER_A_TDP,
     DEVOLVER_MARCO, //para cuando se ejecuta ACCEDER_A_TDP (consultar, si es así esto)

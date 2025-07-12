@@ -25,6 +25,8 @@ typedef struct
 }
 instruccion_t;
 
+
+/* ------ TLB ------ */
 typedef struct TLB_t
 {
     int pid; //o proceso ? (para saber a quién pertenece)
@@ -34,6 +36,16 @@ typedef struct TLB_t
     uint64_t timestamp; //para LRU
 }
 TLB_t;
+
+/* ------ CACHÉ ------ */
+typedef struct cache_t{
+    int pid;
+    int dir_fisica;
+    int contenido;
+    int ocupado;
+    int uso;
+    int modificado;
+}cache_t;
 
 typedef enum {
     // Syscalls
@@ -46,7 +58,17 @@ typedef enum {
     WRITE_I,
     READ_I,
     GOTO
-}intrucciones_t ;
+}instrucciones_t ;
+
+typedef struct interrupcion_t
+{
+    instrucciones_t tipo; //o proceso ? (para saber a quién pertenece)
+    int param1;
+    int param2;
+    int pid;
+    int pc;
+}
+interrupcion_t;
 
 
 void noop();
@@ -72,12 +94,14 @@ void * ciclo_instruccion(void *);
 void Actualizar_pc();
 
 //TLB
-int TLB(int Direccion);
-int buscar_en_tlb(int pagina);
-void agregar_a_tlb(int pagina, int marco);
-void remplazar_TLB();
+int buscar_en_tlb(int pid_actual, int pagina_buscada);
 int get_timestamp();
+void agregar_a_tlb(int pid_actual, int pagina, int marco);
 
-int buscar_en_TLB();
+int buscar_victima_LRU();
+int buscar_victima_FIFO();
+
+
+
 
 #endif

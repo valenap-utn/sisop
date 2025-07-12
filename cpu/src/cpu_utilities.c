@@ -3,6 +3,8 @@
 extern t_log *logger;
 extern t_config *config;
 
+extern list_struct_t * cola_interrupciones;
+
 extern int socket_interrupt, socket_dispatch;
 int socket_memoria;
 //configs
@@ -17,18 +19,23 @@ char * ip_memoria;
 /* ------ TLB ------ */
 int entradas_tlb;
 char* reemplazo_tlb;
-list_struct_t* tlb = NULL;
+TLB_t* TLB_tabla = NULL;
 
 
 /* ------ CACHÉ ------ */
 int entradas_cache;
 char * reemplazo_cache;
-int retrardo_cache;
+int retardo_cache;
+cache_t* cache_tabla = NULL; 
+
+int puntero_cache;
 
 
 void inicializarCpu(char *nombreCpuLog){
     char * NewnombreCpuLog = (char*) malloc(strlen(nombreCpuLog)+16);
     sprintf(NewnombreCpuLog,"%s.log", nombreCpuLog); // FIJARSE QUE NO TENGA MEMORY LEAKS
+
+    cola_interrupciones = inicializarLista();
 
     config = config_create("./cpu.config");
     levantarConfig();
@@ -50,10 +57,25 @@ void inicializarCpu(char *nombreCpuLog){
 
     //TLB
     if(entradas_tlb > 0){
-        tlb = inicializarLista();
+        TLB_tabla = malloc(sizeof(TLB_t) * entradas_tlb);
+        for(int i = 0; i < entradas_tlb; i++){
+            TLB_tabla[i].ocupado = false;
+        }
+    }
+
+    //CACHÉ
+    if(entradas_cache > 0){
+        cache_tabla = malloc(sizeof(cache_t) * entradas_cache);
+        for(int i = 0; i < entradas_cache; i++){
+            cache_tabla[i].ocupado = 0;
+            cache_tabla[i].uso = 0;
+            cache_tabla[i].modificado = 0;
+        }
+        puntero_cache = 0;
     }
 
 }
+
 void levantarConfig(){
 
     char *value = config_get_string_value(config, "LOG_LEVEL");
@@ -70,9 +92,10 @@ void levantarConfig(){
 
     // entradas_cache = config_get_int_value(config, "ENTRADAS_CACHE");
     // reemplazo_cache = config_get_string_value(config, "REEMPLAZO_CACHE");
-    // retrardo_cache= config_get_int_value(config, "RETARDO_CACHE");
+    retardo_cache= config_get_int_value(config, "RETARDO_CACHE");
 
 }
+
 void *conexion_cliente_kernel(void *args){
     
 	do
@@ -108,4 +131,9 @@ void *conexion_cliente_memoria(void *args){
 	}while(socket_memoria == -1);
     log_info(logger, "Se realizó la conexion con MEMORIA");
     return (void *)EXIT_SUCCESS;
+}
+void encolar_interrupcion_generico(list_struct_t * cola, interrupcion_t * interrupcion, int index){
+    pthread_mutex_lock(cola->mutex);
+    list_add_in_index(cola->lista, interrupcion, index);
+    pthread_mutex_lock(cola->mutex);
 }

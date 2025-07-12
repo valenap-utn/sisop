@@ -68,8 +68,8 @@ void dormir_IO(){
 
         t_list *paquete_recv = recibir_paquete(socket_kernel);
 
-        pid = (int *)list_remove(paquete_recv, 0);
-        milisecs = (int *)list_remove(paquete_recv, 0);
+        pid = *(int *)list_remove(paquete_recv, 0);
+        milisecs = *(int *)list_remove(paquete_recv, 0);
 
         log_info(logger, "## PID <%d> - Inicio de IO - Tiempo:  <%d SEGUNDOS>",pid, milisecs);
         usleep(milisecs * 1000);
