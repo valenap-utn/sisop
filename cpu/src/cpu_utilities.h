@@ -14,8 +14,7 @@ typedef enum {
     WRITE_I,
     READ_I,
     GOTO,
-
-    DISPATCH_CPU,
+    DISPATCH_CPU_I,
 }instrucciones_t ;
 
 

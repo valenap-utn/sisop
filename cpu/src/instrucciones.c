@@ -275,7 +275,7 @@ void Check_Int(){
 
 void write_(int dir_logica , int datos){
     int nro_pagina;
-    int offset;
+    int offset; //como se obtiene el offset aca? no entiendo
     traducir_DL(dir_logica,&nro_pagina,&offset);
 
     int dir_fisica = nro_pagina * tam_pag + offset;
@@ -283,7 +283,7 @@ void write_(int dir_logica , int datos){
     //Actualizar caché (si hay)
     if(entradas_cache > 0){
         pagina_actual_cache = nro_pagina;
-        marco_actual_cache = obtener_marco(pid,nro_pagina);
+        marco_actual_cache = obtener_marco(pid,nro_pagina,offset);
 
         escribir_en_cache(pid,dir_fisica,datos,nro_pagina);
         log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid, nro_pagina);
@@ -292,7 +292,7 @@ void write_(int dir_logica , int datos){
     }
 
     //Obtenemos marco desde TLB
-    int marco = obtener_marco(pid,nro_pagina);
+    int marco = obtener_marco(pid,nro_pagina,offset);
     dir_fisica = obtener_DF(marco,offset);
     
     //Enviamos a Memoria
@@ -337,7 +337,7 @@ void read_(int dir_logica , int tamanio){
     log_info(logger,"PID: <%d> - Cache Miss - Pagina: <%d>", pid, nro_pagina);
 
     //Obtenemos marco desde TLB
-    int marco = obtener_marco(pid,nro_pagina);
+    int marco = obtener_marco(pid,nro_pagina,offset);
     dir_fisica = obtener_DF(marco,offset);
 
     //Enviamos a memoria
@@ -352,7 +352,7 @@ void read_(int dir_logica , int tamanio){
     enviar_paquete(paquete_send, socket_memoria);
     eliminar_paquete(paquete_send);
 
-    protocolo_socket cod_op = recibir_paquete(socket_memoria);
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
     if(cod_op != DEVOLVER_VALOR){
         log_error(logger,"No se pudo obtener el valor desde memoria");
         return;
@@ -385,7 +385,7 @@ void goto_(int nuevo_pc){
 //--- SYSCALLS
 void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
-    interrupcion.tipo = IO;
+    interrupcion->tipo = IO;
     interrupcion->paramstring = Dispositivo;
     interrupcion->param1 = tiempo;
 
@@ -393,7 +393,7 @@ void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE 
 };
 void init_proc(char * archivo, int tamaño){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
-    interrupcion.tipo = INIT_PROC;
+    interrupcion->tipo = INIT_PROC;
     interrupcion->paramstring = archivo;
     interrupcion->param1 = tamaño;
 
@@ -401,13 +401,13 @@ void init_proc(char * archivo, int tamaño){ //(Archivo de instrucciones, Tamañ
 };
 void dump_memory(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
-    interrupcion.tipo = DUMP_MEMORY;
+    interrupcion->tipo = DUMP_MEMORY;
 
     encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
 };
 void exit_(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
-    interrupcion.tipo = EXIT_I;
+    interrupcion->tipo = EXIT_I;
     
     encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
 };
@@ -460,7 +460,7 @@ int obtener_DF(int marco, int offset){
 
 /* ------ TLB ------ */
 
-int obtener_marco(int pid, int nro_pagina){
+int obtener_marco(int pid, int nro_pagina,int offset){
     
     // 1. Consultar la TLB (si está habilitada)
 

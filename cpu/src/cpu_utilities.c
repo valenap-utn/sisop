@@ -145,7 +145,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 				t_list *paquete = recibir_paquete(socket_dispatch);
 				pid_aux = *(int *)list_remove(paquete, 0);
                 pc_aux = *(int *)list_remove(paquete, 0);
-				log_info(logger, "El pid a ejecutar es: %d", pid_actual);
+				log_info(logger, "El pid a ejecutar es: %d", pid_aux);
 				list_destroy(paquete);
                 interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
 
