@@ -7,6 +7,8 @@ list_struct_t * cola_interrupciones;
 
 extern int socket_interrupt, socket_dispatch, socket_memoria;
 
+int flag_hay_interrupcion = false;
+
 /* ------ TLB ------ */
 extern int entradas_tlb;
 extern char * reemplazo_tlb;
@@ -39,13 +41,12 @@ void* ciclo_instruccion(void * arg){
     char * instrSTR;
     instruccion_t instr;
         while ((1)){
-            sem_wait
-            // while (!flag_hay_interrupcion){
+            while (!flag_hay_interrupcion){
                 instrSTR = Fetch();
                 instr = Decode(instrSTR);
                 Execute(instr);
                 Actualizar_pc();
-            // }
+            }
             Check_Int();
         }
         return (void *)EXIT_SUCCESS;
@@ -171,26 +172,26 @@ void Execute(instruccion_t instr){
                 noop();
             break;
             case GOTO:
-                goto_(atoi(instr.data[0]));
+                goto_(atoi(instr.data[1]));
             break;
             case WRITE_I:
-                write_(atoi(instr.data[1]) , atoi(instr.data[0]));
+                write_(atoi(instr.data[2]) , atoi(instr.data[1]));
             break;
             case READ_I:
-                read_(atoi(instr.data[1]) , atoi(instr.data[0]));
+                read_(atoi(instr.data[2]) , atoi(instr.data[1]));
             break;
             //----- SYSCALLS
             case IO:
-                io(instr.data[0],atoi(instr.data[1]));
+                io(instr.data[1],atoi(instr.data[2]));
             break;
             case INIT_PROC:
-                init_proc(instr.data[0],atoi(instr.data[1]));
+                init_proc(instr.data[2],atoi(instr.data[1]));
             break;
 
             case DUMP_MEMORY:
                 dump_memory();
-            
             break;
+
             case EXIT_I:
                 exit_();
             break;
@@ -203,27 +204,67 @@ void Execute(instruccion_t instr){
 
 void Check_Int(){
 
-    interrupcion_t *interrupcion = desencolar();
+    log_info(logger, "## Llega interrupción al puerto Interrupt");
 
-    // if cola_interrupciones < 1
-    //     pc --;
-    // else
+    t_paquete * paquete_send;
+    interrupcion_t *interrupcion = desencolar_interrupcion_generico(cola_interrupciones);
 
-    swtich(interrupcion->tipo){
-        asdasd
+    pthread_mutex_lock(cola_interrupciones->mutex);
+    if(!list_is_empty(cola_interrupciones->lista)&&(interrupcion->tipo == DISPATCH_CPU)){
+        pc--;
     }
+    pthread_mutex_unlock(cola_interrupciones->mutex);
 
-    t_paquete* paquete_send = crear_paquete(DISPATCH__CPU); // Manarle a kernel. A Revisar
-    agregar_a_paquete(paquete_send, &pid, sizeof(int));
-    agregar_a_paquete(paquete_send, &pc, sizeof(int));
+    switch(interrupcion->tipo){
+        
+        case DISPATCH_CPU:
+            paquete_send = crear_paquete(MOTIVO_DEVOLUCION_CPU);
+            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            pc = interrupcion->pc;
+            pid = interrupcion->pid;
+        break;
+            
+        case IO:
+            log_info(logger, "## PID: %d - Ejecutando: IO - Nombre dispositivo: %s, tiempo: %d", pid, interrupcion->paramstring, interrupcion->param1);
+            paquete_send = crear_paquete(IO_CPU);
+            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
+            agregar_a_paquete (paquete_send, &interrupcion->param1, sizeof(int));
+        break;
 
-    enviar_paquete(paquete_send, conexion);
+        case INIT_PROC:
+            log_info(logger, "## PID: %d - Ejecutando: INIT_PROC - Nombre archivo: %s, tamaño: %d", pid, interrupcion->paramstring, interrupcion->param1);
+            paquete_send = crear_paquete(PROCESS_INIT_CPU);
+            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
+            agregar_a_paquete (paquete_send, &interrupcion->param1, sizeof(int));
+        break;
 
-    //paquete enviado
+        case DUMP_MEM:
+            log_info(logger, "## PID: %d - Ejecutando: DUMP_MEMORY", pid);
+            paquete_send = crear_paquete(DUMP_MEM_CPU);
+            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
+        break;
+
+        case EXIT_I:
+            log_info(logger, "## PID: %d - Ejecutando: PROCESS_EXIT", pid);
+            paquete_send = crear_paquete(PROCESS_EXIT_CPU);
+            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
+        break;
+
+    }
+    
+    vaciar_cola_interrupcion(cola_interrupciones);
+
+    enviar_paquete(paquete_send, socket_interrupt);
 
     eliminar_paquete(paquete_send);
-    
-    log_info(logger, "## Llega interrupción al puerto Interrupt");
+    free(interrupcion);
 
 };
 
@@ -302,18 +343,32 @@ void goto_(int nuevo_pc){
 
 //--- SYSCALLS
 void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: IO ”:",pid);
-    encolar_interrupcion(tipo, par1, par22);
-    
+    interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
+    interrupcion.tipo = IO;
+    interrupcion->paramstring = Dispositivo;
+    interrupcion->param1 = tiempo;
+
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
 };
-void init_proc(char * Dispositivo, int tamanno){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: INIT_PROC ”:",pid);
+void init_proc(char * archivo, int tamaño){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
+    interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
+    interrupcion.tipo = INIT_PROC;
+    interrupcion->paramstring = archivo;
+    interrupcion->param1 = tamaño;
+
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
 };
 void dump_memory(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: DUMP_MEMORY ”:",pid);
+    interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
+    interrupcion.tipo = DUMP_MEMORY;
+
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
 };
 void exit_(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
-    log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: EXIT ”:",pid);
+    interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
+    interrupcion.tipo = EXIT_I;
+    
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
 };
 
 void Actualizar_pc(){

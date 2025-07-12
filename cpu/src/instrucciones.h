@@ -47,28 +47,8 @@ typedef struct cache_t{
     int modificado;
 }cache_t;
 
-typedef enum {
-    // Syscalls
-    IO,
-    INIT_PROC,
-    DUMP_MEMORY,
-    EXIT_I,
-    // No Syscalls
-    NOOP,
-    WRITE_I,
-    READ_I,
-    GOTO
-}instrucciones_t ;
 
-typedef struct interrupcion_t
-{
-    instrucciones_t tipo; //o proceso ? (para saber a quién pertenece)
-    int param1;
-    int param2;
-    int pid;
-    int pc;
-}
-interrupcion_t;
+
 
 
 void noop();
