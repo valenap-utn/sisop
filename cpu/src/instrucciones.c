@@ -16,13 +16,15 @@ int reloj_lru = 0;
 int fifo_index = 0;
 
 // int cant_ocupada_TLB = 0;
-
-extern list_struct_t* tlb; //TLB con mutex
  
 /* ------ CACHÉ ------ */
 extern int entradas_cache;
 extern char * reemplazo_cache;
-extern int retrardo_cache;
+extern int retardo_cache;
+
+extern cache_t* cache_tabla;
+
+extern int puntero_cache;
 
 int pid;
 int pc;
@@ -301,7 +303,6 @@ void goto_(int nuevo_pc){
 //--- SYSCALLS
 void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     log_info(logger, "Instrucción Ejecutada: “## PID: %d - Ejecutando: IO ”:",pid);
-    
     encolar_interrupcion(tipo, par1, par22);
     
 };
@@ -356,7 +357,7 @@ int MMU(int dir_logica){
 
     // 1. Consultar la TLB (si está habilitada)
     if (entradas_tlb > 0) {
-        int marco = buscar_en_TLB(pid, nro_pagina);
+        int marco = buscar_en_tlb(pid, nro_pagina);
         if (marco != -1) {
             log_info(logger, "TLB HIT - PID <%d> - Página <%d> - Marco <%d>", pid, nro_pagina, marco);
             return marco * tam_pag + offset;
@@ -467,7 +468,136 @@ int buscar_victima_FIFO(){
     return victima;
 }
 
-void 
-impiar_entradas_tlb
+void limpiar_entradas_tlb(int pid_a_eliminar){
+    for(int i = 0; i < entradas_tlb; i++){
+        if(TLB_tabla[i].pid == pid_a_eliminar && TLB_tabla[i].ocupado){
+            TLB_tabla[i].ocupado = false;
+        }
+    }
+}
 
 /* ------ CACHÉ ------ */
+
+int buscar_en_cache(int pid_actual, int dir_fisica, int* contenido_out){
+    if(entradas_cache <= 0)return 0;
+
+    for(int i = 0; i < entradas_cache; i++){
+        if(cache_tabla[i].pid == pid_actual && cache_tabla[i].dir_fisica == dir_fisica && cache_tabla[i].ocupado){
+            cache_tabla[i].uso = 1;
+            *contenido_out = cache_tabla[i].contenido;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor){
+    if(entradas_cache <= 0)return;
+
+    //Verificamos, si ya existe => modificamos
+    for(int i = 0; i < entradas_cache; i++){
+        if(cache_tabla[i].pid == pid_actual && cache_tabla[i].dir_fisica == dir_fisica && cache_tabla[i].ocupado){
+            cache_tabla[i].contenido = nuevo_valor;
+            cache_tabla[i].uso = 1;
+            cache_tabla[i].modificado = 1;
+            return;
+        }
+    }
+
+    //Buscamos espacio libre
+    for(int i = 0 ; i < entradas_cache ; i++){
+        if(!cache_tabla[i].ocupado){
+            cache_tabla[i] = (cache_t){pid_actual, dir_fisica,nuevo_valor,1,1,1};
+            return;
+        }
+    }
+
+    //Si no hay espacio libre => reemplazamos
+    int victima = (strcmp(reemplazo_cache,"CLOCK") == 0) ? reemplazo_clock() : reemplazo_clock_M();
+
+
+    //Si la victima está modificada => escribir en memoria
+    if(cache_tabla[victima].modificado){
+        escribir_cache_en_memoria(cache_tabla[victima]);
+    }
+
+    //Reemplazamos
+    cache_tabla[victima] = (cache_t){pid_actual, dir_fisica,nuevo_valor,1,1,1};
+}
+
+//Algoritmos de reemplazo
+//CLOCK
+int reemplazo_clock(){
+    while(1){
+        if(!cache_tabla[puntero_cache].uso){
+            int posicion = puntero_cache;
+            puntero_cache = (puntero_cache + 1) % entradas_cache;
+            return posicion;
+        }else{
+            cache_tabla[puntero_cache].uso = 0;
+            puntero_cache = (puntero_cache + 1) % entradas_cache;
+        }
+    }
+}
+
+//CLOCK-M
+int reemplazo_clock_M(){
+    //Primera vuelta => u = 0  &&  m = 0
+    for(int i = 0; i < entradas_cache; i++){
+        int index = (puntero_cache + 1) % entradas_cache;
+        if(!cache_tabla[index].uso && !cache_tabla[index].modificado){
+            return avanzar_puntero(index);
+        }
+    }
+
+    //Segunda vuelta => u = 0  &&  m = 1
+    for(int i = 0; i < entradas_cache; i++){
+        int index = (puntero_cache + i) % entradas_cache;
+        if(!cache_tabla[index].uso && cache_tabla[index].modificado){
+            return avanzar_puntero(index);
+        }
+        cache_tabla[index].uso = 0;
+    }
+
+    //Reintentamos despues de cambiar bits de uso
+    return reemplazo_clock_M();
+}
+
+int avanzar_puntero(int index){
+    puntero_cache = (index + 1) % entradas_cache;
+    return index;
+}
+
+
+// + funciones auxiliares para caché
+void escribir_cache_en_memoria(cache_t entrada){
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+    int tam = sizeof(int);
+    int tipo_de_acceso = ESCRITURA_AC;
+
+    agregar_a_paquete(paquete_send, &entrada.pid , sizeof(int));
+    agregar_a_paquete(paquete_send, &tam , sizeof(int));
+    agregar_a_paquete(paquete_send, &entrada.dir_fisica , sizeof(int));
+    agregar_a_paquete(paquete_send, &tipo_de_acceso , sizeof(int));
+    agregar_a_paquete(paquete_send, &entrada.contenido , sizeof(int));
+
+    enviar_paquete(paquete_send, socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != OK){
+        log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
+    }
+}
+
+void limpiar_cache_de_proceso(int pid_a_eliminar){
+    for(int i = 0; i < entradas_cache ; i++){
+        if(cache_tabla[i].ocupado && cache_tabla[i].pid == pid_a_eliminar){
+            if(cache_tabla[i].modificado){
+                escribir_cache_en_memoria(cache_tabla[i]);
+            }
+            cache_tabla[i].modificado = 0;
+        }
+    }
+}
