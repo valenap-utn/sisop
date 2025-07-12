@@ -43,6 +43,8 @@ typedef struct{
     long mt[7];
     t_estado estado;
     struct timespec timestamp_ultimo_estado;
+    double estimacion_rafaga;
+    double rafaga_real_anterior;
 }PCB;
 
 
@@ -59,5 +61,7 @@ void loguear_metricas(PCB *pcb);
 long diff_in_milliseconds(struct timespec start, struct timespec end);
 
 void inicializarRegistros(registrosPCB *reg);
+
+void actualizar_estimacion(PCB *pcb); // SJF: nuevo valor
 
 #endif

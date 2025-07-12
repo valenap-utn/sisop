@@ -50,7 +50,9 @@ enum protocolo_socket
     DUMP_MEM_ERROR,
     UNSUSPEND_MEM,
     UNSUSPEND_MEM_ERROR,
-    DISPATCH__CPU,
+    DISPATCH_CPU,
+    INTERRUPT_CPU,
+    MOTIVO_DEVOLUCION_CPU,
     PROCESS_EXIT_CPU,
     PROCESS_INIT_CPU,
     DUMP_MEM_CPU,
@@ -83,6 +85,8 @@ typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
 enum enum_algoritmo_cortoPlazo
 {
     CPL_FIFO,
+    CPL_SJF,
+    CPL_SJF_CD
 };
 typedef enum enum_algoritmo_cortoPlazo enum_algoritmo_cortoPlazo;
 

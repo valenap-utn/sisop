@@ -6,6 +6,9 @@ t_config *config;
 
 int flag_all_start = 0; 
 
+int estimacion_inicial;
+double alfa;
+
 list_struct_t *lista_sockets_cpu;
 list_struct_t *lista_sockets_io;
 

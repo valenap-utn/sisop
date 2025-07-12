@@ -3,7 +3,10 @@
 extern t_log *logger;
 extern t_config *config;
 
+extern int pid;
+
 extern list_struct_t * cola_interrupciones;
+extern int flag_hay_interrupcion;
 
 extern int socket_interrupt, socket_dispatch;
 int socket_memoria;
@@ -45,15 +48,18 @@ void inicializarCpu(char *nombreCpuLog){
     pthread_t tid_conexion_kernel;
     pthread_t tid_conexion_memoria;
     pthread_t tid_ciclo_inst;
-    
+    pthread_t tid_dispatch_kernel;
+
     
     pthread_create(&tid_conexion_memoria, NULL, conexion_cliente_memoria, NULL);
     pthread_join(tid_conexion_memoria, NULL);
     pthread_create(&tid_conexion_kernel, NULL, conexion_cliente_kernel, NULL);
     pthread_join(tid_conexion_kernel, NULL);
-    
+
+    pthread_create(&tid_dispatch_kernel, NULL, conexion_kernel_dispatch, NULL);
     pthread_create(&tid_ciclo_inst, NULL, ciclo_instruccion, NULL);
-    pthread_join(tid_ciclo_inst, NULL);
+    
+
 
     //TLB
     if(entradas_tlb > 0){
@@ -73,6 +79,9 @@ void inicializarCpu(char *nombreCpuLog){
         }
         puntero_cache = 0;
     }
+
+    pthread_join(tid_ciclo_inst, NULL);
+    pthread_join(tid_dispatch_kernel, NULL);
 
 }
 
@@ -120,6 +129,45 @@ void *conexion_cliente_kernel(void *args){
     return (void *)EXIT_SUCCESS;
 }
 
+
+void *conexion_kernel_dispatch(void* arg_kernelD)
+{
+	argumentos_thread * args = arg_kernelD; 
+	t_list *paquete;
+	int pid_aux, pc_aux;
+
+	while(true){
+		int cod_op = recibir_operacion(socket_dispatch);
+		switch (cod_op){
+			case DISPATCH_CPU:
+                // sem_wait(sem_registros_actualizados);
+				log_info(logger, "Recibí un pid para ejecutar de parte de Kernel");
+				t_list *paquete = recibir_paquete(socket_dispatch);
+				pid_aux = *(int *)list_remove(paquete, 0);
+                pc_aux = *(int *)list_remove(paquete, 0);
+				log_info(logger, "El pid a ejecutar es: %d", pid_actual);
+				list_destroy(paquete);
+                interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
+
+                interrupcion->tipo = DISPATCH_CPU;
+                interrupcion->pid = pid_aux;
+                interrupcion->pc = pc_aux;
+
+				break;
+			case -1:
+				log_info(logger, "el cliente se desconecto. Terminando servidor");
+				return (void *)EXIT_FAILURE;
+				break;
+			default:
+				log_info(logger,"Operacion desconocida. No quieras meter la pata");
+				break;
+			}
+		}
+		
+	close(socket_dispatch);
+    return (void *)EXIT_SUCCESS;
+}
+
 void *conexion_cliente_memoria(void *args){
     
 	do
@@ -136,5 +184,20 @@ void *conexion_cliente_memoria(void *args){
 void encolar_interrupcion_generico(list_struct_t * cola, interrupcion_t * interrupcion, int index){
     pthread_mutex_lock(cola->mutex);
     list_add_in_index(cola->lista, interrupcion, index);
+    pthread_mutex_unlock(cola->mutex);
+    flag_hay_interrupcion = true;
+}
+interrupcion_t * desencolar_interrupcion_generico(list_struct_t * cola){
     pthread_mutex_lock(cola->mutex);
+    interrupcion_t * interrupcion = list_remove(cola->lista, 0);
+    if(list_is_empty(cola->lista)){
+        flag_hay_interrupcion = false;
+    }
+    pthread_mutex_unlock(cola->mutex);
+}
+void vaciar_cola_interrupcion(list_struct_t * cola){
+    pthread_mutex_lock(cola->mutex);
+    list_destroy_and_destroy_elements(cola->lista, free);
+    pthread_mutex_unlock(cola->mutex);
+    flag_hay_interrupcion = false;
 }
