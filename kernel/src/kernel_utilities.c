@@ -6,6 +6,9 @@ extern t_config *config;
 
 int pid_actual;
 
+extern int estimacion_inicial;
+extern double alfa;
+
 extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
 extern list_struct_t *lista_peticiones_memoria_pendientes;
@@ -51,8 +54,11 @@ void inicializarKernel(){
 
     config = config_create("./kernel.config");
 
+    logger = log_create("kernel.log", "Kernel", 1, LOG_LEVEL_INFO);
+
     levantarConfig();
 
+    log_destroy(logger);
     logger = log_create("kernel.log", "Kernel", 1, current_log_level);
 
     inicializarSemaforos();
@@ -78,6 +84,9 @@ void levantarConfig(){
     algoritmo_cortoPlazo = alg_cortoPlazo_from_string(alg_cortoplazo_temp);
 
     tiempo_suspension = config_get_int_value(config, "TIEMPO_SUSPENSION");
+
+    estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
+    alfa = config_get_double_value(config, "ALFA");
 }
 /// @brief Thread que espera conexiones de CPU nuevas y las agrega a la lista de sockets. Nunca para de esperar y aceptar nuevos
 /// @param args 
@@ -151,7 +160,12 @@ enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char * string){
     if(!strcmp(string, "FIFO")){
         return CPL_FIFO;
     }
-    //agregar mas elseif aca mientras se van creando
+    if (!strcmp(string, "SJF")) {
+        return CPL_SJF;
+    }
+     if (!strcmp(string, "SJF_CD")) {
+        return CPL_SJF_CD;
+    }
     log_error(logger, "Config de corto plazo no reconocido");
     return -1;
 }

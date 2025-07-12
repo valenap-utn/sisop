@@ -8,6 +8,8 @@
 void *cortoPlazo(void *args);
 
 void cortoPlazoFifo(t_socket_cpu *socket_cpu);
+void cortoPlazoSJF(t_socket_cpu *socket_cpu);
+void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu);
 
 t_socket_cpu *buscar_cpu_libre();
 
