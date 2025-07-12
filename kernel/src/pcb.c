@@ -12,10 +12,16 @@ pthread_mutex_t * mutex_pid_mayor;
 //
 
 PCB* iniciar_pcb(){
+    extern int estimacion_inicial;
+    
     PCB* pcb = calloc(1, sizeof(PCB));
     pcb->pid = generar_pid_unico();
     //a chequear -> agrego esta linea para que no de warning, para que apunte a memoria valida
     pcb->registros = calloc(1, sizeof(registrosPCB));
+
+    pcb->estimacion_rafaga = estimacion_inicial;
+    pcb->rafaga_real_anterior = 0;
+
     clock_gettime(CLOCK_MONOTONIC, &pcb->timestamp_ultimo_estado);
     cambiar_estado(pcb, NEW);
     return pcb;

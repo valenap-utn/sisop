@@ -91,6 +91,8 @@ typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
 enum enum_algoritmo_cortoPlazo
 {
     CPL_FIFO,
+    CPL_SJF,
+    CPL_SJF_CD
 };
 typedef enum enum_algoritmo_cortoPlazo enum_algoritmo_cortoPlazo;
 
