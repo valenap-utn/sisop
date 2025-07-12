@@ -26,6 +26,11 @@ extern cache_t* cache_tabla;
 
 extern int puntero_cache;
 
+int pagina_actual_cache = -1;
+int marco_actual_cache = -1;
+
+/* ------------------ */
+
 int pid;
 int pc;
 t_paquete * paquete_send;
@@ -228,63 +233,99 @@ void Check_Int(){
 };
 
 void write_(int dir_logica , int datos){
-    uint32_t dir_fisica = MMU(dir_logica);
+    int nro_pagina;
+    int offset;
+    traducir_DL(dir_logica,&nro_pagina,&offset);
 
-    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+    int dir_fisica = nro_pagina * tam_pag + offset;
+
+    //Actualizar caché (si hay)
+    if(entradas_cache > 0){
+        pagina_actual_cache = nro_pagina;
+        marco_actual_cache = obtener_marco(pid,nro_pagina);
+
+        escribir_en_cache(pid,dir_fisica,datos,nro_pagina);
+        log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid, nro_pagina);
+        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, datos);
+        return;
+    }
+
+    //Obtenemos marco desde TLB
+    int marco = obtener_marco(pid,nro_pagina);
+    dir_fisica = obtener_DF(marco,offset);
     
+    //Enviamos a Memoria
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
     int tamanio = sizeof(int);
-    int tipo_de_acceso = ESCRITURA_AC; // 1 = escritura 
+    acceso_t tipo_de_acceso = ESCRITURA_AC;
 
-    agregar_a_paquete(paquete_send, &pid, sizeof(int));
-    agregar_a_paquete(paquete_send, &tamanio, sizeof(int));
-    agregar_a_paquete(paquete_send, &dir_fisica, sizeof(uint32_t)); //cambiar en memoria el tipo int -> uint32_t
-    agregar_a_paquete(paquete_send, &tipo_de_acceso, sizeof(int));
-    agregar_a_paquete(paquete_send, &datos, sizeof(int));
+    agregar_a_paquete(paquete_send,&pid,sizeof(int));
+    agregar_a_paquete(paquete_send,&tamanio,sizeof(int));
+    agregar_a_paquete(paquete_send,&dir_fisica,sizeof(int));
+    agregar_a_paquete(paquete_send,&tipo_de_acceso,sizeof(int));
+    agregar_a_paquete(paquete_send,&datos,sizeof(int));
 
     enviar_paquete(paquete_send,socket_memoria);
     eliminar_paquete(paquete_send);
 
-    //Espera de OK
     protocolo_socket cod_op = recibir_operacion(socket_memoria);
     if(cod_op != OK){
-        log_error(logger,"Memoria no confirmó escritura.");
+        log_error(logger,"Memoria no confirmó la escritura");
         return;
     }
 
-
-    log_info(logger, "PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>",pid,dir_fisica,datos);
+    log_info(logger, "PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, datos);
 
 };
 
 void read_(int dir_logica , int tamanio){
-    int dir_fisica = MMU(dir_logica);
+    int nro_pagina;
+    int offset;
+    traducir_DL(dir_logica,&nro_pagina,&offset);
 
-    t_paquete * paquete_send;
+    int dir_fisica = nro_pagina * tam_pag + offset;
+    int valor;
 
-    paquete_send = crear_paquete(READ_MEM); //Falta hacer al traduccion
+    //Consultamos la Caché
+    if(entradas_cache > 0 && buscar_en_cache(pid,dir_fisica,&valor)){
+        log_info(logger,"PID: <%d> - Cache Hit - Pagina: <%d>", pid, nro_pagina);
+        log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, valor);
+        return;
+    }
 
-    int tipo_de_acceso = LECTURA_AC; // 0 = lectura
+    log_info(logger,"PID: <%d> - Cache Miss - Pagina: <%d>", pid, nro_pagina);
 
-    agregar_a_paquete(paquete_send, &pid,sizeof(int));
+    //Obtenemos marco desde TLB
+    int marco = obtener_marco(pid,nro_pagina);
+    dir_fisica = obtener_DF(marco,offset);
+
+    //Enviamos a memoria
+    t_paquete* paquete_send = crear_paquete(READ_MEM);
+    acceso_t tipo_de_acceso = LECTURA_AC;
+
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
     agregar_a_paquete(paquete_send, &tamanio, sizeof(int));
     agregar_a_paquete(paquete_send, &dir_fisica, sizeof(int));
     agregar_a_paquete(paquete_send, &tipo_de_acceso, sizeof(int));
 
-    enviar_paquete(paquete_send,socket_memoria);
+    enviar_paquete(paquete_send, socket_memoria);
     eliminar_paquete(paquete_send);
 
-    //Recibir valor
-    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    protocolo_socket cod_op = recibir_paquete(socket_memoria);
     if(cod_op != DEVOLVER_VALOR){
         log_error(logger,"No se pudo obtener el valor desde memoria");
         return;
     }
 
     t_list* respuesta = recibir_paquete(socket_memoria);
-    int valor = *(int*)list_remove(respuesta,0);
-    list_destroy_and_destroy_elements(respuesta,free);
+    valor = *(int*)list_remove(respuesta,0);
+    list_destroy_and_destroy_elements(respuesta, free);
 
-    log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>",pid,dir_fisica,valor);
+
+    log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, valor);
+
+    //Actualizamos la caché
+    if(entradas_cache > 0)escribir_en_cache(pid,dir_fisica,valor,nro_pagina);
 
 };
 
@@ -351,11 +392,23 @@ void recibir_valores_memoria(int socket_memoria){
     list_destroy(paquete_recv);
 }
 
-int MMU(int dir_logica){
-    int nro_pagina = dir_logica / tam_pag;
-    int offset = dir_logica % tam_pag;
+/* ------ MMU ------ */
 
+void traducir_DL(int dir_logica, int* nro_pagina, int* offset){
+    *nro_pagina = dir_logica / tam_pag;
+    *offset = dir_logica % tam_pag;
+}
+
+int obtener_DF(int marco, int offset){
+    return marco * tam_pag + offset;
+}
+
+/* ------ TLB ------ */
+
+int obtener_marco(int pid, int nro_pagina){
+    
     // 1. Consultar la TLB (si está habilitada)
+
     if (entradas_tlb > 0) {
         int marco = buscar_en_tlb(pid, nro_pagina);
         if (marco != -1) {
@@ -367,6 +420,7 @@ int MMU(int dir_logica){
     }
 
     // 2. Calcular índices para acceso a TDP
+
     int* indices = malloc(sizeof(int) * cant_niv);
     int temp_pagina = nro_pagina;
     for (int i = cant_niv - 1; i >= 0; i--) {
@@ -375,6 +429,7 @@ int MMU(int dir_logica){
     }
 
     // 3. Armar y enviar el paquete a memoria
+
     t_paquete* paquete_send = crear_paquete(ACCEDER_A_TDP);
     agregar_a_paquete(paquete_send, &pid, sizeof(int));
     for (int i = 0; i < cant_niv; i++)
@@ -385,6 +440,7 @@ int MMU(int dir_logica){
     free(indices);
 
     // 4. Recibir el marco
+
     t_paquete* paquete_recv = recibir_paquete(socket_memoria);
     int marco = *(int*)list_remove(paquete_recv, 0);
     list_destroy_and_destroy_elements(paquete_recv, free);
@@ -399,11 +455,10 @@ int MMU(int dir_logica){
         agregar_a_tlb(pid, nro_pagina, marco);
     }
 
-    return marco * tam_pag + offset;
+    log_info(logger,"PID: <%d> - OBTENER MARCO - Página: <%d> - Marco: <%d>",pid,nro_pagina,marco);
+
+    return marco;
 }
-
-
-/* ------ TLB ------ */
 
 int buscar_en_tlb(int pid_actual, int pagina_buscada){
     for(int i = 0; i < entradas_tlb; i++){
@@ -492,7 +547,7 @@ int buscar_en_cache(int pid_actual, int dir_fisica, int* contenido_out){
     return 0;
 }
 
-void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor){
+void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor, int nro_pagina){
     if(entradas_cache <= 0)return;
 
     //Verificamos, si ya existe => modificamos
@@ -524,6 +579,8 @@ void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor){
 
     //Reemplazamos
     cache_tabla[victima] = (cache_t){pid_actual, dir_fisica,nuevo_valor,1,1,1};
+
+    log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
 }
 
 //Algoritmos de reemplazo
@@ -589,6 +646,9 @@ void escribir_cache_en_memoria(cache_t entrada){
     if(cod_op != OK){
         log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
     }
+
+    log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",entrada.pid, pagina_actual_cache, marco_actual_cache);
+
 }
 
 void limpiar_cache_de_proceso(int pid_a_eliminar){
