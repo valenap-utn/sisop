@@ -5,7 +5,6 @@ extern t_config *config;
 extern t_log_level current_log_level;
 char * puerto_cpu;
 char * puerto_kernel;
-extern list_struct_t *lista_sockets_cpu;
 char* path_instrucciones;
 int tam_memoria;
 
@@ -105,13 +104,9 @@ void *conexion_server_cpu(void *args) {
             pthread_exit(NULL);
         }
         
-        pthread_mutex_lock(lista_sockets_cpu->mutex);
-        list_add(lista_sockets_cpu->lista, socket_nuevo);
-        pthread_mutex_unlock(lista_sockets_cpu->mutex);
-        
         //MANEJA LAS INSTRUCCIONES
-        // cpu(socket_nuevo);(void*)socket_nuevo
-        //pthread_create();
+        pthread_t tid_cpu_aux;
+        pthread_create(&tid_cpu_aux, NULL, cpu, (void*)&socket_nuevo);
         socket_nuevo = malloc(sizeof(int));
     }
     
@@ -153,7 +148,6 @@ void *conexion_server_kernel(void *args) {
 }
 
 void inicializarListasMemoria(){
-    lista_sockets_cpu = inicializarLista();
 }
 
 

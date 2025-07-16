@@ -8,6 +8,8 @@ extern int pid;
 extern list_struct_t * cola_interrupciones;
 extern int flag_hay_interrupcion;
 
+extern sem_t * sem_dispatch_inicial;
+
 extern int socket_interrupt, socket_dispatch;
 int socket_memoria;
 //configs
@@ -39,6 +41,8 @@ void inicializarCpu(char *nombreCpuLog){
     sprintf(NewnombreCpuLog,"%s.log", nombreCpuLog); // FIJARSE QUE NO TENGA MEMORY LEAKS
 
     cola_interrupciones = inicializarLista();
+
+    sem_dispatch_inicial = inicializarSem(0);
 
     config = config_create("./cpu.config");
     levantarConfig();
@@ -153,6 +157,12 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
                 interrupcion->pid = pid_aux;
                 interrupcion->pc = pc_aux;
 
+                encolar_interrupcion_generico(cola_interrupciones, interrupcion, 0);
+
+                flag_hay_interrupcion = 1;
+
+                sem_post(sem_dispatch_inicial);
+
 				break;
 			case -1:
 				log_info(logger, "el cliente se desconecto. Terminando servidor");
@@ -194,6 +204,8 @@ interrupcion_t * desencolar_interrupcion_generico(list_struct_t * cola){
         flag_hay_interrupcion = false;
     }
     pthread_mutex_unlock(cola->mutex);
+
+    return interrupcion;
 }
 void vaciar_cola_interrupcion(list_struct_t * cola){
     pthread_mutex_lock(cola->mutex);

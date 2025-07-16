@@ -4,6 +4,7 @@
 extern t_log *logger;
 
 list_struct_t * cola_interrupciones;
+extern sem_t * sem_dispatch_inicial;
 
 extern int socket_interrupt, socket_dispatch, socket_memoria;
 
@@ -45,7 +46,10 @@ int tam_pag, cant_niv, entradas_x_tabla;
 void* ciclo_instruccion(void * arg){
     char * instrSTR;
     instruccion_t instr;
+
+    sem_wait(sem_dispatch_inicial);
         while ((1)){
+
             while (!flag_hay_interrupcion){
                 instrSTR = Fetch();
                 instr = Decode(instrSTR);
@@ -94,7 +98,7 @@ char * Fetch(){ // Le pasa la intruccion completa
     agregar_a_paquete(paquete_send, &pid, sizeof(int));
     agregar_a_paquete(paquete_send, &pc, sizeof(int));
 
-    enviar_paquete(paquete_send, conexion);
+    enviar_paquete(paquete_send, socket_memoria);
 
     //paquete enviado
     log_info(logger,"## PID: %d PC: %d- FETCH ",pid,pc);
@@ -213,6 +217,8 @@ void Check_Int(){
 
     t_paquete * paquete_send;
     interrupcion_t *interrupcion = desencolar_interrupcion_generico(cola_interrupciones);
+
+    
 
     pthread_mutex_lock(cola_interrupciones->mutex);
     if(!list_is_empty(cola_interrupciones->lista)&&(interrupcion->tipo == DISPATCH_CPU)){

@@ -66,7 +66,6 @@ instruccion_t Decode(char * instr);
 void Execute(instruccion_t);
 void Check_Int();
 int instrStringMap(char []);
-int MMU(int dir_logica);
 int Cache_paginas(int Direccion);
 void recibir_valores_memoria(int socket_memoria);
 

@@ -63,6 +63,7 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
 
     t_paquete *paquete = crear_paquete(DISPATCH_CPU);
     agregar_a_paquete(paquete, &(pcb->pid), sizeof(int));
+    agregar_a_paquete(paquete, &(pcb->pc), sizeof(int));
 
     
 
