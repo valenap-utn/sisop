@@ -496,7 +496,7 @@ int obtener_marco(int pid, int nro_pagina,int offset){
 
     // 4. Recibir el marco
 
-    t_paquete* paquete_recv = recibir_paquete(socket_memoria);
+    t_list* paquete_recv = recibir_paquete(socket_memoria);
     int marco = *(int*)list_remove(paquete_recv, 0);
     list_destroy_and_destroy_elements(paquete_recv, free);
 

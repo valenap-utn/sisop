@@ -183,7 +183,7 @@ void *conexion_cliente_memoria(void *args){
 
 void encolar_interrupcion_generico(list_struct_t * cola, interrupcion_t * interrupcion, int index){
     pthread_mutex_lock(cola->mutex);
-    list_add_in_index(cola->lista, interrupcion, index);
+    list_add_in_index(cola->lista, index, interrupcion);
     pthread_mutex_unlock(cola->mutex);
     flag_hay_interrupcion = true;
 }

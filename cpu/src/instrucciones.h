@@ -70,6 +70,10 @@ int MMU(int dir_logica);
 int Cache_paginas(int Direccion);
 void recibir_valores_memoria(int socket_memoria);
 
+void traducir_DL(int dir_logica, int *nro_pagina, int *offset);
+
+int obtener_DF(int marco, int offset);
+
 void * ciclo_instruccion(void *);
 void Actualizar_pc();
 
