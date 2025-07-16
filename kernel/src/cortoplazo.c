@@ -105,7 +105,7 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
             char * path = list_remove(paquete_respuesta, 0);
-            int tamaño = list_remove(paquete_respuesta, 0);
+            int tamaño = *(int*)list_remove(paquete_respuesta, 0);
             
             actualizar_estimacion(pcb);
 
