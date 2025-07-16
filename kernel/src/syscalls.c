@@ -24,6 +24,7 @@ void PROCESS_EXIT(PCB *pcb) {
     
     // encolar peticion
     t_peticion_memoria * peticion = inicializarPeticionMemoria();
+    log_info(logger, "## (pid: %d) - Finaliza el proceso", pcb->pid);
 
     peticion->tipo = PROCESS_EXIT_MEM;
     peticion->proceso = pcb;

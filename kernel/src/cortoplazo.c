@@ -92,25 +92,53 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
     switch (motivo) {
 
         case PROCESS_EXIT_CPU:
+            
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            PROCESS_EXIT(pcb);
+
             break;
 
         case PROCESS_INIT_CPU:
             log_info(logger, "## (%d) - Desalojado por CPU", pcb->pid);
-            
-            // actualiza tiempo real de ejecucion
-            struct timespec tiempo_fin_rafaga;
-            
-            // med de rafaga real
-            clock_gettime(CLOCK_MONOTONIC, &tiempo_fin_rafaga);
-            long duracion_rafaga = diff_in_milliseconds(pcb->timestamp_ultimo_estado, tiempo_fin_rafaga);
-            pcb->rafaga_real_anterior = duracion_rafaga;
 
-            // recalculo de est
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            char * path = list_remove(paquete_respuesta, 0);
+            int tamaño = list_remove(paquete_respuesta, 0);
+            
             actualizar_estimacion(pcb);
 
             // vuelve a READY - reencolado por desalojo
             cambiar_estado(pcb, READY);
             encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
+            PROCESS_CREATE(path, tamaño);
+
+            break;
+
+        case DUMP_MEM_CPU:
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            actualizar_estimacion(pcb);
+
+            // vuelve a READY - reencolado por desalojo
+            cambiar_estado(pcb, READY);
+            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
+            break;
+
+        case IO_CPU:
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            actualizar_estimacion(pcb);
+
+            // vuelve a READY - reencolado por desalojo
+            cambiar_estado(pcb, READY);
+            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
             break;
 
         default:
@@ -187,6 +215,15 @@ void cortoPlazoSJF(t_socket_cpu *socket_cpu) {
 }
 
 void actualizar_estimacion(PCB *pcb) {
+    
+    // actualiza tiempo real de ejecucion
+    struct timespec tiempo_fin_rafaga;
+    
+    // med de rafaga real
+    clock_gettime(CLOCK_MONOTONIC, &tiempo_fin_rafaga);
+    long duracion_rafaga = diff_in_milliseconds(pcb->timestamp_ultimo_estado, tiempo_fin_rafaga);
+    pcb->rafaga_real_anterior = duracion_rafaga;
+    
     extern double alfa;
 
     double estimacion_anterior = pcb->estimacion_rafaga;
