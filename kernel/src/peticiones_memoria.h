@@ -4,7 +4,7 @@
 #include <kernel_utilities.h>
 
 void *administrador_peticiones_memoria(void* arg_server);
-void *peticion_kernel(void *args);
+void peticion_kernel(t_args_peticion_memoria *args_peticion);
 void encolarPeticionMemoria(t_peticion_memoria *peticion);
 
 t_peticion_memoria *desencolarPeticionMemoria();

@@ -19,28 +19,22 @@ void *administrador_peticiones_memoria(void* arg_server){
 		peticion = desencolarPeticionMemoria();
 		do{
 			socket_memoria = crear_conexion(ip_memoria, puerto_memoria);
-			sleep(1);
-
+			if(socket_memoria==-1){
+                sleep(1);
+            }
 		}while(socket_memoria == -1);
 		args_peticion->peticion = peticion;
 		args_peticion->socket = socket_memoria; 
-		pthread_create(&aux_thread, NULL, peticion_kernel, (void *)args_peticion);
-        
-        //Aca meti una nueva inicializacion, el anterior no queda flotando porque peticion_kernel tiene su direccion y luego hace un free.
-        //El nuevo malloc asegura que no se modificara el contenido antes que peticion_kernel pueda guardarlo en su stack local.
-        //Asumo que esto ya es suficiente para salvarnos de la posible condicion de carrera, en caso que haya una nueva peticion cercana.
-        args_peticion = malloc(sizeof(t_args_peticion_memoria));
-
-		pthread_detach(aux_thread);
+		peticion_kernel(args_peticion);
+		
 	}
     pthread_exit(EXIT_SUCCESS);
 }
 
-void *peticion_kernel(void *args) {
-    t_args_peticion_memoria *args_peticion = args;
+void peticion_kernel(t_args_peticion_memoria *args_peticion) {
+
     int socket = args_peticion->socket;
     t_peticion_memoria *peticion = args_peticion->peticion;
-    free(args);
 
     PCB *proceso = peticion->proceso;
     t_paquete *send_protocolo;
@@ -124,9 +118,14 @@ void *peticion_kernel(void *args) {
                     break;
             }
             break;
+
+        case SUSP_MEM:
+            log_debug(logger, "LLEGO A SUSP_MEM");
+            break;
+
         default:
             log_error(logger, "En peticion_kernel: Tipo de operación desconocido: %d", peticion->tipo);
-            return NULL;
+            return;
     }
 
     
@@ -134,7 +133,7 @@ void *peticion_kernel(void *args) {
     eliminar_paquete(send_protocolo);
     liberar_conexion(socket);
 
-    return NULL;
+    return;
 }
 void encolarPeticionMemoria(t_peticion_memoria *peticion){
     

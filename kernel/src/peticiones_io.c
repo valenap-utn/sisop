@@ -200,7 +200,7 @@ void * timer_suspend(void * args){
     PCB * pcb = args;
 
     PCB *pcb_aux;
-    t_peticion_memoria * peticion;
+    t_peticion_memoria * peticion = inicializarPeticionMemoria();
     
     usleep(tiempo_suspension*1000);
 
