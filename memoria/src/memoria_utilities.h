@@ -45,7 +45,7 @@ void liberar_tabla_principal(Tabla_Principal* tabla);
 
 //FUTURAS (sin implementar ni nada aún)
 void suspender_proceso(int pid);
-void des_suspender_proceso(int pid);
+bool des_suspender_proceso(int pid);
 
 void obtener_indices_por_nivel(int nro_pagina_logica, int* indices);
 int obtener_marco_por_indice(Tabla_Principal* tabla, int nro_pagina_logica);

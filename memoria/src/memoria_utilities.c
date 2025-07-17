@@ -454,8 +454,14 @@ void peticion_kernel(int socket_kernel){
             paquete_recv = recibir_paquete(socket_kernel);
             pid = *(int *)list_remove(paquete_recv, 0);
 
+            log_debug(logger, "Se recibió solicitud de des-suspensión para PID: %d", pid);
+
             //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
-            des_suspender_proceso(pid);
+            bool ok = des_suspender_proceso(pid);
+
+            t_paquete* paquete_send = crear_paquete(ok ? OK : UNSUSPEND_MEM_ERROR);
+            enviar_paquete(paquete_send,socket_kernel);
+            eliminar_paquete(paquete_send);
 
             // faltaria: enviar_paquete_ok(socket_kernel);
             // y el caso de error como en process create
@@ -855,11 +861,11 @@ void suspender_proceso(int pid){
 
 }
 
-void des_suspender_proceso(int pid){
+bool des_suspender_proceso(int pid){
     t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
     if(!proceso){
         log_error(logger, "Error al buscar el proceso con PID <%d>",pid);
-        return;
+        return false;
     }
 
     t_swap* entrada = NULL;
@@ -875,21 +881,24 @@ void des_suspender_proceso(int pid){
 
     if(!entrada){
         log_error(logger,"No se encontró al proceso con pid %d en SWAP", pid);
-        return;
+        return false;
     }
 
     FILE* f = fopen(path_swapfile,"rb+");
     if(!f){
         log_error(logger,"No se pudo abrir el archivo de SWAP");
         free(entrada);
-        return;
+        return false;
     }
 
     for(int i = 0; i < entrada->cantidad_paginas ;i++){
         int marco = asignar_marco_libre();
         if(marco == -1){
             log_error(logger,"No hay marcos disponibles para des-suspender al proceso con pid %d", pid);
-            break;
+            fclose(f);
+            free(entrada);
+            return false;
+            // break;
         }
 
         fseek(f, (entrada->pagina_inicio + i) * tam_pagina, SEEK_SET);
@@ -902,6 +911,7 @@ void des_suspender_proceso(int pid){
     free(entrada);
     proceso->metricas.cant_subidas_memoria++;
     log_info(logger,"## PID: <%d> - Proceso des-suspendido desde SWAP", pid);
+    return true;
 }
 
 void finalizar_proceso(int pid){
