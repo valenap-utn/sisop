@@ -422,7 +422,13 @@ void peticion_kernel(int socket_kernel){
                     enviar_paquete_ok(socket_kernel);
                     log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
                 } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
-            } else log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
+            } else {
+                log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
+                t_paquete * paquete_error = crear_paquete(PROCESS_CREATE_MEM_FAIL);
+                agregar_a_paquete(paquete_error, "ERROR", strlen("ERROR")+1);
+                enviar_paquete(paquete_error, socket_kernel);
+                eliminar_paquete(paquete_error);
+            }
 
             list_destroy_and_destroy_elements(paquete_recv,free);
         }
@@ -434,8 +440,8 @@ void peticion_kernel(int socket_kernel){
             paquete_recv = recibir_paquete(socket_kernel);
             pid = *(int *)list_remove(paquete_recv, 0);
 
-        //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
-        suspender_proceso(pid);
+            //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
+            suspender_proceso(pid);
 
             // eliminar_paquete(paquete_send_suspencion_proceso);
             list_destroy_and_destroy_elements(paquete_recv,free);
@@ -448,8 +454,11 @@ void peticion_kernel(int socket_kernel){
             paquete_recv = recibir_paquete(socket_kernel);
             pid = *(int *)list_remove(paquete_recv, 0);
 
-        //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
-        des_suspender_proceso(pid);
+            //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
+            des_suspender_proceso(pid);
+
+            // faltaria: enviar_paquete_ok(socket_kernel);
+            // y el caso de error como en process create
 
             // eliminar_paquete(paquete_send_dessuspencion_proceso);
             list_destroy_and_destroy_elements(paquete_recv,free);

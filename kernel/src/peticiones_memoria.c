@@ -58,6 +58,7 @@ void peticion_kernel(t_args_peticion_memoria *args_peticion) {
                     break;	
                 case PROCESS_CREATE_MEM_FAIL:
                     log_debug(logger, "FAIL recibido de memoria para %d", peticion->tipo);
+                    peticion->respuesta_exitosa = false;
                     break;
                 default:
                     log_error(logger, "Código de operación inesperado recibido: %d", op);
@@ -125,8 +126,9 @@ void peticion_kernel(t_args_peticion_memoria *args_peticion) {
         case SUSP_MEM:
             send_protocolo = crear_paquete(SUSP_MEM);
             agregar_a_paquete(send_protocolo, (void *)&peticion->proceso->pid, sizeof(int));
-            log_debug(logger, "LLEGO A SUSP_MEM");
+            log_debug(logger, "Se envia un proceso a suspend pid: ", peticion->proceso->pid);
             enviar_paquete(send_protocolo, socket);
+            peticion->respuesta_exitosa = true;
             break;
             
         case UNSUSPEND_MEM:
@@ -152,7 +154,6 @@ void peticion_kernel(t_args_peticion_memoria *args_peticion) {
                     peticion->respuesta_exitosa = false;
                     break;
             }
-            sem_post(peticion->peticion_finalizada);
 
             break;
 

@@ -98,10 +98,6 @@
         //limpia la lista y devuelve ok = 0 si cod_op == OK
         protocolo_socket cod_op = recibir_operacion(socket_cliente); //limpia el codigo de operacion
         
-        if (cod_op != OK){
-            log_error(logger, "Se recibio cod_op distinto de OK");
-            return cod_op;
-        }
         t_list* valores = recibir_paquete(socket_cliente);
 
         t_list_iterator *iterator = list_iterator_create(valores);
@@ -114,6 +110,12 @@
         }
         list_iterator_destroy(iterator);
         list_destroy(valores);
+
+        if (cod_op != OK){
+            log_error(logger, "Se recibio cod_op distinto de OK");
+            return cod_op;
+        }
+
         return 0;
         //
     }
