@@ -11,6 +11,7 @@ extern list_struct_t *lista_sockets_cpu_libres;
 extern list_struct_t *lista_sockets_cpu_ocupados;
 extern list_struct_t *lista_sockets_io;
 
+t_dictionary *diccionario_cpu_pcb;
 
 /// @brief Hay que crear un thread por cada CPU, y tener en cuenta 
 /// las zonas de mutua exclusion de las listas que se usan
@@ -90,6 +91,12 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
     log_info(logger, "Esperando motivo de devolucion de CPU");
     motivo = recibir_operacion(socket_cpu->interrupt);
 
+    // manejo la interrupción que vino de un desalojo
+    if (motivo == PROCESS_INIT_CPU) {
+        manejo_respuesta_desalojo(socket_cpu);
+        return;
+    }
+
     t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
 
     switch (motivo) {
@@ -103,6 +110,7 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
 
             break;
 
+        /*
         case PROCESS_INIT_CPU:
             log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS INIT", pcb->pid);
 
@@ -121,6 +129,7 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             PROCESS_CREATE(path, tamaño);
 
             break;
+        */
 
         case DUMP_MEM_CPU:
 
@@ -158,6 +167,33 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             list_destroy(paquete_respuesta);
             break;
     }
+}
+
+// funcion para manejo de respuesta por interrupt (desalojo)
+void manejo_respuesta_desalojo(t_socket_cpu *socket_cpu) {
+    t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
+
+    int pid_desalojado = *(int*)list_remove(paquete_respuesta, 0);
+    int pc_actualizado = *(int*)list_remove(paquete_respuesta, 0);
+
+    // buscar PCB en EXEC
+    pthread_mutex_lock(lista_procesos_exec->mutex);
+    PCB *pcb = dictionary_get(diccionario_cpu_pcb, socket_cpu);
+    pthread_mutex_unlock(lista_procesos_exec->mutex);
+
+    // actualizo PC y tiempo
+    pcb->pc = pc_actualizado;
+
+    actualizar_estimacion(pcb); // recalculo de estimacion
+
+    cambiar_estado(pcb, READY); // vuelve a ready
+    encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
+    list_destroy(paquete_respuesta);
+
+    log_info(logger, "## (%d) - Desalojado y reencolado con nuevo PC=%d", pid_desalojado, pc_actualizado);
+
+    dictionary_remove(diccionario_cpu_pcb, socket_cpu);
 }
 
 int buscar_indice_proceso_menor_estimacion() {

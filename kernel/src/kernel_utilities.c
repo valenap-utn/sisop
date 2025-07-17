@@ -23,6 +23,8 @@ extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_procesos_susp_block;
 
+extern t_dictionary *diccionario_cpu_pcb;
+
 //semaforos auxiliares
 sem_t * sem_memoria_liberada;
 
@@ -63,6 +65,8 @@ void inicializarKernel(){
 
     inicializarSemaforos();
     inicializarListasKernel();
+
+    diccionario_cpu_pcb = dictionary_create();
 
 }
 
