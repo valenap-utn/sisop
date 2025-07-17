@@ -61,7 +61,7 @@ void levantarConfig(){
 }
 
 void inicializar_mem_prin(){
-    memoria_principal.espacio = calloc(tam_memoria);
+    memoria_principal.espacio = calloc(tam_memoria, sizeof(int));
     memoria_principal.tablas_por_proceso = list_create();
 
     memoria_principal.cantidad_marcos = tam_memoria/tam_pagina;
@@ -699,7 +699,9 @@ void liberar_marco(int marco){
 /* ------- TDP ------- */
 
 struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias){
-    Tabla_Nivel* tabla = calloc(sizeof(Tabla_Nivel));
+    Tabla_Nivel* tabla = calloc(1,sizeof(Tabla_Nivel));
+    if(!tabla) return NULL;
+
     tabla->paginas_contenidas = 0;
     tabla->esta_presente = false; 
     tabla->es_ultimo_nivel = (nivel_actual == cant_niveles);
@@ -713,6 +715,7 @@ struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias){
         tabla->marco = marco;
         tabla->esta_presente = true;
         tabla->paginas_contenidas = 1;
+        tabla->sgte_nivel = NULL;
     }else{
         int paginas_restantes = paginas_necesarias;
         tabla->sgte_nivel = malloc(sizeof(Tabla_Nivel*)* entradas_por_tabla);
@@ -735,7 +738,9 @@ struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias){
 
 struct Tabla_Principal* crear_tabla_principal(int paginas_necesarias){
     Tabla_Principal* tabla = malloc(sizeof(Tabla_Principal));
-    tabla->niveles = calloc(sizeof(Tabla_Nivel*)*entradas_por_tabla);
+    if(!tabla) return NULL;
+
+    tabla->niveles = calloc(entradas_por_tabla, sizeof(Tabla_Nivel*)); //sizeof(Tabla_Nivel*)*
     int paginas_restantes = paginas_necesarias;
 
     for(int i = 0; i < entradas_por_tabla; i++){
