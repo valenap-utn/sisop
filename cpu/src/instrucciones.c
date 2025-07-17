@@ -182,6 +182,7 @@ void Execute(instruccion_t *instr){
             break;
             case GOTO_I:
                 goto_(atoi(instr->data[1]));
+                
             break;
             case WRITE_I:
                 write_(atoi(instr->data[2]) , atoi(instr->data[1]));
@@ -394,7 +395,6 @@ void noop(){
 };
 
 void goto_(int nuevo_pc){
-
     pc = nuevo_pc;
     pc_actualizado = true;
     log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: GOTO :",pid);

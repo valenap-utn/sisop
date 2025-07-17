@@ -120,7 +120,10 @@ void peticion_kernel(t_args_peticion_memoria *args_peticion) {
             break;
 
         case SUSP_MEM:
+            send_protocolo = crear_paquete(SUSP_MEM);
+            agregar_a_paquete(send_protocolo, (void *)&peticion->proceso->pid, sizeof(int));
             log_debug(logger, "LLEGO A SUSP_MEM");
+            enviar_paquete(send_protocolo, socket);
             break;
 
         default:

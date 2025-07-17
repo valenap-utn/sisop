@@ -5,7 +5,7 @@ extern t_config *config;
 extern t_log_level current_log_level;
 char * puerto_cpu;
 char * puerto_kernel;
-char* path_instrucciones;
+char * path_instrucciones;
 int tam_memoria;
 
 //variables para tdp
@@ -652,8 +652,7 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
         return -1;
     }
     char *path_completo = malloc(strlen(path_instrucciones) + strlen(nombreArchivo) + 1);
-    strcat(path_completo,path_instrucciones);
-    strcat(path_completo,nombreArchivo);
+    sprintf(path_completo, "%s%s", path_instrucciones, nombreArchivo);
     nueva_tabla->instrucciones = cargar_instrucciones_desde_archivo(path_completo);
     if (nueva_tabla->instrucciones == NULL) {
         log_error(logger, "Error al cargar instrucciones del proceso %d", pid);
@@ -795,10 +794,13 @@ void suspender_proceso(int pid){
         return;
     }
 
-    FILE* f = fopen(path_swapfile,"rb+");
-    if(!f){
-        log_error(logger,"No se pudo abrir el archivo de SWAP");
-        return;
+    FILE* f = fopen(path_swapfile, "rb+");
+    if (f == NULL) {
+        f = fopen(path_swapfile, "wb+");
+        if (f == NULL) {
+            perror("Error al crear el archivo swap");
+            return NULL;
+        }
     }
 
     int offset_en_paginas = list_size(memoria_principal.metadata_swap);
