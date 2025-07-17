@@ -106,7 +106,8 @@ void *conexion_server_cpu(void *args) {
         
         //MANEJA LAS INSTRUCCIONES
         pthread_t tid_cpu_aux;
-        pthread_create(&tid_cpu_aux, NULL, cpu, (void*)&socket_nuevo);
+        pthread_create(&tid_cpu_aux, NULL, cpu, (void*)socket_nuevo);
+        pthread_detach(tid_cpu_aux);
         socket_nuevo = malloc(sizeof(int));
     }
     
@@ -409,7 +410,7 @@ void peticion_kernel(int socket_kernel){
             paquete_recv = recibir_paquete(socket_kernel);
             pid = *(int *)list_remove(paquete_recv, 0);
             tamanio = *(int *)list_remove(paquete_recv,0); 
-            nombreArchivo = (char *)list_remove(paquete_recv,0); 
+            nombreArchivo = list_remove(paquete_recv,0); 
 
             if(hay_espacio_en_mem(tamanio)){
                 if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){

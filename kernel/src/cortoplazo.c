@@ -53,6 +53,8 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
         
         enviar_a_cpu_dispatch(pcb, socket_cpu);
 
+
+
         esperar_respuesta_cpu(pcb, socket_cpu);
 
     }
@@ -68,6 +70,8 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
     
 
     enviar_paquete(paquete, socket_cpu->dispatch);
+
+    recibir_paquete_ok(socket_cpu->interrupt);
 
     log_info(logger, "## (%d) - Enviado a CPU con PC=%d", pcb->pid, pcb->pc);
 

@@ -62,8 +62,8 @@ void dump_memory();
 void exit_();
 
 char * Fetch();
-instruccion_t Decode(char * instr);
-void Execute(instruccion_t);
+instruccion_t *Decode(char * instr);
+void Execute(instruccion_t *);
 void Check_Int();
 int instrStringMap(char []);
 int Cache_paginas(int Direccion);

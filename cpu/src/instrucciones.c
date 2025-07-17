@@ -45,7 +45,7 @@ int tam_pag, cant_niv, entradas_x_tabla;
 
 void* ciclo_instruccion(void * arg){
     char * instrSTR;
-    instruccion_t instr;
+    instruccion_t *instr;
 
     sem_wait(sem_dispatch_inicial);
         while ((1)){
@@ -112,7 +112,7 @@ char * Fetch(){ // Le pasa la intruccion completa
 
         // int pid =  *(int *)list_remove(paquete_recv, 0);
         // int pc  =  *(int *)list_remove(paquete_recv, 0);
-        InstruccionCompleta = *(char **)list_remove(paquete_recv, 0);
+        InstruccionCompleta = list_remove(paquete_recv, 0);
         // etc
         // list_destroy(paquete_recv);
         
@@ -124,77 +124,77 @@ char * Fetch(){ // Le pasa la intruccion completa
     return InstruccionCompleta ;
 };
 
-instruccion_t Decode(char * instr){
-    instruccion_t current_instr;
-    current_instr.data = string_split(instr, " ");
-    current_instr.opCode = instrStringMap(current_instr.data[0]);
+instruccion_t *Decode(char * instr){
+    instruccion_t *current_instr = malloc(sizeof(instruccion_t));
+    current_instr->data = string_split(instr, " ");
+    current_instr->opCode = instrStringMap(current_instr->data[0]);
 
 
-    switch (current_instr.opCode){
+    switch (current_instr->opCode){
         case IO:
-                current_instr.tipo = SYSCALL;
+                current_instr->tipo = SYSCALL;
         break;
         case INIT_PROC:
-                current_instr.tipo = SYSCALL;       
+                current_instr->tipo = SYSCALL;       
         break;
         case DUMP_MEMORY:
-                current_instr.tipo = SYSCALL;
+                current_instr->tipo = SYSCALL;
         break;
         case EXIT_I:
-                current_instr.tipo = SYSCALL;
+                current_instr->tipo = SYSCALL;
         break;
         case NOOP:
-                current_instr.tipo = USUARIO;
+                current_instr->tipo = USUARIO;
         break;
         case WRITE_I:
-                current_instr.tipo = USUARIO;
+                current_instr->tipo = USUARIO;
         break;
         case READ_I:
-                current_instr.tipo = USUARIO;
+                current_instr->tipo = USUARIO;
         break;
         case GOTO:
-                current_instr.tipo = USUARIO;
+                current_instr->tipo = USUARIO;
         break;
         default:
-             log_info(logger, "Instrucción no reconocida: %s", *current_instr.data);
+             log_info(logger, "Instrucción no reconocida: %s", *current_instr->data);
              exit(EXIT_FAILURE);
                 break;
         }
-        if (current_instr.opCode == IO || current_instr.opCode == INIT_PROC || current_instr.opCode ==  WRITE_I ||  current_instr.opCode ==  READ_I){
-            if(!current_instr.data[0] || !current_instr.data[1]){                 
-                log_info(logger, "Instrucción no tiene los 2 parametros: %s", *current_instr.data);
+        if (current_instr->opCode == IO || current_instr->opCode == INIT_PROC || current_instr->opCode ==  WRITE_I ||  current_instr->opCode ==  READ_I){
+            if(!current_instr->data[0] || !current_instr->data[1]){
+                log_info(logger, "Instrucción no tiene los 2 parametros: %s", *current_instr->data);
                 exit(EXIT_FAILURE);
             }
-        } else if (current_instr.opCode == GOTO && !current_instr.data[0]){
-                log_info(logger, "Instrucción no tiene el parametro: %s", *current_instr.data);
+        } else if (current_instr->opCode == GOTO && !current_instr->data[0]){
+                log_info(logger, "Instrucción no tiene el parametro: %s", *current_instr->data);
                 exit(EXIT_FAILURE);
         };
-        log_debug(logger, "Instrucción Decodiada: %s (%d)  SYSCALL TIPO: %d",current_instr.data[0] ,current_instr.opCode,current_instr.tipo);
+        log_debug(logger, "Instrucción Decodiada: %s (%d)  SYSCALL TIPO: %d",current_instr->data[0] ,current_instr->opCode,current_instr->tipo);
         return current_instr;    
 };
 
-void Execute(instruccion_t instr){
-    log_debug(logger, "Instrucción ejecutada: %d SYSCALL TIPO: %d", instr.opCode,instr.tipo);
+void Execute(instruccion_t *instr){
+    log_debug(logger, "Instrucción ejecutada: %d SYSCALL TIPO: %d", instr->opCode,instr->tipo);
 
-    switch (instr.opCode){
+    switch (instr->opCode){
             case NOOP:
                 noop();
             break;
             case GOTO:
-                goto_(atoi(instr.data[1]));
+                goto_(atoi(instr->data[1]));
             break;
             case WRITE_I:
-                write_(atoi(instr.data[2]) , atoi(instr.data[1]));
+                write_(atoi(instr->data[2]) , atoi(instr->data[1]));
             break;
             case READ_I:
-                read_(atoi(instr.data[2]) , atoi(instr.data[1]));
+                read_(atoi(instr->data[2]) , atoi(instr->data[1]));
             break;
             //----- SYSCALLS
             case IO:
-                io(instr.data[1],atoi(instr.data[2]));
+                io(instr->data[1],atoi(instr->data[2]));
             break;
             case INIT_PROC:
-                init_proc(instr.data[2],atoi(instr.data[1]));
+                init_proc(instr->data[2],atoi(instr->data[1]));
             break;
 
             case DUMP_MEMORY:
@@ -205,7 +205,7 @@ void Execute(instruccion_t instr){
                 exit_();
             break;
         default:
-            log_info(logger, "Error al ejecutar la instruccion: %s", *instr.data);
+            log_info(logger, "Error al ejecutar la instruccion: %s", *instr->data);
             exit(EXIT_FAILURE);
             break;
         }
@@ -229,6 +229,12 @@ void Check_Int(){
     switch(interrupcion->tipo){
         
         case DISPATCH_CPU:
+            enviar_paquete_ok(socket_interrupt);
+            pc = interrupcion->pc;
+            pid = interrupcion->pid;
+        break;
+
+        case DESALOJO_CPU:
             paquete_send = crear_paquete(MOTIVO_DEVOLUCION_CPU);
             agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
             agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
@@ -270,12 +276,14 @@ void Check_Int(){
 
     }
     
-    vaciar_cola_interrupcion(cola_interrupciones);
+    if(interrupcion->tipo != DISPATCH_CPU){
+        enviar_paquete(paquete_send, socket_interrupt);
+        eliminar_paquete(paquete_send);
+    }
 
-    enviar_paquete(paquete_send, socket_interrupt);
-
-    eliminar_paquete(paquete_send);
+    vaciar_cola_interrupcion(cola_interrupciones);  
     free(interrupcion);
+
 
 };
 

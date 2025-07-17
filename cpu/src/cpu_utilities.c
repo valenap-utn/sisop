@@ -209,7 +209,7 @@ interrupcion_t * desencolar_interrupcion_generico(list_struct_t * cola){
 }
 void vaciar_cola_interrupcion(list_struct_t * cola){
     pthread_mutex_lock(cola->mutex);
-    list_destroy_and_destroy_elements(cola->lista, free);
+    list_clean_and_destroy_elements(cola->lista, free);
     pthread_mutex_unlock(cola->mutex);
     flag_hay_interrupcion = false;
 }
