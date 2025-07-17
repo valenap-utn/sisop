@@ -146,7 +146,7 @@ int buscar_io(char * nombre_a_buscar){
 
     while (list_iterator_has_next(iterator)){
         socket_io = list_iterator_next(iterator);
-        if ((list_is_empty(socket_io->cola_blocked->lista))&&(strcmp(socket_io->nombre, nombre_a_buscar))){
+        if ((list_is_empty(socket_io->cola_blocked->lista))&&(!strcmp(socket_io->nombre, nombre_a_buscar))){
             pthread_mutex_unlock(lista_sockets_io->mutex);
             return list_iterator_index(iterator);
         }else socket_io = NULL;
@@ -158,7 +158,7 @@ int buscar_io(char * nombre_a_buscar){
 
         while (list_iterator_has_next(iterator)){
             socket_io = list_iterator_next(iterator);
-            if (strcmp(socket_io->nombre, nombre_a_buscar)){
+            if (!strcmp(socket_io->nombre, nombre_a_buscar)){
                 pthread_mutex_unlock(lista_sockets_io->mutex);
                 return list_iterator_index(iterator);
             }else socket_io = NULL;

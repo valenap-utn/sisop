@@ -128,6 +128,33 @@ void peticion_kernel(t_args_peticion_memoria *args_peticion) {
             log_debug(logger, "LLEGO A SUSP_MEM");
             enviar_paquete(send_protocolo, socket);
             break;
+            
+        case UNSUSPEND_MEM:
+            
+            send_protocolo = crear_paquete(UNSUSPEND_MEM);
+            agregar_a_paquete(send_protocolo, &proceso->pid, sizeof(proceso->pid));
+
+			log_debug(logger, "Se envió la peticion de UNSUSPEND del PID: %d Tamaño: %d", proceso->pid, proceso->memoria_necesaria);
+
+            enviar_paquete(send_protocolo, socket);
+            op = recibir_paquete_ok(socket);
+            switch (op) {
+                case OK:
+                    log_debug(logger, "'OK' recibido desde memoria para UNSUSPEND");
+                    peticion->respuesta_exitosa = true;
+                    break;	
+                case UNSUSPEND_MEM_ERROR:
+                    log_debug(logger, "FAIL recibido de memoria para UNSUSPEND");
+                    peticion->respuesta_exitosa = false;
+                    break;
+                default:
+                    log_error(logger, "Código de operación inesperado recibido: %d", op);
+                    peticion->respuesta_exitosa = false;
+                    break;
+            }
+            sem_post(peticion->peticion_finalizada);
+
+            break;
 
         default:
             log_error(logger, "En peticion_kernel: Tipo de operación desconocido: %d", peticion->tipo);

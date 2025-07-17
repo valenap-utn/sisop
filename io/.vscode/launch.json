@@ -31,7 +31,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/${workspaceFolderBasename}",
-      "args": ["DISCO1"],
+      "args": ["DISCO"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

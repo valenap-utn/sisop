@@ -160,116 +160,116 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             break;
     }
 }
-void esperar_respuesta_cp_desalojo(PCB * pcb, t_socket_cpu *socket_cpu){
-    protocolo_socket motivo;
+// void esperar_respuesta_cp_desalojo(PCB * pcb, t_socket_cpu *socket_cpu){
+//     protocolo_socket motivo;
     
-    log_info(logger, "Esperando motivo de devolucion de CPU");
-    motivo = recibir_operacion(socket_cpu->interrupt);
+//     log_info(logger, "Esperando motivo de devolucion de CPU");
+//     motivo = recibir_operacion(socket_cpu->interrupt);
 
-    // manejo la interrupción que vino de un desalojo
-    if (motivo == PROCESS_INIT_CPU) {
-        manejo_respuesta_desalojo(socket_cpu);
-        return;
-    }
+//     // manejo la interrupción que vino de un desalojo
+//     if (motivo == PROCESS_INIT_CPU) {
+//         manejo_respuesta_desalojo(socket_cpu);
+//         return;
+//     }
 
-    t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
+//     t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
 
-    switch (motivo) {
+//     switch (motivo) {
 
-        case PROCESS_EXIT_CPU:
+//         case PROCESS_EXIT_CPU:
 
-            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS EXIT", pcb->pid);
+//             log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS EXIT", pcb->pid);
             
-            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
-            PROCESS_EXIT(pcb);
+//             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+//             PROCESS_EXIT(pcb);
 
-            break;
+//             break;
 
-        /*
-        case PROCESS_INIT_CPU:
-            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS INIT", pcb->pid);
+//         /*
+//         case PROCESS_INIT_CPU:
+//             log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS INIT", pcb->pid);
 
-            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
-            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+//             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+//             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
-            char * path = list_remove(paquete_respuesta, 0);
-            int tamaño = *(int*)list_remove(paquete_respuesta, 0);
+//             char * path = list_remove(paquete_respuesta, 0);
+//             int tamaño = *(int*)list_remove(paquete_respuesta, 0);
             
-            actualizar_estimacion(pcb);
+//             actualizar_estimacion(pcb);
 
-            // vuelve a READY - reencolado por desalojo
-            cambiar_estado(pcb, READY);
-            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+//             // vuelve a READY - reencolado por desalojo
+//             cambiar_estado(pcb, READY);
+//             encolar_cola_generico(lista_procesos_ready, pcb, -1);
 
-            PROCESS_CREATE(path, tamaño);
+//             PROCESS_CREATE(path, tamaño);
 
-            break;
-        */
+//             break;
+//         */
 
-        case DUMP_MEM_CPU:
+//         case DUMP_MEM_CPU:
 
-            log_info(logger, "## (PID: %d) - Solicitó syscall: DUMP MEMORY", pcb->pid);
+//             log_info(logger, "## (PID: %d) - Solicitó syscall: DUMP MEMORY", pcb->pid);
 
-            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
-            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+//             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+//             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
-            actualizar_estimacion(pcb);
+//             actualizar_estimacion(pcb);
 
-            // vuelve a READY - reencolado por desalojo
-            cambiar_estado(pcb, READY);
-            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+//             // vuelve a READY - reencolado por desalojo
+//             cambiar_estado(pcb, READY);
+//             encolar_cola_generico(lista_procesos_ready, pcb, -1);
 
-            break;
+//             break;
 
-        case IO_CPU:
+//         case IO_CPU:
 
-            log_info(logger, "## (PID: %d) - Solicitó syscall: IO", pcb->pid);
+//             log_info(logger, "## (PID: %d) - Solicitó syscall: IO", pcb->pid);
 
-            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
-            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+//             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+//             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
-            char * nombre_io = list_remove(paquete_respuesta, 0);
-            int tiempo = *(int *)list_remove(paquete_respuesta, 0);
+//             char * nombre_io = list_remove(paquete_respuesta, 0);
+//             int tiempo = *(int *)list_remove(paquete_respuesta, 0);
 
-            actualizar_estimacion(pcb);
+//             actualizar_estimacion(pcb);
 
-            IO_syscall(pcb, nombre_io, tiempo);
+//             IO_syscall(pcb, nombre_io, tiempo);
 
-            break;
+//             break;
 
-        default:
-            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
-            list_destroy(paquete_respuesta);
-            break;
-    }
-}
+//         default:
+//             log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
+//             list_destroy(paquete_respuesta);
+//             break;
+//     }
+// }
 
-// funcion para manejo de respuesta por interrupt (desalojo)
-void manejo_respuesta_desalojo(t_socket_cpu *socket_cpu) {
-    t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
+// // funcion para manejo de respuesta por interrupt (desalojo)
+// void manejo_respuesta_desalojo(t_socket_cpu *socket_cpu) {
+//     t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
 
-    int pid_desalojado = *(int*)list_remove(paquete_respuesta, 0);
-    int pc_actualizado = *(int*)list_remove(paquete_respuesta, 0);
+//     int pid_desalojado = *(int*)list_remove(paquete_respuesta, 0);
+//     int pc_actualizado = *(int*)list_remove(paquete_respuesta, 0);
 
-    // buscar PCB en EXEC
-    pthread_mutex_lock(lista_procesos_exec->mutex);
-    PCB *pcb = dictionary_get(diccionario_cpu_pcb, socket_cpu);
-    pthread_mutex_unlock(lista_procesos_exec->mutex);
+//     // buscar PCB en EXEC
+//     pthread_mutex_lock(lista_procesos_exec->mutex);
+//     PCB *pcb = dictionary_get(diccionario_cpu_pcb, string_itoa(socket_cpu));
+//     pthread_mutex_unlock(lista_procesos_exec->mutex);
 
-    // actualizo PC y tiempo
-    pcb->pc = pc_actualizado;
+//     // actualizo PC y tiempo
+//     pcb->pc = pc_actualizado;
 
-    actualizar_estimacion(pcb); // recalculo de estimacion
+//     actualizar_estimacion(pcb); // recalculo de estimacion
 
-    cambiar_estado(pcb, READY); // vuelve a ready
-    encolar_cola_generico(lista_procesos_ready, pcb, -1);
+//     cambiar_estado(pcb, READY); // vuelve a ready
+//     encolar_cola_generico(lista_procesos_ready, pcb, -1);
 
-    list_destroy(paquete_respuesta);
+//     list_destroy(paquete_respuesta);
 
-    log_info(logger, "## (%d) - Desalojado y reencolado con nuevo PC=%d", pid_desalojado, pc_actualizado);
+//     log_info(logger, "## (%d) - Desalojado y reencolado con nuevo PC=%d", pid_desalojado, pc_actualizado);
 
-    dictionary_remove(diccionario_cpu_pcb, socket_cpu);
-}
+//     dictionary_remove(diccionario_cpu_pcb, string_itoa(socket_cpu));
+// }
 
 int buscar_indice_proceso_menor_estimacion() {
     pthread_mutex_lock(lista_procesos_ready->mutex);
@@ -396,7 +396,7 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 
             enviar_a_cpu_dispatch(proceso, socket_cpu);
 
-            esperar_respuesta_cp_desalojo(proceso, socket_cpu);
+            // esperar_respuesta_cp_desalojo(proceso, socket_cpu);
 
             // fin de rafaga
             struct timespec fin_rafaga;
