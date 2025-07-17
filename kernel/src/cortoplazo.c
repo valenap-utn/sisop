@@ -91,6 +91,81 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
     log_info(logger, "Esperando motivo de devolucion de CPU");
     motivo = recibir_operacion(socket_cpu->interrupt);
 
+    t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
+
+    switch (motivo) {
+
+        case PROCESS_EXIT_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS EXIT", pcb->pid);
+            
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            PROCESS_EXIT(pcb);
+
+            break;
+
+        case PROCESS_INIT_CPU:
+            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS INIT", pcb->pid);
+
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            char * path = list_remove(paquete_respuesta, 0);
+            int tamaño = *(int*)list_remove(paquete_respuesta, 0);
+            
+            actualizar_estimacion(pcb);
+
+            // vuelve a READY - reencolado por desalojo
+            cambiar_estado(pcb, READY);
+            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
+            PROCESS_CREATE(path, tamaño);
+
+            break;
+
+        case DUMP_MEM_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: DUMP MEMORY", pcb->pid);
+
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            actualizar_estimacion(pcb);
+
+            // vuelve a READY - reencolado por desalojo
+            cambiar_estado(pcb, READY);
+            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
+            break;
+
+        case IO_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: IO", pcb->pid);
+
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            char * nombre_io = list_remove(paquete_respuesta, 0);
+            int tiempo = *(int *)list_remove(paquete_respuesta, 0);
+
+            actualizar_estimacion(pcb);
+
+            IO_syscall(pcb, nombre_io, tiempo);
+
+            break;
+
+        default:
+            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
+            list_destroy(paquete_respuesta);
+            break;
+    }
+}
+void esperar_respuesta_cp_desalojo(PCB * pcb, t_socket_cpu *socket_cpu){
+    protocolo_socket motivo;
+    
+    log_info(logger, "Esperando motivo de devolucion de CPU");
+    motivo = recibir_operacion(socket_cpu->interrupt);
+
     // manejo la interrupción que vino de un desalojo
     if (motivo == PROCESS_INIT_CPU) {
         manejo_respuesta_desalojo(socket_cpu);
@@ -321,7 +396,7 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 
             enviar_a_cpu_dispatch(proceso, socket_cpu);
 
-            esperar_respuesta_cpu(proceso, socket_cpu);
+            esperar_respuesta_cp_desalojo(proceso, socket_cpu);
 
             // fin de rafaga
             struct timespec fin_rafaga;

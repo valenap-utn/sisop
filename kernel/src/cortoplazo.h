@@ -20,6 +20,8 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu);
 
 void esperar_respuesta_cpu(PCB *pcb, t_socket_cpu *socket_cpu);
 
+void esperar_respuesta_cp_desalojo(PCB *pcb, t_socket_cpu *socket_cpu);
+
 void manejo_respuesta_desalojo(t_socket_cpu *socket_cpu);
 
 #endif
