@@ -64,7 +64,7 @@ void levantarConfig(){
 }
 
 void inicializar_mem_prin(){
-    memoria_principal.espacio = calloc(tam_memoria, sizeof(int));
+    memoria_principal.espacio = calloc(tam_memoria, 1);
     memoria_principal.tablas_por_proceso = list_create();
 
     memoria_principal.cantidad_marcos = tam_memoria/tam_pagina;
@@ -702,17 +702,17 @@ void liberar_marco(int marco){
 
 /* ------- TDP ------- */
 
-struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias){
-    Tabla_Nivel* tabla = calloc(1,sizeof(Tabla_Nivel));
-    if(!tabla) return NULL;
+Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias) {
+    Tabla_Nivel* tabla = calloc(1, sizeof(Tabla_Nivel));
+    if (!tabla) return NULL;
 
     tabla->paginas_contenidas = 0;
-    tabla->esta_presente = false; 
+    tabla->esta_presente = false;
     tabla->es_ultimo_nivel = (nivel_actual == cant_niveles);
 
-    if(tabla->es_ultimo_nivel){
+    if (tabla->es_ultimo_nivel) {
         int marco = asignar_marco_libre();
-        if(marco == -1){
+        if (marco == -1) {
             free(tabla);
             return NULL;
         }
@@ -720,66 +720,76 @@ struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias){
         tabla->esta_presente = true;
         tabla->paginas_contenidas = 1;
         tabla->sgte_nivel = NULL;
-    }else{
+    } else {
+        tabla->sgte_nivel = calloc(entradas_por_tabla, sizeof(Tabla_Nivel*));
+        if (!tabla->sgte_nivel) {
+            free(tabla);
+            return NULL;
+        }
+
         int paginas_restantes = paginas_necesarias;
-        tabla->sgte_nivel = calloc(entradas_por_tabla,sizeof(Tabla_Nivel*));
-        for(int i = 0; i < entradas_por_tabla && paginas_restantes > 0; i++){
-            tabla->sgte_nivel[i] = crear_tabla_nivel((nivel_actual + 1),paginas_restantes);
-            if(!tabla->sgte_nivel[i]){ //liberamos lo creado hasta ahora, si hay fallo en la rama
-                for(int j = 0; j < i; j++){
-                    if(tabla->sgte_nivel[j]){
+        for (int i = 0; i < entradas_por_tabla && paginas_restantes > 0; i++) {
+            tabla->sgte_nivel[i] = crear_tabla_nivel(nivel_actual + 1, paginas_restantes);
+            if (!tabla->sgte_nivel[i]) {
+                for (int j = 0; j < i; j++) {
+                    if (tabla->sgte_nivel[j])
                         liberar_tabla_nivel(tabla->sgte_nivel[j]);
-                    }
                 }
                 free(tabla->sgte_nivel);
                 free(tabla);
                 return NULL;
             }
             paginas_restantes -= tabla->sgte_nivel[i]->paginas_contenidas;
+            tabla->paginas_contenidas += tabla->sgte_nivel[i]->paginas_contenidas;
         }
     }
 
     return tabla;
 }
 
-struct Tabla_Principal* crear_tabla_principal(int paginas_necesarias){
+Tabla_Principal* crear_tabla_principal(int paginas_necesarias) {
     Tabla_Principal* tabla = malloc(sizeof(Tabla_Principal));
-    if(!tabla) return NULL;
+    if (!tabla) return NULL;
 
-    tabla->niveles = calloc(entradas_por_tabla, sizeof(Tabla_Nivel*)); //sizeof(Tabla_Nivel*)*
+    tabla->niveles = calloc(entradas_por_tabla, sizeof(Tabla_Nivel*));
+    if (!tabla->niveles) {
+        free(tabla);
+        return NULL;
+    }
+
     int paginas_restantes = paginas_necesarias;
 
-    for(int i = 0; i < entradas_por_tabla; i++){
-        tabla->niveles[i] = crear_tabla_nivel(1,paginas_restantes);
-        if(!tabla->niveles[i]){ //liberamos lo creado hasta ahora, si hay fallo en la rama
-                for(int j = 0; j < i && paginas_restantes > 0; j++){
+    for (int i = 0; i < entradas_por_tabla && paginas_restantes > 0; i++) {
+        tabla->niveles[i] = crear_tabla_nivel(1, paginas_restantes);
+        if (!tabla->niveles[i]) {
+            for (int j = 0; j < i; j++) {
+                if (tabla->niveles[j])
                     liberar_tabla_nivel(tabla->niveles[j]);
-                }
-                free(tabla->niveles);
-                free(tabla);
-                return NULL;
             }
+            free(tabla->niveles);
+            free(tabla);
+            return NULL;
+        }
         paginas_restantes -= tabla->niveles[i]->paginas_contenidas;
     }
 
     return tabla;
 }
 
-void liberar_tabla_nivel(Tabla_Nivel* tabla){
-    if(tabla == NULL) return;
+void liberar_tabla_nivel(Tabla_Nivel* tabla) {
+    if (!tabla) return;
 
-    if(tabla->es_ultimo_nivel){
-        if(tabla->marco != -1){
+    if (tabla->es_ultimo_nivel) {
+        if (tabla->marco != -1) {
             liberar_marco(tabla->marco);
         }
-    }else{
-        for(int i = 0; i < entradas_por_tabla; i++){
-            if(tabla->sgte_nivel[i] != NULL){
-                liberar_tabla_nivel(tabla->sgte_nivel[i]);
-            }
+    } else if (tabla->sgte_nivel) {
+        for (int i = 0; i < entradas_por_tabla; i++) {
+            liberar_tabla_nivel(tabla->sgte_nivel[i]);
         }
         free(tabla->sgte_nivel);
     }
+
     free(tabla);
 }
 

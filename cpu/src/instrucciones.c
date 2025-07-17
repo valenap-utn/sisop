@@ -187,17 +187,17 @@ void Execute(instruccion_t *instr){
                 
             break;
             case WRITE_I:
-                write_(atoi(instr->data[2]) , atoi(instr->data[1]));
+                write_(atoi(instr->data[1]) , atoi(instr->data[2]));
             break;
             case READ_I:
-                read_(atoi(instr->data[2]) , atoi(instr->data[1]));
+                read_(atoi(instr->data[1]) , atoi(instr->data[2]));
             break;
             //----- SYSCALLS
             case IO_I:
                 io(instr->data[1],atoi(instr->data[2]));
             break;
             case INIT_PROC_I:
-                init_proc(instr->data[2],atoi(instr->data[1]));
+                init_proc(instr->data[1],atoi(instr->data[2]));
             break;
 
             case DUMP_MEMORY_I:
