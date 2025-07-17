@@ -799,7 +799,7 @@ void suspender_proceso(int pid){
         f = fopen(path_swapfile, "wb+");
         if (f == NULL) {
             perror("Error al crear el archivo swap");
-            return NULL;
+            return;
         }
     }
 

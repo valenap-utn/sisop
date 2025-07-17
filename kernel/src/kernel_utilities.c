@@ -77,10 +77,10 @@ void levantarConfig(){
     puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
     ip_memoria = config_get_string_value(config, "IP_MEMORIA");
     char * alg_largoplazo_temp;
-    alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_COLA_NEW");
+    alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_INGRESO_A_READY");
     algoritmo_largoPlazo = alg_largoPlazo_from_string(alg_largoplazo_temp);
     char * alg_cortoplazo_temp;
-    alg_cortoplazo_temp = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    alg_cortoplazo_temp = config_get_string_value(config, "ALGORITMO_CORTO_PLAZO");
     algoritmo_cortoPlazo = alg_cortoPlazo_from_string(alg_cortoplazo_temp);
 
     tiempo_suspension = config_get_int_value(config, "TIEMPO_SUSPENSION");
