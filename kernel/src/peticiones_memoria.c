@@ -46,6 +46,9 @@ void peticion_kernel(t_args_peticion_memoria *args_peticion) {
             agregar_a_paquete(send_protocolo, &proceso->memoria_necesaria, sizeof(proceso->memoria_necesaria));
             agregar_a_paquete(send_protocolo, proceso->path_instrucciones, strlen(proceso->path_instrucciones)+1);
 			log_debug(logger, "Se envió la peticion de PROCESS CREATE del PID: %d Tamaño: %d", proceso->pid, proceso->memoria_necesaria);
+
+            log_debug(logger, "Archivo de instrucciones a enviar: %s", proceso->path_instrucciones);
+
             enviar_paquete(send_protocolo, socket);
             op = recibir_paquete_ok(socket);
             switch (op) {

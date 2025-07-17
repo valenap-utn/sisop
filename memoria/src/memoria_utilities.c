@@ -413,7 +413,9 @@ void peticion_kernel(int socket_kernel){
             paquete_recv = recibir_paquete(socket_kernel);
             pid = *(int *)list_remove(paquete_recv, 0);
             tamanio = *(int *)list_remove(paquete_recv,0); 
-            nombreArchivo = list_remove(paquete_recv,0); 
+            nombreArchivo = strdup((char*)list_remove(paquete_recv,0)); 
+
+            log_debug(logger, "Nombre de archivo recibido para PID %d: %s", pid, nombreArchivo);
 
             if(hay_espacio_en_mem(tamanio)){
                 if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){
@@ -662,6 +664,8 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
     }
 
     list_add(memoria_principal.tablas_por_proceso, nueva_tabla);
+
+    log_debug(logger,"Nombre del path completo %s",path_completo);
 
     free(path_completo);
     return 0;
