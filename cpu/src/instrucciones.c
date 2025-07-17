@@ -65,19 +65,19 @@ int instrStringMap(char opcodeStr []){
     int opCode;
 
     if (strcmp(opcodeStr,"IO") == 0) {
-        opCode = IO;
+        opCode = IO_I;
     }
     else if (strcmp(opcodeStr,"INIT_PROC") == 0) {
-        opCode = INIT_PROC;
+        opCode = INIT_PROC_I;
     }
     else if (strcmp(opcodeStr,"DUMP_MEMORY") == 0) {
-        opCode = DUMP_MEMORY;
+        opCode = DUMP_MEMORY_I;
     }
     else if (strcmp(opcodeStr,"EXIT") == 0) {
         opCode = EXIT_I;
     }
     else if (strcmp(opcodeStr,"NOOP") == 0) {
-        opCode = NOOP;
+        opCode = NOOP_I;
     }
     else if (strcmp(opcodeStr,"WRITE") == 0) {
         opCode = WRITE_I;
@@ -86,7 +86,7 @@ int instrStringMap(char opcodeStr []){
         opCode = READ_I;
     }
     else if (strcmp(opcodeStr,"GOTO") == 0) {
-        opCode = GOTO;
+        opCode = GOTO_I;
     }
     return opCode;
 };
@@ -131,19 +131,19 @@ instruccion_t *Decode(char * instr){
 
 
     switch (current_instr->opCode){
-        case IO:
+        case IO_I:
                 current_instr->tipo = SYSCALL;
         break;
-        case INIT_PROC:
+        case INIT_PROC_I:
                 current_instr->tipo = SYSCALL;       
         break;
-        case DUMP_MEMORY:
+        case DUMP_MEMORY_I:
                 current_instr->tipo = SYSCALL;
         break;
         case EXIT_I:
                 current_instr->tipo = SYSCALL;
         break;
-        case NOOP:
+        case NOOP_I:
                 current_instr->tipo = USUARIO;
         break;
         case WRITE_I:
@@ -152,7 +152,7 @@ instruccion_t *Decode(char * instr){
         case READ_I:
                 current_instr->tipo = USUARIO;
         break;
-        case GOTO:
+        case GOTO_I:
                 current_instr->tipo = USUARIO;
         break;
         default:
@@ -160,12 +160,12 @@ instruccion_t *Decode(char * instr){
              exit(EXIT_FAILURE);
                 break;
         }
-        if (current_instr->opCode == IO || current_instr->opCode == INIT_PROC || current_instr->opCode ==  WRITE_I ||  current_instr->opCode ==  READ_I){
+        if (current_instr->opCode == IO_I || current_instr->opCode == INIT_PROC_I || current_instr->opCode ==  WRITE_I ||  current_instr->opCode ==  READ_I){
             if(!current_instr->data[0] || !current_instr->data[1]){
                 log_info(logger, "Instrucción no tiene los 2 parametros: %s", *current_instr->data);
                 exit(EXIT_FAILURE);
             }
-        } else if (current_instr->opCode == GOTO && !current_instr->data[0]){
+        } else if (current_instr->opCode == GOTO_I && !current_instr->data[0]){
                 log_info(logger, "Instrucción no tiene el parametro: %s", *current_instr->data);
                 exit(EXIT_FAILURE);
         };
@@ -177,10 +177,10 @@ void Execute(instruccion_t *instr){
     log_debug(logger, "Instrucción ejecutada: %d SYSCALL TIPO: %d", instr->opCode,instr->tipo);
 
     switch (instr->opCode){
-            case NOOP:
+            case NOOP_I:
                 noop();
             break;
-            case GOTO:
+            case GOTO_I:
                 goto_(atoi(instr->data[1]));
             break;
             case WRITE_I:
@@ -190,14 +190,14 @@ void Execute(instruccion_t *instr){
                 read_(atoi(instr->data[2]) , atoi(instr->data[1]));
             break;
             //----- SYSCALLS
-            case IO:
+            case IO_I:
                 io(instr->data[1],atoi(instr->data[2]));
             break;
-            case INIT_PROC:
+            case INIT_PROC_I:
                 init_proc(instr->data[2],atoi(instr->data[1]));
             break;
 
-            case DUMP_MEMORY:
+            case DUMP_MEMORY_I:
                 dump_memory();
             break;
 
@@ -221,20 +221,20 @@ void Check_Int(){
     
 
     pthread_mutex_lock(cola_interrupciones->mutex);
-    if(!list_is_empty(cola_interrupciones->lista)&&(interrupcion->tipo == DISPATCH_CPU)){
+    if(!list_is_empty(cola_interrupciones->lista)&&(interrupcion->tipo == DISPATCH_CPU_I)){
         pc--;
     }
     pthread_mutex_unlock(cola_interrupciones->mutex);
 
     switch(interrupcion->tipo){
         
-        case DISPATCH_CPU:
+        case DISPATCH_CPU_I:
             enviar_paquete_ok(socket_interrupt);
             pc = interrupcion->pc;
             pid = interrupcion->pid;
         break;
 
-        case DESALOJO_CPU:
+        case DESALOJO_I:
             paquete_send = crear_paquete(MOTIVO_DEVOLUCION_CPU);
             agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
             agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
@@ -242,7 +242,7 @@ void Check_Int(){
             pid = interrupcion->pid;
         break;
             
-        case IO:
+        case IO_I:
             log_info(logger, "## PID: %d - Ejecutando: IO - Nombre dispositivo: %s, tiempo: %d", pid, interrupcion->paramstring, interrupcion->param1);
             paquete_send = crear_paquete(IO_CPU);
             agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
@@ -251,7 +251,7 @@ void Check_Int(){
             agregar_a_paquete (paquete_send, &interrupcion->param1, sizeof(int));
         break;
 
-        case INIT_PROC:
+        case INIT_PROC_I:
             log_info(logger, "## PID: %d - Ejecutando: INIT_PROC - Nombre archivo: %s, tamaño: %d", pid, interrupcion->paramstring, interrupcion->param1);
             paquete_send = crear_paquete(PROCESS_INIT_CPU);
             agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
@@ -260,7 +260,7 @@ void Check_Int(){
             agregar_a_paquete (paquete_send, &interrupcion->param1, sizeof(int));
         break;
 
-        case DUMP_MEM:
+        case DUMP_MEMORY_I:
             log_info(logger, "## PID: %d - Ejecutando: DUMP_MEMORY", pid);
             paquete_send = crear_paquete(DUMP_MEM_CPU);
             agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
@@ -399,7 +399,7 @@ void goto_(int nuevo_pc){
 //--- SYSCALLS
 void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
-    interrupcion->tipo = IO;
+    interrupcion->tipo = IO_I;
     interrupcion->paramstring = Dispositivo;
     interrupcion->param1 = tiempo;
 
@@ -407,7 +407,7 @@ void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE 
 };
 void init_proc(char * archivo, int tamaño){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
-    interrupcion->tipo = INIT_PROC;
+    interrupcion->tipo = INIT_PROC_I;
     interrupcion->paramstring = archivo;
     interrupcion->param1 = tamaño;
 
@@ -415,7 +415,7 @@ void init_proc(char * archivo, int tamaño){ //(Archivo de instrucciones, Tamañ
 };
 void dump_memory(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
-    interrupcion->tipo = DUMP_MEMORY;
+    interrupcion->tipo = DUMP_MEMORY_I;
 
     encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
 };

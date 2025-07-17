@@ -143,7 +143,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 	while(true){
 		int cod_op = recibir_operacion(socket_dispatch);
 		switch (cod_op){
-			case DISPATCH_CPU:
+			case DISPATCH_CPU_I:
                 // sem_wait(sem_registros_actualizados);
 				log_info(logger, "Recibí un pid para ejecutar de parte de Kernel");
 				t_list *paquete = recibir_paquete(socket_dispatch);
@@ -153,7 +153,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 				list_destroy(paquete);
                 interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
 
-                interrupcion->tipo = DISPATCH_CPU;
+                interrupcion->tipo = DISPATCH_CPU_I;
                 interrupcion->pid = pid_aux;
                 interrupcion->pc = pc_aux;
 

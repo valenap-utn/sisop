@@ -5,16 +5,17 @@
 
 typedef enum {
     // Syscalls
-    IO,
-    INIT_PROC,
-    DUMP_MEMORY,
+    IO_I,
+    INIT_PROC_I,
+    DUMP_MEMORY_I,
     EXIT_I,
     // No Syscalls
-    NOOP,
+    NOOP_I,
     WRITE_I,
     READ_I,
-    GOTO,
+    GOTO_I,
     DISPATCH_CPU_I,
+    DESALOJO_I
 }instrucciones_t ;
 
 
