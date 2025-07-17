@@ -40,7 +40,7 @@ TLB_t;
 /* ------ CACHÉ ------ */
 typedef struct cache_t{
     int pid;
-    int dir_fisica;
+    int nro_pagina;
     int contenido;
     int ocupado;
     int uso;
@@ -77,6 +77,10 @@ void Actualizar_pc();
 int buscar_en_tlb(int pid_actual, int pagina_buscada);
 int get_timestamp();
 void agregar_a_tlb(int pid_actual, int pagina, int marco);
+
+void traducir_DL(int dir_logica, int* nro_pagina, int* offset);
+int obtener_DF(int marco, int offset);
+
 int obtener_marco(int pid, int nro_pagina,int offset);
 int buscar_victima_LRU();
 int buscar_victima_FIFO();
@@ -85,7 +89,7 @@ void limpiar_entradas_tlb(int pid_a_eliminar);
 
 //CACHÉ
 int buscar_en_cache(int pid_actual, int dir_fisica, int* contenido_out);
-void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor, int nro_pagina);
+void escribir_en_cache(int pid_actual, int nuevo_valor, int nro_pagina);
 int reemplazo_clock();
 int reemplazo_clock_M();
 int avanzar_puntero(int index);

@@ -24,7 +24,7 @@ extern int entradas_cache;
 extern char * reemplazo_cache;
 extern int retardo_cache;
 
-extern cache_t* cache_tabla;
+extern cache_t* cache;
 
 extern int puntero_cache;
 
@@ -285,7 +285,7 @@ void write_(int dir_logica , int datos){
         pagina_actual_cache = nro_pagina;
         marco_actual_cache = obtener_marco(pid,nro_pagina,offset);
 
-        escribir_en_cache(pid,dir_fisica,datos,nro_pagina);
+        escribir_en_cache(pid,datos,nro_pagina);
         log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid, nro_pagina);
         log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, datos);
         return;
@@ -365,7 +365,7 @@ void read_(int dir_logica , int tamanio){
     log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, valor);
 
     //Actualizamos la caché
-    if(entradas_cache > 0)escribir_en_cache(pid,dir_fisica,valor,nro_pagina);
+    if(entradas_cache > 0)escribir_en_cache(pid,valor,nro_pagina);
 
 };
 
@@ -495,7 +495,7 @@ int obtener_marco(int pid, int nro_pagina,int offset){
 
     // 4. Recibir el marco
 
-    t_paquete* paquete_recv = recibir_paquete(socket_memoria);
+    t_list* paquete_recv = recibir_paquete(socket_memoria);
     int marco = *(int*)list_remove(paquete_recv, 0);
     list_destroy_and_destroy_elements(paquete_recv, free);
 
@@ -587,37 +587,37 @@ void limpiar_entradas_tlb(int pid_a_eliminar){
 
 /* ------ CACHÉ ------ */
 
-int buscar_en_cache(int pid_actual, int dir_fisica, int* contenido_out){
+int buscar_en_cache(int pid_actual, int nro_pagina, int* contenido_out){
     if(entradas_cache <= 0)return 0;
 
     for(int i = 0; i < entradas_cache; i++){
-        if(cache_tabla[i].pid == pid_actual && cache_tabla[i].dir_fisica == dir_fisica && cache_tabla[i].ocupado){
-            cache_tabla[i].uso = 1;
-            *contenido_out = cache_tabla[i].contenido;
+        if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
+            cache[i].uso = 1;
+            *contenido_out = cache[i].contenido;
             return 1;
         }
     }
-
+    
     return 0;
 }
 
-void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor, int nro_pagina){
+void escribir_en_cache(int pid_actual, int nuevo_valor, int nro_pagina){
     if(entradas_cache <= 0)return;
 
     //Verificamos, si ya existe => modificamos
     for(int i = 0; i < entradas_cache; i++){
-        if(cache_tabla[i].pid == pid_actual && cache_tabla[i].dir_fisica == dir_fisica && cache_tabla[i].ocupado){
-            cache_tabla[i].contenido = nuevo_valor;
-            cache_tabla[i].uso = 1;
-            cache_tabla[i].modificado = 1;
+        if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
+            cache[i].contenido = nuevo_valor;
+            cache[i].uso = 1;
+            cache[i].modificado = 1;
             return;
         }
     }
 
-    //Buscamos espacio libre
+    //Sino => Buscamos espacio libre
     for(int i = 0 ; i < entradas_cache ; i++){
-        if(!cache_tabla[i].ocupado){
-            cache_tabla[i] = (cache_t){pid_actual, dir_fisica,nuevo_valor,1,1,1};
+        if(!cache[i].ocupado){
+            cache[i] = (cache_t){pid_actual,nro_pagina,nuevo_valor,1,1,1};
             return;
         }
     }
@@ -627,12 +627,12 @@ void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor, int nro_
 
 
     //Si la victima está modificada => escribir en memoria
-    if(cache_tabla[victima].modificado){
-        escribir_cache_en_memoria(cache_tabla[victima]);
+    if(cache[victima].modificado){
+        escribir_cache_en_memoria(cache[victima]);
     }
 
     //Reemplazamos
-    cache_tabla[victima] = (cache_t){pid_actual, dir_fisica,nuevo_valor,1,1,1};
+    cache[victima] = (cache_t){pid_actual, nro_pagina,nuevo_valor,1,1,1};
 
     log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
 }
@@ -641,12 +641,12 @@ void escribir_en_cache(int pid_actual, int dir_fisica, int nuevo_valor, int nro_
 //CLOCK
 int reemplazo_clock(){
     while(1){
-        if(!cache_tabla[puntero_cache].uso){
+        if(!cache[puntero_cache].uso){
             int posicion = puntero_cache;
             puntero_cache = (puntero_cache + 1) % entradas_cache;
             return posicion;
         }else{
-            cache_tabla[puntero_cache].uso = 0;
+            cache[puntero_cache].uso = 0;
             puntero_cache = (puntero_cache + 1) % entradas_cache;
         }
     }
@@ -657,7 +657,7 @@ int reemplazo_clock_M(){
     //Primera vuelta => u = 0  &&  m = 0
     for(int i = 0; i < entradas_cache; i++){
         int index = (puntero_cache + 1) % entradas_cache;
-        if(!cache_tabla[index].uso && !cache_tabla[index].modificado){
+        if(!cache[index].uso && !cache[index].modificado){
             return avanzar_puntero(index);
         }
     }
@@ -665,10 +665,10 @@ int reemplazo_clock_M(){
     //Segunda vuelta => u = 0  &&  m = 1
     for(int i = 0; i < entradas_cache; i++){
         int index = (puntero_cache + i) % entradas_cache;
-        if(!cache_tabla[index].uso && cache_tabla[index].modificado){
+        if(!cache[index].uso && cache[index].modificado){
             return avanzar_puntero(index);
         }
-        cache_tabla[index].uso = 0;
+        cache[index].uso = 0;
     }
 
     //Reintentamos despues de cambiar bits de uso
@@ -683,13 +683,17 @@ int avanzar_puntero(int index){
 
 // + funciones auxiliares para caché
 void escribir_cache_en_memoria(cache_t entrada){
+    //Obtenemos marco y dir_fisica para escribir en memoria
+    int marco = obtener_marco(entrada.pid,entrada.nro_pagina,0);
+    int dir_fisica = obtener_DF(marco, 0); // Offset = 0 , porque escribimos la página entera
+
     t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
     int tam = sizeof(int);
     int tipo_de_acceso = ESCRITURA_AC;
 
     agregar_a_paquete(paquete_send, &entrada.pid , sizeof(int));
     agregar_a_paquete(paquete_send, &tam , sizeof(int));
-    agregar_a_paquete(paquete_send, &entrada.dir_fisica , sizeof(int));
+    agregar_a_paquete(paquete_send, &dir_fisica , sizeof(int));
     agregar_a_paquete(paquete_send, &tipo_de_acceso , sizeof(int));
     agregar_a_paquete(paquete_send, &entrada.contenido , sizeof(int));
 
@@ -707,11 +711,13 @@ void escribir_cache_en_memoria(cache_t entrada){
 
 void limpiar_cache_de_proceso(int pid_a_eliminar){
     for(int i = 0; i < entradas_cache ; i++){
-        if(cache_tabla[i].ocupado && cache_tabla[i].pid == pid_a_eliminar){
-            if(cache_tabla[i].modificado){
-                escribir_cache_en_memoria(cache_tabla[i]);
+        if(cache[i].ocupado && cache[i].pid == pid_a_eliminar){
+            if(cache[i].modificado){
+                escribir_cache_en_memoria(cache[i]);
             }
-            cache_tabla[i].modificado = 0;
+            cache[i].ocupado = 0;
+            cache[i].uso = 0;
+            cache[i].modificado = 0;
         }
     }
 }

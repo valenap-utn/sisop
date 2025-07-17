@@ -29,7 +29,7 @@ TLB_t* TLB_tabla = NULL;
 int entradas_cache;
 char * reemplazo_cache;
 int retardo_cache;
-cache_t* cache_tabla = NULL; 
+cache_t* cache; 
 
 int puntero_cache;
 
@@ -71,11 +71,11 @@ void inicializarCpu(char *nombreCpuLog){
 
     //CACHÉ
     if(entradas_cache > 0){
-        cache_tabla = malloc(sizeof(cache_t) * entradas_cache);
+        cache = malloc(sizeof(cache_t) * entradas_cache);
         for(int i = 0; i < entradas_cache; i++){
-            cache_tabla[i].ocupado = 0;
-            cache_tabla[i].uso = 0;
-            cache_tabla[i].modificado = 0;
+            cache[i].ocupado = 0;
+            cache[i].uso = 0;
+            cache[i].modificado = 0;
         }
         puntero_cache = 0;
     }
@@ -97,10 +97,10 @@ void levantarConfig(){
     puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
 
     entradas_tlb = config_get_int_value(config, "ENTRADAS_TLB");
-    // reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
+    reemplazo_tlb = config_get_string_value(config, "REEMPLAZO_TLB");
 
-    // entradas_cache = config_get_int_value(config, "ENTRADAS_CACHE");
-    // reemplazo_cache = config_get_string_value(config, "REEMPLAZO_CACHE");
+    entradas_cache = config_get_int_value(config, "ENTRADAS_CACHE");
+    reemplazo_cache = config_get_string_value(config, "REEMPLAZO_CACHE");
     retardo_cache= config_get_int_value(config, "RETARDO_CACHE");
 
 }
