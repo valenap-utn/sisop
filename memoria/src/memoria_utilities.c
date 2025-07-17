@@ -20,21 +20,11 @@ void inicializarMemoria(){
     
     config = config_create("./memoria.config");
     levantarConfig();
+    
     logger = log_create("memoria.log", "Memoria", 1, current_log_level);
     
     inicializarListasMemoria();
     crear_directorio();
-    tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
-    path_instrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
-
-
-    //Obtengo de config valores para tener en cuenta para TDPs
-    tam_pagina = config_get_int_value(config, "TAM_PAGINA");
-    entradas_por_tabla = config_get_int_value(config, "ENTRADAS_POR_TABLA");
-    cant_niveles = config_get_int_value(config, "CANTIDAD_NIVELES");
-
-    //Obtengo path para swapfile desde config
-    path_swapfile = config_get_string_value(config,"PATH_SWAPFILE");
 
     inicializar_mem_prin();
 
@@ -56,6 +46,20 @@ void levantarConfig(){
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
     printf("%d", current_log_level);
+
+
+    tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
+    path_instrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
+
+
+    //Obtengo de config valores para tener en cuenta para TDPs
+    tam_pagina = config_get_int_value(config, "TAM_PAGINA");
+    entradas_por_tabla = config_get_int_value(config, "ENTRADAS_POR_TABLA");
+    cant_niveles = config_get_int_value(config, "CANTIDAD_NIVELES");
+
+    //Obtengo path para swapfile desde config
+    path_swapfile = config_get_string_value(config,"PATH_SWAPFILE");
+
 
 }
 
