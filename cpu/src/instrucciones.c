@@ -612,6 +612,7 @@ int buscar_en_cache(int pid_actual, int nro_pagina, int* contenido_out){
 
     for(int i = 0; i < entradas_cache; i++){
         if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
+            usleep(retardo_cache * 1000);
             cache[i].uso = 1;
             *contenido_out = cache[i].contenido;
             return 1;
@@ -627,6 +628,7 @@ void escribir_en_cache(int pid_actual, int nuevo_valor, int nro_pagina){
     //Verificamos, si ya existe => modificamos
     for(int i = 0; i < entradas_cache; i++){
         if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
+            usleep(retardo_cache * 1000);
             cache[i].contenido = nuevo_valor;
             cache[i].uso = 1;
             cache[i].modificado = 1;
@@ -637,6 +639,7 @@ void escribir_en_cache(int pid_actual, int nuevo_valor, int nro_pagina){
     //Sino => Buscamos espacio libre
     for(int i = 0 ; i < entradas_cache ; i++){
         if(!cache[i].ocupado){
+            usleep(retardo_cache * 1000);
             cache[i] = (cache_t){pid_actual,nro_pagina,nuevo_valor,1,1,1};
             return;
         }
@@ -652,6 +655,7 @@ void escribir_en_cache(int pid_actual, int nuevo_valor, int nro_pagina){
     }
 
     //Reemplazamos
+    usleep(retardo_cache * 1000);
     cache[victima] = (cache_t){pid_actual, nro_pagina,nuevo_valor,1,1,1};
 
     log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);

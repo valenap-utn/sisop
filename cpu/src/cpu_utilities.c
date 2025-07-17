@@ -137,7 +137,7 @@ void *conexion_cliente_kernel(void *args){
 void *conexion_kernel_dispatch(void* arg_kernelD)
 {
 	argumentos_thread * args = arg_kernelD; 
-	t_list *paquete;
+	// t_list *paquete;
 	int pid_aux, pc_aux;
 
 	while(true){
