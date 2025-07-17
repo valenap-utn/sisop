@@ -46,12 +46,11 @@ char* crear_directorio();
 /* ------- TDP ------- */
 
 typedef struct Tabla_Principal{
-    int nro_pagina;
-    struct Tabla_Nivel** niveles; //array de punteros al nivel 2 
+    struct Tabla_Nivel** niveles; 
 }Tabla_Principal; //tabla_global
 
 typedef struct Tabla_Nivel{
-    int nro_pagina;
+    int paginas_contenidas;
     int esta_presente; //bool
     int es_ultimo_nivel; //bool
     union{
