@@ -113,6 +113,7 @@ char * Fetch(){ // Le pasa la intruccion completa
         // int pid =  *(int *)list_remove(paquete_recv, 0);
         // int pc  =  *(int *)list_remove(paquete_recv, 0);
         InstruccionCompleta = list_remove(paquete_recv, 0);
+        log_debug(logger, "FETCH recibió instrucción: %s", InstruccionCompleta);
         // etc
         // list_destroy(paquete_recv);
         
@@ -181,6 +182,7 @@ void Execute(instruccion_t *instr){
                 noop();
             break;
             case GOTO_I:
+                log_debug(logger, "GOTO: salta a línea %s", instr->data[1]);
                 goto_(atoi(instr->data[1]));
                 
             break;

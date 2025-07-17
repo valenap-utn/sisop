@@ -718,12 +718,14 @@ struct Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias){
         tabla->sgte_nivel = NULL;
     }else{
         int paginas_restantes = paginas_necesarias;
-        tabla->sgte_nivel = malloc(sizeof(Tabla_Nivel*)* entradas_por_tabla);
+        tabla->sgte_nivel = calloc(entradas_por_tabla,sizeof(Tabla_Nivel*));
         for(int i = 0; i < entradas_por_tabla && paginas_restantes > 0; i++){
             tabla->sgte_nivel[i] = crear_tabla_nivel((nivel_actual + 1),paginas_restantes);
             if(!tabla->sgte_nivel[i]){ //liberamos lo creado hasta ahora, si hay fallo en la rama
                 for(int j = 0; j < i; j++){
-                    liberar_tabla_nivel(tabla->sgte_nivel[j]);
+                    if(tabla->sgte_nivel[j]){
+                        liberar_tabla_nivel(tabla->sgte_nivel[j]);
+                    }
                 }
                 free(tabla->sgte_nivel);
                 free(tabla);
@@ -768,7 +770,9 @@ void liberar_tabla_nivel(Tabla_Nivel* tabla){
         }
     }else{
         for(int i = 0; i < entradas_por_tabla; i++){
-            liberar_tabla_nivel(tabla->sgte_nivel[i]);
+            if(tabla->sgte_nivel[i] != NULL){
+                liberar_tabla_nivel(tabla->sgte_nivel[i]);
+            }
         }
         free(tabla->sgte_nivel);
     }
