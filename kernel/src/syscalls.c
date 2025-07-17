@@ -15,7 +15,8 @@ void PROCESS_CREATE(char *path, int tam_proceso) {
 
     log_info(logger, "## (%d) Se crea el Proceso - Estado: NEW", nuevo_pcb->pid);
 
-    nuevo_pcb->path_instrucciones = path;
+    nuevo_pcb->path_instrucciones = malloc(strlen(path)+1);
+    strcpy(nuevo_pcb->path_instrucciones, path);
     
     encolar_cola_generico(lista_procesos_new, nuevo_pcb, -1);
 

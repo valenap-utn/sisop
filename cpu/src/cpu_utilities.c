@@ -8,7 +8,7 @@ extern int pid;
 extern list_struct_t * cola_interrupciones;
 extern int flag_hay_interrupcion;
 
-extern sem_t * sem_dispatch_inicial;
+extern sem_t * sem_dispatch;
 
 extern int socket_interrupt, socket_dispatch;
 int socket_memoria;
@@ -42,7 +42,7 @@ void inicializarCpu(char *nombreCpuLog){
 
     cola_interrupciones = inicializarLista();
 
-    sem_dispatch_inicial = inicializarSem(0);
+    sem_dispatch = inicializarSem(0);
 
     config = config_create("./cpu.config");
     levantarConfig();
@@ -143,7 +143,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 	while(true){
 		int cod_op = recibir_operacion(socket_dispatch);
 		switch (cod_op){
-			case DISPATCH_CPU_I:
+			case DISPATCH_CPU:
                 // sem_wait(sem_registros_actualizados);
 				log_info(logger, "Recibí un pid para ejecutar de parte de Kernel");
 				t_list *paquete = recibir_paquete(socket_dispatch);
@@ -161,7 +161,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 
                 flag_hay_interrupcion = 1;
 
-                sem_post(sem_dispatch_inicial);
+                sem_post(sem_dispatch);
 
 				break;
 			case -1:
@@ -198,7 +198,11 @@ void encolar_interrupcion_generico(list_struct_t * cola, interrupcion_t * interr
     flag_hay_interrupcion = true;
 }
 interrupcion_t * desencolar_interrupcion_generico(list_struct_t * cola){
+    
     pthread_mutex_lock(cola->mutex);
+    if(list_is_empty(cola->lista)){
+        return NULL;
+    }
     interrupcion_t * interrupcion = list_remove(cola->lista, 0);
     if(list_is_empty(cola->lista)){
         flag_hay_interrupcion = false;

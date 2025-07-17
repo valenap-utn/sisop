@@ -459,6 +459,8 @@ void peticion_kernel(int socket_kernel){
 
             finalizar_proceso(pid);
 
+            enviar_paquete_ok(socket_kernel);
+
             list_destroy_and_destroy_elements(paquete_recv,free);
         }
         break;

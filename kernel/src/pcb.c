@@ -17,8 +17,6 @@ PCB* iniciar_pcb(){
     PCB* pcb = calloc(1, sizeof(PCB));
     pcb->pid = generar_pid_unico();
     //a chequear -> agrego esta linea para que no de warning, para que apunte a memoria valida
-    pcb->registros = calloc(1, sizeof(registrosPCB));
-
     pcb->estimacion_rafaga = estimacion_inicial;
     pcb->rafaga_real_anterior = 0;
 
@@ -59,10 +57,8 @@ void cambiar_estado(PCB *pcb, t_estado estadoNuevo){
 }
 void pcb_destroy(PCB * pcb){
 
-    free(pcb->registros);
-    free(pcb->path_instrucciones);
-
     free(pcb);
+    free(pcb->path_instrucciones);
 
     return;
 }

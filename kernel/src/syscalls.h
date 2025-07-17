@@ -11,4 +11,6 @@ void PROCESS_EXIT(PCB *pcb);
 
 void *dump_mem_waiter(void *args);
 
+void IO_syscall(PCB *pcb, char *nombre_io, int tiempo);
+
 #endif

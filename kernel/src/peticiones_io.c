@@ -192,6 +192,7 @@ void encolar_cola_blocked(list_struct_t *cola, elemento_cola_blocked_io *elem){
     pthread_mutex_lock(cola->mutex);
 
     list_add_in_index(cola->lista, -1, elem);
+    sem_post(cola->sem);
 
     pthread_mutex_unlock(cola->mutex);
 }

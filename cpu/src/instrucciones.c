@@ -4,7 +4,7 @@
 extern t_log *logger;
 
 list_struct_t * cola_interrupciones;
-extern sem_t * sem_dispatch_inicial;
+extern sem_t * sem_dispatch;
 
 extern int socket_interrupt, socket_dispatch, socket_memoria;
 
@@ -47,18 +47,18 @@ void* ciclo_instruccion(void * arg){
     char * instrSTR;
     instruccion_t *instr;
 
-    sem_wait(sem_dispatch_inicial);
-        while ((1)){
+    sem_wait(sem_dispatch);
 
-            while (!flag_hay_interrupcion){
-                instrSTR = Fetch();
-                instr = Decode(instrSTR);
-                Execute(instr);
-                Actualizar_pc();
-            }
-            Check_Int();
+    while ((1)){
+        while (!flag_hay_interrupcion){
+            instrSTR = Fetch();
+            instr = Decode(instrSTR);
+            Execute(instr);
+            Actualizar_pc();
         }
-        return (void *)EXIT_SUCCESS;
+        Check_Int();
+    }
+    return (void *)EXIT_SUCCESS;
 };
 
 int instrStringMap(char opcodeStr []){
@@ -213,10 +213,14 @@ void Execute(instruccion_t *instr){
 
 void Check_Int(){
 
-    log_info(logger, "## Llega interrupción al puerto Interrupt");
+    log_debug(logger, "Entro a check interrupt");
 
     t_paquete * paquete_send;
     interrupcion_t *interrupcion = desencolar_interrupcion_generico(cola_interrupciones);
+
+    if(interrupcion == NULL){
+        return;
+    }
 
     
 
@@ -237,7 +241,7 @@ void Check_Int(){
         case DESALOJO_I:
             paquete_send = crear_paquete(MOTIVO_DEVOLUCION_CPU);
             agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
-            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            agregar_a_paquete (paquete_send, &pc, sizeof(int));
             pc = interrupcion->pc;
             pid = interrupcion->pid;
         break;
@@ -245,8 +249,8 @@ void Check_Int(){
         case IO_I:
             log_info(logger, "## PID: %d - Ejecutando: IO - Nombre dispositivo: %s, tiempo: %d", pid, interrupcion->paramstring, interrupcion->param1);
             paquete_send = crear_paquete(IO_CPU);
-            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
-            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            agregar_a_paquete (paquete_send, &pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &pc, sizeof(int));
             agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
             agregar_a_paquete (paquete_send, &interrupcion->param1, sizeof(int));
         break;
@@ -254,8 +258,8 @@ void Check_Int(){
         case INIT_PROC_I:
             log_info(logger, "## PID: %d - Ejecutando: INIT_PROC - Nombre archivo: %s, tamaño: %d", pid, interrupcion->paramstring, interrupcion->param1);
             paquete_send = crear_paquete(PROCESS_INIT_CPU);
-            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
-            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            agregar_a_paquete (paquete_send, &pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &pc, sizeof(int));
             agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
             agregar_a_paquete (paquete_send, &interrupcion->param1, sizeof(int));
         break;
@@ -263,25 +267,27 @@ void Check_Int(){
         case DUMP_MEMORY_I:
             log_info(logger, "## PID: %d - Ejecutando: DUMP_MEMORY", pid);
             paquete_send = crear_paquete(DUMP_MEM_CPU);
-            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
-            agregar_a_paquete (paquete_send, &interrupcion->pc, sizeof(int));
+            agregar_a_paquete (paquete_send, &pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &pc, sizeof(int));
             agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
         break;
 
         case EXIT_I:
             log_info(logger, "## PID: %d - Ejecutando: PROCESS_EXIT", pid);
             paquete_send = crear_paquete(PROCESS_EXIT_CPU);
-            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &pid, sizeof(int));
         break;
 
     }
+
+    vaciar_cola_interrupcion(cola_interrupciones);
     
-    if(interrupcion->tipo != DISPATCH_CPU){
+    if(interrupcion->tipo != DISPATCH_CPU_I){
         enviar_paquete(paquete_send, socket_interrupt);
         eliminar_paquete(paquete_send);
+        sem_wait(sem_dispatch);
     }
 
-    vaciar_cola_interrupcion(cola_interrupciones);  
     free(interrupcion);
 
 

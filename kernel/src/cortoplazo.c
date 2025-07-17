@@ -53,8 +53,6 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
         
         enviar_a_cpu_dispatch(pcb, socket_cpu);
 
-
-
         esperar_respuesta_cpu(pcb, socket_cpu);
 
     }
@@ -97,6 +95,8 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
     switch (motivo) {
 
         case PROCESS_EXIT_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS EXIT", pcb->pid);
             
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             PROCESS_EXIT(pcb);
@@ -104,7 +104,7 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             break;
 
         case PROCESS_INIT_CPU:
-            log_info(logger, "## (%d) - Desalojado por CPU", pcb->pid);
+            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS INIT", pcb->pid);
 
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
@@ -123,6 +123,9 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             break;
 
         case DUMP_MEM_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: DUMP MEMORY", pcb->pid);
+
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
@@ -135,14 +138,18 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             break;
 
         case IO_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: IO", pcb->pid);
+
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
+            char * nombre_io = list_remove(paquete_respuesta, 0);
+            int tiempo = *(int *)list_remove(paquete_respuesta, 0);
+
             actualizar_estimacion(pcb);
 
-            // vuelve a READY - reencolado por desalojo
-            cambiar_estado(pcb, READY);
-            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+            IO_syscall(pcb, nombre_io, tiempo);
 
             break;
 

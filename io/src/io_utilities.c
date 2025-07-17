@@ -71,7 +71,7 @@ void dormir_IO(){
         pid = *(int *)list_remove(paquete_recv, 0);
         milisecs = *(int *)list_remove(paquete_recv, 0);
 
-        log_info(logger, "## PID <%d> - Inicio de IO - Tiempo:  <%d SEGUNDOS>",pid, milisecs);
+        log_info(logger, "## PID <%d> - Inicio de IO - Tiempo:  <%d MILISEGUNDOS>",pid, milisecs);
         usleep(milisecs * 1000);
         log_info(logger, "Finalización de IO: “## PID: <%d> - Fin de IO”.",pid);
 

@@ -5,7 +5,7 @@ t_log *logger;
 t_config *config;
 int socket_interrupt, socket_dispatch;
 
-sem_t * sem_dispatch_inicial;
+sem_t * sem_dispatch;
 //variables globales
 
 int main(int argc, char* argv[]) {
