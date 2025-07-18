@@ -247,8 +247,9 @@ void * cpu(void* args){
                     char * valor_a_escribir = list_remove(paquete_recv,0);
                     memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir)+1);
 
-                    paquete_send = crear_paquete(OK);
-                    enviar_paquete(paquete_send,conexion);
+                    // paquete_send = crear_paquete(OK);
+                    // enviar_paquete(paquete_send,conexion);
+                    enviar_paquete_ok(conexion);
 
                     log_info(logger,"## PID: <%d> - <Escritura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
                     proceso->metricas.cant_escrituras++;

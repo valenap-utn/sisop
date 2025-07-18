@@ -333,13 +333,13 @@ void write_(int dir_logica , char * datos){
     enviar_paquete(paquete_send,socket_memoria);
     eliminar_paquete(paquete_send);
 
-    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
     if(cod_op != OK){
         log_error(logger,"Memoria no confirmó la escritura");
         return;
     }
 
-    log_info(logger, "PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, datos);
+    log_info(logger, "PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
 
 };
 
@@ -348,12 +348,12 @@ void read_(int dir_logica , int tamanio){
     int offset;
     traducir_DL(dir_logica,&nro_pagina,&offset);
 
-    char * valor;
+    char * valor ;
 
     //Consultamos la Caché
     if(entradas_cache > 0 && buscar_en_cache(pid,dir_logica,valor)){
         log_info(logger,"PID: <%d> - Cache Hit - Pagina: <%d>", pid, nro_pagina);
-        log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%d>", pid, dir_logica, valor);
+        log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%s>", pid, dir_logica, valor);
         return;
     }
 
@@ -386,7 +386,7 @@ void read_(int dir_logica , int tamanio){
     list_destroy_and_destroy_elements(respuesta, free);
 
 
-    log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, valor);
+    log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, valor);
 
     //Actualizamos la caché
     if(entradas_cache > 0)escribir_en_cache(pid,valor,nro_pagina);
