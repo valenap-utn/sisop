@@ -12,7 +12,9 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu);
 void cortoPlazoSJF(t_socket_cpu *socket_cpu);
 void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu);
 
-void enviar_interrupcion(t_socket_cpu *socket_cpu);
+void *waiter_devoluciones_cpu(void *args);
+
+void enviar_interrupcion(t_socket_cpu *socket_cpu, int pid, int pc);
 
 t_socket_cpu *buscar_cpu_libre();
 

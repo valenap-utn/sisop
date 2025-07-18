@@ -109,6 +109,11 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
 
     int index = buscar_io(nombre_io);
 
+    if(index == -1){
+        PROCESS_EXIT(pcb);
+        return;
+    }
+
     t_socket_io *socket_io = get_socket_io(index);
 
     encolar_cola_blocked(socket_io->cola_blocked, elem_blocked_io);

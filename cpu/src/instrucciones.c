@@ -228,7 +228,7 @@ void Check_Int(){
     
 
     pthread_mutex_lock(cola_interrupciones->mutex);
-    if(!list_is_empty(cola_interrupciones->lista)&&(interrupcion->tipo == DISPATCH_CPU_I)){
+    if(!list_is_empty(cola_interrupciones->lista)&&((interrupcion->tipo == DISPATCH_CPU_I)||(interrupcion->tipo == DESALOJO_I))){
         pc--;
     }
     pthread_mutex_unlock(cola_interrupciones->mutex);
@@ -242,7 +242,7 @@ void Check_Int(){
         break;
 
         case DESALOJO_I:
-            paquete_send = crear_paquete(MOTIVO_DEVOLUCION_CPU);
+            paquete_send = crear_paquete(DESALOJO_CPU);
             agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
             agregar_a_paquete (paquete_send, &pc, sizeof(int));
             pc = interrupcion->pc;

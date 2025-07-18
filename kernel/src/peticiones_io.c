@@ -104,11 +104,13 @@ void * thread_io(void * args){
             //si esta en block:
             pthread_mutex_lock(lista_procesos_block->mutex);
             if(list_remove_element(lista_procesos_block->lista, proceso_aux)){
+                log_debug(logger, "Se mueve el pcb de block a ready por thread_io");
                 encolar_cola_generico(lista_procesos_ready, proceso_aux, -1);
                 cambiar_estado(proceso_aux, READY);
             }
             //si esta en susp_block
             else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
+                log_debug(logger, "Se mueve el pcb de susp_block a susp_ready por thread_io");
                 encolar_cola_generico(lista_procesos_susp_ready, proceso_aux, -1);
                 cambiar_estado(proceso_aux, SUP_READY);
             }else log_error(logger, "en hilo IO el proceso no esta ni en blocked ni en susp_blocked");

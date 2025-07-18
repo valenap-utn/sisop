@@ -115,7 +115,7 @@ extern t_log* logger;
     int iniciar_servidor(char *puerto);
     int esperar_cliente(int socket_servidor);
     int recibir_operacion(int socket_cliente);
-    void* recibir_buffer(int* size, int socket_cliente);
+    void *recibir_buffer(int *size, int socket_cliente);
     t_list* recibir_paquete(int socket_cliente);
     int recibir_paquete_ok(int socket_cliente);
     void *serializar_paquete(t_paquete *paquete, int bytes);

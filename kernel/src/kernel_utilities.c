@@ -27,6 +27,7 @@ extern t_dictionary *diccionario_cpu_pcb;
 
 //semaforos auxiliares
 sem_t * sem_memoria_liberada;
+sem_t * sem_desencolado;
 
 //condiciones globales
 pthread_cond_t * cond_susp_ready_empty;
@@ -133,6 +134,8 @@ void inicializarSemaforos(){
 
     mutex_pid_mayor = inicializarMutex();
 
+    sem_desencolado = inicializarSem(0);
+
 
     return;    
 }
@@ -167,7 +170,7 @@ enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char * string){
     if (!strcmp(string, "SJF")) {
         return CPL_SJF;
     }
-     if (!strcmp(string, "SJF_CD")) {
+     if (!strcmp(string, "SRT")) {
         return CPL_SJF_CD;
     }
     log_error(logger, "Config de corto plazo no reconocido");

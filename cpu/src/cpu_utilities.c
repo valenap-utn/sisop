@@ -142,7 +142,8 @@ void *conexion_cliente_kernel(void *args){
 void *conexion_kernel_dispatch(void* arg_kernelD)
 {
 	argumentos_thread * args = arg_kernelD; 
-	// t_list *paquete;
+    interrupcion_t * interrupcion;
+    t_list *paquete;
 	int pid_aux, pc_aux;
 
 	while(true){
@@ -151,14 +152,36 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 			case DISPATCH_CPU:
                 // sem_wait(sem_registros_actualizados);
 				log_info(logger, "Recibí un pid para ejecutar de parte de Kernel");
-				t_list *paquete = recibir_paquete(socket_dispatch);
+				paquete = recibir_paquete(socket_dispatch);
 				pid_aux = *(int *)list_remove(paquete, 0);
                 pc_aux = *(int *)list_remove(paquete, 0);
 				log_info(logger, "El pid a ejecutar es: %d", pid_aux);
 				list_destroy(paquete);
-                interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
+                interrupcion = malloc(sizeof(interrupcion_t));
 
                 interrupcion->tipo = DISPATCH_CPU_I;
+                interrupcion->pid = pid_aux;
+                interrupcion->pc = pc_aux;
+
+                encolar_interrupcion_generico(cola_interrupciones, interrupcion, 0);
+
+                flag_hay_interrupcion = 1;
+
+                sem_post(sem_dispatch);
+
+				break;
+
+            case DESALOJO_CPU:
+                // sem_wait(sem_registros_actualizados);
+				log_info(logger, "Recibí un desalojo de parte de Kernel");
+				paquete = recibir_paquete(socket_dispatch);
+				pid_aux = *(int *)list_remove(paquete, 0);
+                pc_aux = *(int *)list_remove(paquete, 0);
+				log_info(logger, "El pid a ejecutar es: %d", pid_aux);
+				list_destroy(paquete);
+                interrupcion = malloc(sizeof(interrupcion_t));
+
+                interrupcion->tipo = DESALOJO_I;
                 interrupcion->pid = pid_aux;
                 interrupcion->pc = pc_aux;
 
