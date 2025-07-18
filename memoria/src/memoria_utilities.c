@@ -249,7 +249,7 @@ void * cpu(void* args){
                     char * valor_a_escribir = list_remove(paquete_recv,0);
 
                     log_debug(logger, "MEM: Voy a escribir '%s' en DF %d", valor_a_escribir, dir_fisica);
-                    log_debug(logger, "MEM: Longitud del string a escribir: %d", strlen(valor_a_escribir));
+                    log_debug(logger, "MEM: Longitud del string a escribir: %s", strlen(valor_a_escribir));
 
                     memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir));
 
@@ -332,27 +332,6 @@ void * cpu(void* args){
                 eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free); 
             }
-            break;
-
-            case MEMORY_DUMP:
-            {
-                // t_paquete *paquete_send_Dump;
-
-                paquete_recv = recibir_paquete(conexion);
-
-                int pidDump = *(int *)list_remove(paquete_recv, 0);
-                
-                t_tabla_proceso* procesoDump = buscar_proceso_por_pid(pidDump);
-                if (!procesoDump) {
-                    log_error(logger, "PID %d no encontrado al pedir instrucción", pidDump);
-                    list_destroy_and_destroy_elements(paquete_recv,free);
-                    break;
-                }
-                cargar_archivo(pidDump);
-                log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pidDump);
-
-                list_destroy_and_destroy_elements(paquete_recv,free);
-            }    
             break;
             
             //A CHEQUEAR que esté bien
@@ -494,6 +473,27 @@ void peticion_kernel(int socket_kernel){
             list_destroy_and_destroy_elements(paquete_recv,free);
         }
         break;
+        case DUMP_MEM:
+        {
+            // t_paquete *paquete_send_Dump;
+
+            paquete_recv = recibir_paquete(socket_kernel);
+
+            int pidDump = *(int *)list_remove(paquete_recv, 0);
+            
+            t_tabla_proceso* procesoDump = buscar_proceso_por_pid(pidDump);
+            if (!procesoDump) {
+                log_error(logger, "PID %d no encontrado al pedir instrucción", pidDump);
+                list_destroy_and_destroy_elements(paquete_recv,free);
+                break;
+            }
+            cargar_archivo_dump(pidDump);
+            log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pidDump);
+
+            list_destroy_and_destroy_elements(paquete_recv,free);
+            enviar_paquete_ok(socket_kernel);
+        }    
+        break;
         default: log_warning(logger,"Petición %d desconocida",peticion);
         break;
     }
@@ -589,7 +589,7 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
 
 //Funciones para MEMORY_DUMP
 
-int cargar_archivo(int pid){ 
+int cargar_archivo_dump(int pid){ 
     struct timeval tiempo_actual;
     gettimeofday(&tiempo_actual, NULL);
     struct tm *tiempo_local = localtime(&tiempo_actual.tv_sec);

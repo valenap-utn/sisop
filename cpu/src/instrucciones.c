@@ -272,7 +272,7 @@ void Check_Int(){
             paquete_send = crear_paquete(DUMP_MEM_CPU);
             agregar_a_paquete (paquete_send, &pid, sizeof(int));
             agregar_a_paquete (paquete_send, &pc, sizeof(int));
-            agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
+            // agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
         break;
 
         case EXIT_I:
