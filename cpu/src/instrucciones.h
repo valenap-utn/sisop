@@ -85,7 +85,7 @@ int buscar_victima_FIFO();
 void limpiar_entradas_tlb(int pid_a_eliminar);
 
 //CACHÉ
-int buscar_en_cache(int pid_actual, int nro_pagina, char *contenido_out);
+int buscar_en_cache(int pid_actual, int nro_pagina, char **contenido_out);
 void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina);
 int reemplazo_clock();
 int reemplazo_clock_M();

@@ -301,9 +301,10 @@ void write_(int dir_logica , char * datos){
     int offset; //como se obtiene el offset aca? no entiendo
     traducir_DL(dir_logica,&nro_pagina,&offset);
 
-    int dir_fisica = nro_pagina * tam_pag + offset;
-
     int marco = obtener_marco(pid,nro_pagina,offset);
+    // int dir_fisica = obtener_DF(marco,offset);
+
+    log_debug(logger, "Ejecutando WRITE: dir_logica=%d, valor=%s", dir_logica, datos);
 
     //Actualizar caché (si hay)
     if(entradas_cache > 0){
@@ -311,34 +312,32 @@ void write_(int dir_logica , char * datos){
         marco_actual_cache = marco;
 
         escribir_en_cache(pid,datos,nro_pagina);
-        // return;
-    }
-    log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
 
-
-    //Obtenemos marco desde TLB
-    
-    dir_fisica = obtener_DF(marco,offset);
-    
-    //Enviamos a Memoria
-    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
-    int tamanio = sizeof(int);
-    acceso_t tipo_de_acceso = ESCRITURA_AC;
-
-    agregar_a_paquete(paquete_send,&pid,sizeof(int));
-    agregar_a_paquete(paquete_send,&tamanio,sizeof(int));
-    agregar_a_paquete(paquete_send,&dir_fisica,sizeof(int));
-    agregar_a_paquete(paquete_send,&tipo_de_acceso,sizeof(int));
-    agregar_a_paquete(paquete_send,datos,strlen(datos)+1);
-
-    enviar_paquete(paquete_send,socket_memoria);
-    eliminar_paquete(paquete_send);
-
-    protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
-    if(cod_op != OK){
-        log_error(logger,"Memoria no confirmó la escritura");
         return;
     }
+
+    //Si no hay caché o fue miss => se escribe en memoria
+    // log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
+ 
+    // //Enviamos a Memoria
+    // t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+    // int tamanio = sizeof(int);
+    // acceso_t tipo_de_acceso = ESCRITURA_AC;
+
+    // agregar_a_paquete(paquete_send,&pid,sizeof(int));
+    // agregar_a_paquete(paquete_send,&tamanio,sizeof(int));
+    // agregar_a_paquete(paquete_send,&dir_fisica,sizeof(int));
+    // agregar_a_paquete(paquete_send,&tipo_de_acceso,sizeof(int));
+    // agregar_a_paquete(paquete_send,datos,strlen(datos)+1);
+
+    // enviar_paquete(paquete_send,socket_memoria);
+    // eliminar_paquete(paquete_send);
+
+    // protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
+    // if(cod_op != OK){
+    //     log_error(logger,"Memoria no confirmó la escritura");
+    //     return;
+    // }
 
 };
 
@@ -350,9 +349,10 @@ void read_(int dir_logica , int tamanio){
     char * valor ;
 
     //Consultamos la Caché
-    if(entradas_cache > 0 && buscar_en_cache(pid,dir_logica,valor)){
+    if(entradas_cache > 0 && buscar_en_cache(pid,nro_pagina,&valor)){
         log_info(logger,"PID: <%d> - Cache Hit - Pagina: <%d>", pid, nro_pagina);
         log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%s>", pid, dir_logica, valor);
+        free(valor);
         return;
     }
 
@@ -389,6 +389,8 @@ void read_(int dir_logica , int tamanio){
 
     //Actualizamos la caché
     if(entradas_cache > 0)escribir_en_cache(pid,valor,nro_pagina);
+
+    free(valor);
 
 };
 
@@ -462,7 +464,7 @@ int obtener_marco(int pid, int nro_pagina,int offset){
         int marco = buscar_en_tlb(pid, nro_pagina);
         if (marco != -1) {
             log_info(logger, "TLB HIT - PID <%d> - Página <%d> - Marco <%d>", pid, nro_pagina, marco);
-            return marco * tam_pag + offset;
+            return marco;
         } else {
             log_info(logger, "TLB MISS - PID <%d> - Página <%d>", pid, nro_pagina);
         }
@@ -583,14 +585,14 @@ void limpiar_entradas_tlb(int pid_a_eliminar){
 
 /* ------ CACHÉ ------ */
 
-int buscar_en_cache(int pid_actual, int nro_pagina, char* contenido_out){
+int buscar_en_cache(int pid_actual, int nro_pagina, char** contenido_out){
     if(entradas_cache <= 0)return 0;
 
     for(int i = 0; i < entradas_cache; i++){
         if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
             usleep(retardo_cache * 1000);
             cache[i].uso = 1;
-            contenido_out = cache[i].contenido;
+            *contenido_out = cache[i].contenido;
             return 1;
         }
     }
@@ -605,9 +607,13 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
     for(int i = 0; i < entradas_cache; i++){
         if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
             usleep(retardo_cache * 1000);
-            cache[i].contenido = nuevo_valor;
+
+            free(cache[i].contenido);
+            cache[i].contenido = strdup(nuevo_valor);
+
             cache[i].uso = 1;
             cache[i].modificado = 1;
+
             return;
         }
     }
@@ -616,7 +622,9 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
     for(int i = 0 ; i < entradas_cache ; i++){
         if(!cache[i].ocupado){
             usleep(retardo_cache * 1000);
-            cache[i] = (cache_t){pid_actual,nro_pagina,nuevo_valor,1,1,1};
+            cache[i] = (cache_t){pid_actual,nro_pagina,strdup(nuevo_valor),1,1,1};
+
+            log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
             return;
         }
     }
@@ -629,12 +637,15 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
     if(cache[victima].modificado){
         escribir_cache_en_memoria(cache[victima]);
     }
+    free(cache[victima].contenido);
 
     //Reemplazamos
     usleep(retardo_cache * 1000);
-    cache[victima] = (cache_t){pid_actual, nro_pagina,nuevo_valor,1,1,1};
+    cache[victima] = (cache_t){pid_actual, nro_pagina,strdup(nuevo_valor),1,1,1};
 
     log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
+    
+    return;
 }
 
 //Algoritmos de reemplazo
@@ -656,7 +667,7 @@ int reemplazo_clock(){
 int reemplazo_clock_M(){
     //Primera vuelta => u = 0  &&  m = 0
     for(int i = 0; i < entradas_cache; i++){
-        int index = (puntero_cache + 1) % entradas_cache;
+        int index = (puntero_cache + i) % entradas_cache;
         if(!cache[index].uso && !cache[index].modificado){
             return avanzar_puntero(index);
         }
@@ -687,15 +698,18 @@ void escribir_cache_en_memoria(cache_t entrada){
     int marco = obtener_marco(entrada.pid,entrada.nro_pagina,0);
     int dir_fisica = obtener_DF(marco, 0); // Offset = 0 , porque escribimos la página entera
 
+    log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", entrada.pid, dir_fisica, entrada.contenido);
+
     t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
-    int tam = sizeof(int);
+    int tam = tam_pag;
     int tipo_de_acceso = ESCRITURA_AC;
 
     agregar_a_paquete(paquete_send, &entrada.pid , sizeof(int));
     agregar_a_paquete(paquete_send, &tam , sizeof(int));
     agregar_a_paquete(paquete_send, &dir_fisica , sizeof(int));
     agregar_a_paquete(paquete_send, &tipo_de_acceso , sizeof(int));
-    agregar_a_paquete(paquete_send, &entrada.contenido , sizeof(int));
+    agregar_a_paquete(paquete_send, entrada.contenido , strlen(entrada.contenido)+1);
+
 
     enviar_paquete(paquete_send, socket_memoria);
     eliminar_paquete(paquete_send);
@@ -705,7 +719,7 @@ void escribir_cache_en_memoria(cache_t entrada){
         log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
     }
 
-    log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",entrada.pid, pagina_actual_cache, marco_actual_cache);
+    log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",entrada.pid, entrada.nro_pagina, marco);
 
 }
 
@@ -718,6 +732,7 @@ void limpiar_cache_de_proceso(int pid_a_eliminar){
             cache[i].ocupado = 0;
             cache[i].uso = 0;
             cache[i].modificado = 0;
+            free(cache[i].contenido);
         }
     }
 }
