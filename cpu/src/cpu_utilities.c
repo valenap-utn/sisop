@@ -33,6 +33,9 @@ char * reemplazo_cache;
 int retardo_cache;
 cache_t* cache; 
 
+//variables para MMU
+extern int tam_pag, cant_niv, entradas_x_tabla;
+
 int puntero_cache;
 
 
@@ -57,6 +60,8 @@ void inicializarCpu(char *nombreCpuLog){
     
     pthread_create(&tid_conexion_memoria, NULL, conexion_cliente_memoria, NULL);
     pthread_join(tid_conexion_memoria, NULL);
+    recibir_valores_memoria(socket_memoria);
+
     pthread_create(&tid_conexion_kernel, NULL, conexion_cliente_kernel, NULL);
     pthread_join(tid_conexion_kernel, NULL);
 
@@ -216,4 +221,31 @@ void vaciar_cola_interrupcion(list_struct_t * cola){
     list_clean_and_destroy_elements(cola->lista, free);
     pthread_mutex_unlock(cola->mutex);
     flag_hay_interrupcion = false;
+}
+void recibir_valores_memoria(int socket_memoria){
+    t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
+    agregar_a_paquete(paquete_send, "xd", strlen("xd")+1);
+    enviar_paquete(paquete_send,socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if(cod_op != ENVIAR_VALORES){
+        log_error(logger,"Error al recibir valores desde memoria");
+        return;
+    }
+
+    t_list* paquete_recv = recibir_paquete(socket_memoria);
+
+    int* tam_pagina_ptr = list_remove(paquete_recv,0);
+    int* cant_niveles_ptr = list_remove(paquete_recv,0);
+    int* entradas_por_tabla_ptr = list_remove(paquete_recv,0);
+
+    tam_pag = *tam_pagina_ptr;
+    cant_niv = *cant_niveles_ptr;
+    entradas_x_tabla = *entradas_por_tabla_ptr;
+
+    free(tam_pagina_ptr);
+    free(cant_niveles_ptr);
+    free(entradas_por_tabla_ptr);
+    list_destroy(paquete_recv);
 }

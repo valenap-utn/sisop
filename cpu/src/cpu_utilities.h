@@ -38,6 +38,8 @@ void *conexion_cliente_memoria(void *args);
 
 interrupcion_t *desencolar_interrupcion_generico(list_struct_t *cola);
 
+void recibir_valores_memoria(int socket_memoria);
+
 void vaciar_cola_interrupcion(list_struct_t *cola);
 
 void encolar_interrupcion_generico(list_struct_t *cola, interrupcion_t *interrupcion, int index);

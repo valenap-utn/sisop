@@ -175,7 +175,7 @@ instruccion_t *Decode(char * instr){
 };
 
 void Execute(instruccion_t *instr){
-    log_debug(logger, "Instrucción ejecutada: %d SYSCALL TIPO: %d", instr->opCode,instr->tipo);
+    log_debug(logger, "Instrucción ejecutada: %d INSTRUCCION TIPO: %d", instr->opCode,instr->tipo);
 
     switch (instr->opCode){
             case NOOP_I:
@@ -187,7 +187,7 @@ void Execute(instruccion_t *instr){
                 
             break;
             case WRITE_I:
-                write_(atoi(instr->data[1]) , atoi(instr->data[2]));
+                write_(atoi(instr->data[1]) , instr->data[2]);
             break;
             case READ_I:
                 read_(atoi(instr->data[1]) , atoi(instr->data[2]));
@@ -296,7 +296,7 @@ void Check_Int(){
 
 };
 
-void write_(int dir_logica , int datos){
+void write_(int dir_logica , char * datos){
     int nro_pagina;
     int offset; //como se obtiene el offset aca? no entiendo
     traducir_DL(dir_logica,&nro_pagina,&offset);
@@ -310,9 +310,10 @@ void write_(int dir_logica , int datos){
 
         escribir_en_cache(pid,datos,nro_pagina);
         log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid, nro_pagina);
-        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%d>", pid, dir_fisica, datos);
-        return;
+        // return;
     }
+    log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
+
 
     //Obtenemos marco desde TLB
     int marco = obtener_marco(pid,nro_pagina,offset);
@@ -327,7 +328,7 @@ void write_(int dir_logica , int datos){
     agregar_a_paquete(paquete_send,&tamanio,sizeof(int));
     agregar_a_paquete(paquete_send,&dir_fisica,sizeof(int));
     agregar_a_paquete(paquete_send,&tipo_de_acceso,sizeof(int));
-    agregar_a_paquete(paquete_send,&datos,sizeof(int));
+    agregar_a_paquete(paquete_send,datos,strlen(datos)+1);
 
     enviar_paquete(paquete_send,socket_memoria);
     eliminar_paquete(paquete_send);
@@ -347,10 +348,10 @@ void read_(int dir_logica , int tamanio){
     int offset;
     traducir_DL(dir_logica,&nro_pagina,&offset);
 
-    int valor;
+    char * valor;
 
     //Consultamos la Caché
-    if(entradas_cache > 0 && buscar_en_cache(pid,dir_logica,&valor)){
+    if(entradas_cache > 0 && buscar_en_cache(pid,dir_logica,valor)){
         log_info(logger,"PID: <%d> - Cache Hit - Pagina: <%d>", pid, nro_pagina);
         log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%d>", pid, dir_logica, valor);
         return;
@@ -381,7 +382,7 @@ void read_(int dir_logica , int tamanio){
     }
 
     t_list* respuesta = recibir_paquete(socket_memoria);
-    valor = *(int*)list_remove(respuesta,0);
+    valor = list_remove(respuesta,0);
     list_destroy_and_destroy_elements(respuesta, free);
 
 
@@ -441,33 +442,6 @@ void Actualizar_pc(){
     }
 };
 
-void recibir_valores_memoria(int socket_memoria){
-    t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
-    enviar_paquete(paquete_send,socket_memoria);
-    eliminar_paquete(paquete_send);
-
-    protocolo_socket cod_op = recibir_operacion(socket_memoria);
-    if(cod_op != ENVIAR_VALORES){
-        log_error(logger,"Error al recibir valores desde memoria");
-        return;
-    }
-
-    t_list* paquete_recv = recibir_paquete(socket_memoria);
-
-    int* tam_pagina_ptr = list_remove(paquete_recv,0);
-    int* cant_niveles_ptr = list_remove(paquete_recv,0);
-    int* entradas_por_tabla_ptr = list_remove(paquete_recv,0);
-
-    tam_pag = *tam_pagina_ptr;
-    cant_niv = *cant_niveles_ptr;
-    entradas_x_tabla = *entradas_por_tabla_ptr;
-
-    free(tam_pagina_ptr);
-    free(cant_niveles_ptr);
-    free(entradas_por_tabla_ptr);
-    list_destroy(paquete_recv);
-}
-
 /* ------ MMU ------ */
 
 void traducir_DL(int dir_logica, int* nro_pagina, int* offset){
@@ -517,6 +491,7 @@ int obtener_marco(int pid, int nro_pagina,int offset){
 
     // 4. Recibir el marco
 
+    protocolo_socket op = recibir_operacion(socket_memoria);
     t_list* paquete_recv = recibir_paquete(socket_memoria);
     int marco = *(int*)list_remove(paquete_recv, 0);
     list_destroy_and_destroy_elements(paquete_recv, free);
@@ -609,14 +584,14 @@ void limpiar_entradas_tlb(int pid_a_eliminar){
 
 /* ------ CACHÉ ------ */
 
-int buscar_en_cache(int pid_actual, int nro_pagina, int* contenido_out){
+int buscar_en_cache(int pid_actual, int nro_pagina, char* contenido_out){
     if(entradas_cache <= 0)return 0;
 
     for(int i = 0; i < entradas_cache; i++){
         if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
             usleep(retardo_cache * 1000);
             cache[i].uso = 1;
-            *contenido_out = cache[i].contenido;
+            contenido_out = cache[i].contenido;
             return 1;
         }
     }
@@ -624,7 +599,7 @@ int buscar_en_cache(int pid_actual, int nro_pagina, int* contenido_out){
     return 0;
 }
 
-void escribir_en_cache(int pid_actual, int nuevo_valor, int nro_pagina){
+void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
     if(entradas_cache <= 0)return;
 
     //Verificamos, si ya existe => modificamos

@@ -41,7 +41,7 @@ TLB_t;
 typedef struct cache_t{
     int pid;
     int nro_pagina;
-    int contenido;
+    char * contenido;
     int ocupado;
     int uso;
     int modificado;
@@ -52,7 +52,7 @@ typedef struct cache_t{
 
 
 void noop();
-void write_(int dir_logica , int datos);
+void write_(int dir_logica, char *datos);
 void read_(int dir_logica , int tamanio);
 void goto_(int nuevo_pc);
 void noop();
@@ -65,9 +65,8 @@ char * Fetch();
 instruccion_t *Decode(char * instr);
 void Execute(instruccion_t *);
 void Check_Int();
-int instrStringMap(char []);
+int instrStringMap(char[]);
 int Cache_paginas(int Direccion);
-void recibir_valores_memoria(int socket_memoria);
 
 void traducir_DL(int dir_logica, int *nro_pagina, int *offset);
 
@@ -91,8 +90,8 @@ int buscar_victima_FIFO();
 void limpiar_entradas_tlb(int pid_a_eliminar);
 
 //CACHÉ
-int buscar_en_cache(int pid_actual, int dir_fisica, int* contenido_out);
-void escribir_en_cache(int pid_actual, int nuevo_valor, int nro_pagina);
+int buscar_en_cache(int pid_actual, int nro_pagina, char *contenido_out);
+void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina);
 int reemplazo_clock();
 int reemplazo_clock_M();
 int avanzar_puntero(int index);

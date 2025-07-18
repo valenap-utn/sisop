@@ -174,6 +174,8 @@ void * cpu(void* args){
         switch(peticion){
             case ENVIAR_VALORES:
             {
+                paquete_recv = recibir_paquete(conexion);
+                list_destroy_and_destroy_elements(paquete_recv, free);
                 t_paquete* paquete_send = crear_paquete(ENVIAR_VALORES);
                 agregar_a_paquete(paquete_send,&tam_pagina,sizeof(int));
                 agregar_a_paquete(paquete_send, &cant_niveles, sizeof(int));
@@ -242,8 +244,8 @@ void * cpu(void* args){
                     proceso->metricas.cant_lecturas++;
 
                 }else{ //escritura
-                    int valor_a_escribir = *(int*)list_remove(paquete_recv,0);
-                    memcpy(memoria_principal.espacio + dir_fisica,&valor_a_escribir,sizeof(int));
+                    char * valor_a_escribir = list_remove(paquete_recv,0);
+                    memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir)+1);
 
                     paquete_send = crear_paquete(OK);
                     enviar_paquete(paquete_send,conexion);
@@ -457,11 +459,15 @@ void peticion_kernel(int socket_kernel){
             log_debug(logger, "Se recibió solicitud de des-suspensión para PID: %d", pid);
 
             //ACA SE SACA DE SWAP y se escribe en memoria segun dicho PID
-            bool ok = des_suspender_proceso(pid);
-
-            t_paquete* paquete_send = crear_paquete(ok ? OK : UNSUSPEND_MEM_ERROR);
-            enviar_paquete(paquete_send,socket_kernel);
-            eliminar_paquete(paquete_send);
+            if(des_suspender_proceso(pid)){
+                enviar_paquete_ok(socket_kernel);
+            }else{
+                log_error(logger,"No se pudo des suspender el proceso %d por falta de memoria",pid);
+                t_paquete * paquete_error = crear_paquete(UNSUSPEND_MEM_ERROR);
+                agregar_a_paquete(paquete_error, "ERROR", strlen("ERROR")+1);
+                enviar_paquete(paquete_error, socket_kernel);
+                eliminar_paquete(paquete_error);
+            }
 
             // faltaria: enviar_paquete_ok(socket_kernel);
             // y el caso de error como en process create
