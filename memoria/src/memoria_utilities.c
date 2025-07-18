@@ -536,7 +536,8 @@ struct t_tabla_proceso* buscar_proceso_por_pid(int pid) {
     return NULL;  // No se encontró el proceso
 }
 
-int acceder_a_tdp(int pid, int* indices_por_nivel){
+//MANEJO DE ACCESO A TDP ON-DEMAND
+int acceder_a_tdp(int pid, int* indices_por_nivel){ 
     t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
     if(!proceso){
         log_error(logger,"PID %d no encontrado para acceso a TDP", pid);
@@ -544,8 +545,12 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
     }
 
     Tabla_Nivel* actual = proceso->tabla_principal->niveles[indices_por_nivel[0]];
+    if (!actual) {
+        log_error(logger, "Entrada de nivel 1 [%d] es NULL", indices_por_nivel[0]);
+        return -1;
+    }
 
-    for(int nivel = 0; nivel < (cant_niveles-1); nivel++){
+    for(int nivel = 0; nivel < cant_niveles - 1; nivel++){
         proceso->metricas.cant_accesos_tdp++;
         usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
         if(!actual || actual->es_ultimo_nivel){
@@ -553,15 +558,26 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
             return -1;
         }
         actual = actual->sgte_nivel[indices_por_nivel[nivel+1]];
+        if (!actual) {
+            log_error(logger, "Entrada NULL en nivel %d para PID %d", nivel+1, pid);
+            return -1;
+        }
     }
 
-    //Acceso a utlimo nivel
+    // Acceso a último nivel
     proceso->metricas.cant_accesos_tdp++;
     usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
 
-    if(!actual->esta_presente || actual->marco == -1){
-        log_warning(logger,"Marco no presente para PID %d",pid);
-        return -1;
+    if (actual->marco == -1 || !actual->esta_presente) {
+        // On-demand: asignar marco ahora
+        int nuevo_marco = asignar_marco_libre();
+        if (nuevo_marco == -1) {
+            log_error(logger, "No hay marcos libres para PID %d", pid);
+            return -1;
+        }
+        actual->marco = nuevo_marco;
+        actual->esta_presente = true;
+        log_debug(logger, "## PID: <%d> - Page Fault: asignado marco <%d>", pid, nuevo_marco);
     }
 
     return actual->marco;
@@ -732,13 +748,8 @@ Tabla_Nivel* crear_tabla_nivel(int nivel_actual, int paginas_necesarias) {
     tabla->es_ultimo_nivel = (nivel_actual == cant_niveles);
 
     if (tabla->es_ultimo_nivel) {
-        int marco = asignar_marco_libre();
-        if (marco == -1) {
-            free(tabla);
-            return NULL;
-        }
-        tabla->marco = marco;
-        tabla->esta_presente = true;
+        tabla->marco = -1;
+        tabla->esta_presente = false;
         tabla->paginas_contenidas = 1;
         tabla->sgte_nivel = NULL;
     } else {
@@ -847,6 +858,12 @@ void suspender_proceso(int pid){
 
     for(int i = 0; i < proceso->cantidad_paginas; i++){
         int marco = obtener_marco_por_indice(proceso->tabla_principal, i);
+        
+        if(marco == -1){
+            log_warning(logger,"PID <%d> Página <%d> no tiene marco asignado", pid, i);
+            continue;
+        }
+        
         void* origen = memoria_principal.espacio + (marco * tam_pagina);
 
         fseek(f,offset_en_bytes + i * tam_pagina, SEEK_SET);
@@ -874,13 +891,13 @@ bool des_suspender_proceso(int pid){
         return false;
     }
 
+    //Busco la entrada
     t_swap* entrada = NULL;
 
     for(int i = 0; i < list_size(memoria_principal.metadata_swap);i++){
         t_swap* entrada_buscada = list_get(memoria_principal.metadata_swap,i);
         if(entrada_buscada->pid == pid){
             entrada = entrada_buscada;
-            list_remove(memoria_principal.metadata_swap,i);
             break;
         }
     }
@@ -893,19 +910,33 @@ bool des_suspender_proceso(int pid){
     FILE* f = fopen(path_swapfile,"rb+");
     if(!f){
         log_error(logger,"No se pudo abrir el archivo de SWAP");
-        free(entrada);
+        // free(entrada);
         return false;
     }
+
+    //Backup de marcos asingados por si hay que hacer rollback
+    t_list* marcos_asignados = list_create();
 
     for(int i = 0; i < entrada->cantidad_paginas ;i++){
         int marco = asignar_marco_libre();
         if(marco == -1){
             log_error(logger,"No hay marcos disponibles para des-suspender al proceso con pid %d", pid);
+            
+            //Rollback
+            for(int j = 0; j < list_size(marcos_asignados); j++){
+                int* m = list_get(marcos_asignados,j);
+                liberar_marco(*m);
+                free(m);
+            }
+            list_destroy(marcos_asignados);
             fclose(f);
-            free(entrada);
+            // free(entrada);
             return false;
-            // break;
         }
+
+        int* m_copia = malloc(sizeof(int));
+        *m_copia = marco;
+        list_add(marcos_asignados,m_copia);
 
         fseek(f, (entrada->pagina_inicio + i) * tam_pagina, SEEK_SET);
         void* destino = memoria_principal.espacio + marco * tam_pagina;
@@ -913,8 +944,15 @@ bool des_suspender_proceso(int pid){
 
         marcar_marco_en_tabla(proceso->tabla_principal,i,marco);
     }
+
+    //Si todo fue bien => elimino entrada de swap
+    // list_remove(memoria_principal.metadata_swap, index);
+    // free(entrada);
     fclose(f);
-    free(entrada);
+    list_destroy_and_destroy_elements(marcos_asignados, free);
+
+    eliminar_de_lista_por_criterio(pid,memoria_principal.metadata_swap,criterio_para_swap,free);
+
     proceso->metricas.cant_subidas_memoria++;
     log_info(logger,"## PID: <%d> - Proceso des-suspendido desde SWAP", pid);
     return true;
