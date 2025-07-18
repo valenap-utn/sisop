@@ -229,11 +229,11 @@ void * cpu(void* args){
                 //CHEQUEAR QUE LAS COSAS SE RECIBAN/ENVIEN DE FORMA ORDENADA
                 int tamanio = *(int*)list_remove(paquete_recv,0);
                 int dir_fisica = *(int*)list_remove(paquete_recv,0);
-                int tipo_acceso = *(int*)list_remove(paquete_recv,0); // lectura || escritura 
+                acceso_t tipo_acceso = *(int*)list_remove(paquete_recv,0); // lectura || escritura 
 
                 t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
 
-                if(tipo_acceso == 0){ //lectura
+                if(tipo_acceso == LECTURA_AC){ //lectura
                     int valor = *(int*)(memoria_principal.espacio + dir_fisica);
 
                     paquete_send = crear_paquete(DEVOLVER_VALOR);
@@ -243,18 +243,17 @@ void * cpu(void* args){
                     log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
                     proceso->metricas.cant_lecturas++;
 
+                    eliminar_paquete(paquete_send);
+
                 }else{ //escritura
                     char * valor_a_escribir = list_remove(paquete_recv,0);
                     memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir)+1);
 
-                    // paquete_send = crear_paquete(OK);
-                    // enviar_paquete(paquete_send,conexion);
                     enviar_paquete_ok(conexion);
 
                     log_info(logger,"## PID: <%d> - <Escritura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
                     proceso->metricas.cant_escrituras++;
                 }
-                eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free);
             }
             break;

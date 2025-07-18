@@ -36,6 +36,11 @@ typedef struct list_struct{
     sem_t *sem;
 }list_struct_t;
 
+typedef enum { //tipo_de_acceso
+    LECTURA_AC,
+    ESCRITURA_AC,
+}acceso_t ;
+
 enum protocolo_socket
 {
     OK,

@@ -303,20 +303,21 @@ void write_(int dir_logica , char * datos){
 
     int dir_fisica = nro_pagina * tam_pag + offset;
 
+    int marco = obtener_marco(pid,nro_pagina,offset);
+
     //Actualizar caché (si hay)
     if(entradas_cache > 0){
         pagina_actual_cache = nro_pagina;
-        marco_actual_cache = obtener_marco(pid,nro_pagina,offset);
+        marco_actual_cache = marco;
 
         escribir_en_cache(pid,datos,nro_pagina);
-        log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid, nro_pagina);
         // return;
     }
     log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
 
 
     //Obtenemos marco desde TLB
-    int marco = obtener_marco(pid,nro_pagina,offset);
+    
     dir_fisica = obtener_DF(marco,offset);
     
     //Enviamos a Memoria
@@ -338,8 +339,6 @@ void write_(int dir_logica , char * datos){
         log_error(logger,"Memoria no confirmó la escritura");
         return;
     }
-
-    log_info(logger, "PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
 
 };
 
@@ -364,7 +363,7 @@ void read_(int dir_logica , int tamanio){
     int dir_fisica = obtener_DF(marco,offset);
 
     //Enviamos a memoria
-    t_paquete* paquete_send = crear_paquete(READ_MEM);
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
     acceso_t tipo_de_acceso = LECTURA_AC;
 
     agregar_a_paquete(paquete_send, &pid, sizeof(int));
@@ -701,7 +700,7 @@ void escribir_cache_en_memoria(cache_t entrada){
     enviar_paquete(paquete_send, socket_memoria);
     eliminar_paquete(paquete_send);
 
-    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
     if(cod_op != OK){
         log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
     }

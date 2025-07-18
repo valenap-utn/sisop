@@ -12,11 +12,6 @@ typedef enum {
     USUARIO,
 }priv_instrucion_t ;
 
-typedef enum { //tipo_de_acceso
-    LECTURA_AC,
-    ESCRITURA_AC,
-}acceso_t ;
-
 typedef struct
 {
     int opCode;
