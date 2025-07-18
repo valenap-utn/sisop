@@ -339,6 +339,29 @@ void write_(int dir_logica , char * datos){
     //     return;
     // }
 
+    //Si no hay caché o fue miss => se escribe en memoria
+    // log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
+ 
+    // //Enviamos a Memoria
+    // t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+    // int tamanio = sizeof(int);
+    // acceso_t tipo_de_acceso = ESCRITURA_AC;
+
+    // agregar_a_paquete(paquete_send,&pid,sizeof(int));
+    // agregar_a_paquete(paquete_send,&tamanio,sizeof(int));
+    // agregar_a_paquete(paquete_send,&dir_fisica,sizeof(int));
+    // agregar_a_paquete(paquete_send,&tipo_de_acceso,sizeof(int));
+    // agregar_a_paquete(paquete_send,datos,strlen(datos)+1);
+
+    // enviar_paquete(paquete_send,socket_memoria);
+    // eliminar_paquete(paquete_send);
+
+    // protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
+    // if(cod_op != OK){
+    //     log_error(logger,"Memoria no confirmó la escritura");
+    //     return;
+    // }
+
 };
 
 void read_(int dir_logica , int tamanio){
