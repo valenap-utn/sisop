@@ -103,7 +103,6 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             PROCESS_EXIT(pcb);
-            sem_post(lista_procesos_ready->sem);
 
             break;
 
