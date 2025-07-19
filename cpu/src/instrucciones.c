@@ -531,6 +531,8 @@ void agregar_a_tlb(int pid_actual, int pagina, int marco){
         if(TLB_tabla[i].ocupado && TLB_tabla[i].pid == pid_actual && TLB_tabla[i].pagina == pagina){
             TLB_tabla[i].marco = marco;
             TLB_tabla[i].timestamp = get_timestamp();
+
+            // dump_estado_tlb();
             return;
         }
     }
@@ -543,6 +545,8 @@ void agregar_a_tlb(int pid_actual, int pagina, int marco){
             TLB_tabla[i].marco = marco;
             TLB_tabla[i].ocupado = true;
             TLB_tabla[i].timestamp = get_timestamp();
+
+            // dump_estado_tlb();
             return;
         }
     }
@@ -560,6 +564,22 @@ void agregar_a_tlb(int pid_actual, int pagina, int marco){
     TLB_tabla[victima].marco = marco;
     TLB_tabla[victima].ocupado = true;
     TLB_tabla[victima].timestamp = get_timestamp();
+
+    // dump_estado_tlb();
+}
+
+void dump_estado_tlb() {
+    log_debug(logger, "\n---------------------- TLB ACTUAL ----------------------");
+    for (int i = 0; i < entradas_tlb; i++) {
+        if (TLB_tabla[i].ocupado) {
+            log_debug(logger, "Entrada %d: PID=%d Página=%d Marco=%d Timestamp=%d",
+                     i, TLB_tabla[i].pid, TLB_tabla[i].pagina,
+                     TLB_tabla[i].marco, TLB_tabla[i].timestamp);
+        } else {
+            log_debug(logger, "Entrada %d: libre", i);
+        }
+    }
+    log_debug(logger, "--------------------------------------------------------\n");
 }
 
 int buscar_victima_LRU(){
