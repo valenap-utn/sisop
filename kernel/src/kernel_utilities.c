@@ -1,28 +1,62 @@
 #include <kernel_utilities.h>
-#include <pcb.h>
+
 
 extern t_log *logger;
 extern t_config *config;
 
-extern list_struct_t *lista_sockets_cpu_libres;
-extern list_struct_t *lista_sockets_cpu_ocupados;
+extern int flag_pcbrunning;
+extern pthread_cond_t *cond_pcb;
+extern pthread_mutex_t *mutex_pcb;
+
+extern int flag_syscall;
+extern pthread_cond_t *cond_syscall;
+extern pthread_mutex_t *mutex_syscall;
+
+int pid_actual;
+
+extern int estimacion_inicial;
+extern double alfa;
+
+extern list_struct_t *lista_sockets_cpu;
 extern list_struct_t *lista_sockets_io;
-extern list_struct_t *lista_peticiones_pendientes;
+extern list_struct_t *lista_peticiones_memoria_pendientes;
+extern list_struct_t *lista_peticiones_io_pendientes;
 
 //colas_planificadores
 extern list_struct_t *lista_procesos_new;
+extern list_struct_t *lista_procesos_new_fallidos;
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_procesos_exec;
+extern list_struct_t *lista_procesos_block;
+extern list_struct_t *lista_procesos_susp_ready;
+extern list_struct_t *lista_procesos_susp_block;
+
+extern t_dictionary *diccionario_cpu_pcb;
 
 //semaforos auxiliares
-sem_t * sem_proceso_fin;
-sem_t * sem_respuesta_memoria;
+sem_t * sem_memoria_liberada;
+sem_t * sem_syscall;
+
+//condiciones globales
+pthread_cond_t * cond_susp_ready_empty;
+int susp_ready_empty;
+pthread_mutex_t * mutex_susp_ready_empty;
+
+extern pthread_cond_t * cond_all_start;
+extern int flag_all_start;
+extern pthread_mutex_t * mutex_all_start;
+//
+
+extern pthread_mutex_t * mutex_pid_mayor;
 
 //configs
 t_log_level current_log_level;
 char * puerto_dispatch;
 char * puerto_interrupt;
 char * puerto_io;
+char * puerto_memoria;
+char * ip_memoria;
+int tiempo_suspension;
 enum_algoritmo_largoPlazo algoritmo_largoPlazo;
 
 enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
@@ -30,49 +64,42 @@ enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
 void inicializarKernel(){
 
     config = config_create("./kernel.config");
-    logger = log_create("kernel.log", "Kernel", 1, current_log_level);
+
+    logger = log_create("kernel.log", "Kernel", 1, LOG_LEVEL_INFO);
 
     levantarConfig();
+
+    log_destroy(logger);
+    logger = log_create("kernel.log", "Kernel", 1, current_log_level);
 
     inicializarSemaforos();
     inicializarListasKernel();
 
-    pthread_t tid_server_mh_cpu;
-    pthread_t tid_server_mh_io;
-    pthread_t tid_largoplazo, tid_cortoplazo;
-    
-    pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
-    pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
-    
-    //Al iniciar el proceso Kernel, el algoritmo de Largo Plazo debe estar frenado (estado STOP) y se deberá esperar un ingreso de un Enter por teclado para poder iniciar con la planificación.
-    //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione
-    pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
-    pthread_create(&tid_cortoplazo, NULL, cortoPlazo, NULL);
-    
-
-    pthread_join(tid_server_mh_cpu, NULL);
-    pthread_join(tid_server_mh_io, NULL);
-    pthread_join(tid_largoplazo, NULL);
-    pthread_join(tid_cortoplazo, NULL);
-
+    diccionario_cpu_pcb = dictionary_create();
 
 }
 
 void levantarConfig(){
 
-    
     char *value = config_get_string_value(config, "LOG_LEVEL");
     current_log_level = log_level_from_string(value);
 
     puerto_dispatch = config_get_string_value(config, "PUERTO_ESCUCHA_DISPATCH");
     puerto_interrupt = config_get_string_value(config, "PUERTO_ESCUCHA_INTERRUPT");
     puerto_io = config_get_string_value(config, "PUERTO_ESCUCHA_IO");
+    puerto_memoria = config_get_string_value(config, "PUERTO_MEMORIA");
+    ip_memoria = config_get_string_value(config, "IP_MEMORIA");
     char * alg_largoplazo_temp;
-    alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_COLA_NEW");
+    alg_largoplazo_temp = config_get_string_value(config, "ALGORITMO_INGRESO_A_READY");
     algoritmo_largoPlazo = alg_largoPlazo_from_string(alg_largoplazo_temp);
     char * alg_cortoplazo_temp;
-    alg_cortoplazo_temp = config_get_string_value(config, "ALGORITMO_PLANIFICACION");
+    alg_cortoplazo_temp = config_get_string_value(config, "ALGORITMO_CORTO_PLAZO");
     algoritmo_cortoPlazo = alg_cortoPlazo_from_string(alg_cortoplazo_temp);
+
+    tiempo_suspension = config_get_int_value(config, "TIEMPO_SUSPENSION");
+
+    estimacion_inicial = config_get_int_value(config, "ESTIMACION_INICIAL");
+    alfa = config_get_double_value(config, "ALFA");
 }
 /// @brief Thread que espera conexiones de CPU nuevas y las agrega a la lista de sockets. Nunca para de esperar y aceptar nuevos
 /// @param args 
@@ -82,77 +109,63 @@ void *server_mh_cpu(void *args){
     int server_dispatch = iniciar_servidor(puerto_dispatch);
     int server_interrupt = iniciar_servidor(puerto_interrupt);
 
+    pthread_t tid_nuevo_cortoplazo;
+
     t_socket_cpu *socket_nuevo = malloc(sizeof(t_socket_cpu));
 
     while((socket_nuevo->dispatch = esperar_cliente(server_dispatch))){
         
         socket_nuevo->interrupt = esperar_cliente(server_interrupt);
 
-        pthread_mutex_lock(lista_sockets_cpu_libres->mutex);
-        list_add(lista_sockets_cpu_libres->lista, socket_nuevo);
-        pthread_mutex_unlock(lista_sockets_cpu_libres->mutex);
+        pthread_mutex_lock(lista_sockets_cpu->mutex);
+        list_add(lista_sockets_cpu->lista, socket_nuevo);
+        pthread_mutex_unlock(lista_sockets_cpu->mutex);
+
+        //creamos un nuevo cortoplazo para cada CPU que se conecte
+        pthread_create(&tid_nuevo_cortoplazo, NULL, cortoPlazo, (void*)socket_nuevo);
 
         socket_nuevo = malloc(sizeof(t_socket_cpu));
 
     }
-    
+    pthread_join(tid_nuevo_cortoplazo, NULL);
     return (void *)EXIT_SUCCESS;
 }
-void *server_mh_io(void *args){
 
-    int server = iniciar_servidor(puerto_io);
-
-    t_socket_io *socket_nuevo = malloc(sizeof(t_socket_io));
-    t_list *paquete_recv;
-
-    char *nombre_io;
-
-    protocolo_socket cod_op;
-
-    while((socket_nuevo->socket = esperar_cliente(server))){
-
-        cod_op = recibir_operacion(socket_nuevo->socket);
-
-        if(cod_op != NOMBRE_IO){
-            log_error(logger, "Se recibio un protocolo inesperado de IO");
-            return (void*)EXIT_FAILURE;
-        }
-
-        paquete_recv = recibir_paquete(socket_nuevo->socket);
-
-        nombre_io = list_remove(paquete_recv, 0);
-        // socket_nuevo->nombre = nombre_io;
-        socket_nuevo->nombre = nombre_io;
-        
-        pthread_mutex_lock(lista_sockets_io->mutex);
-        list_add(lista_sockets_io->lista, socket_nuevo);
-        pthread_mutex_unlock(lista_sockets_io->mutex);
-
-        log_debug(logger, "%s", socket_nuevo->nombre);
-
-        socket_nuevo = malloc(sizeof(t_socket_io));
-
-    }
-    return (void *)EXIT_SUCCESS;
-}
 void inicializarSemaforos(){
-    sem_proceso_fin = inicializarSem(0);
-    sem_respuesta_memoria = inicializarSem(0);
+    sem_memoria_liberada = inicializarSem(0);
+
+    cond_all_start = inicializarCond();
+    mutex_all_start = inicializarMutex();
+
+    cond_susp_ready_empty = inicializarCond();
+    mutex_susp_ready_empty = inicializarMutex();
+
+    mutex_pid_mayor = inicializarMutex();
+
+    sem_syscall = inicializarSem(1);
+
+
     return;    
 }
 void inicializarListasKernel(){
-    lista_sockets_cpu_libres = inicializarLista();
-    lista_sockets_cpu_ocupados = inicializarLista();
+    lista_sockets_cpu = inicializarLista();
     lista_sockets_io = inicializarLista();
     lista_procesos_new = inicializarLista();
+    lista_procesos_new_fallidos = inicializarLista();
     lista_procesos_ready = inicializarLista();
     lista_procesos_exec = inicializarLista();
-    lista_peticiones_pendientes = inicializarLista();
+    lista_procesos_block = inicializarLista();
+    lista_procesos_susp_ready = inicializarLista();
+    lista_procesos_susp_block = inicializarLista();
+    lista_peticiones_memoria_pendientes = inicializarLista();
 
 }
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
     if(!strcmp(string, "FIFO")){
         return LPL_FIFO;
+    }
+    if(!strcmp(string, "PMCP")){
+        return LPL_SMALL;
     }
     //agregar mas elseif aca mientras se van creando
     log_error(logger, "Config de largo plazo no reconocido");
@@ -162,81 +175,113 @@ enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char * string){
     if(!strcmp(string, "FIFO")){
         return CPL_FIFO;
     }
-    //agregar mas elseif aca mientras se van creando
+    if (!strcmp(string, "SJF")) {
+        return CPL_SJF;
+    }
+     if (!strcmp(string, "SRT")) {
+        return CPL_SJF_CD;
+    }
     log_error(logger, "Config de corto plazo no reconocido");
     return -1;
 }
-bool encolarPeticionLargoPlazo(PCB *pcb){
-    t_peticion_largoPlazo * peticion = malloc(sizeof(t_peticion_largoPlazo));
 
-    peticion->tipo = PROCESS_CREATE_MEM;
-    peticion->proceso = pcb;
-    encolarPeticionMemoria(peticion);
-    sem_wait(sem_respuesta_memoria);
-    if (peticion->respuesta_exitosa){
-        log_debug(logger, "Se cargo un nuevo proceso en memoria");
-        encolar_cola_ready(pcb);
-        //sem post a proceso nuevo encolado, revisar si hace falta
-        return true;
-    }
-    else{
-        log_debug(logger, "No se pudo cargar proceso nuevo en memoria");
-        return false;
-    }
-}
-void encolarPeticionMemoria(t_peticion_largoPlazo *peticion){
-    //codigo
-    //sem post a lista de peticiones para memoria
-    return;
-}
+
 /// @brief desencola de lista_procesos_new con el index indicado (0 para FIFO)
 /// @param index 
 /// @return el PCB de la posicion index
-PCB *desencolar_cola_new(int index){
-    pthread_mutex_lock(lista_procesos_new->mutex);
-    PCB *pcb = list_remove(lista_procesos_new->lista, index);
-    pthread_mutex_unlock(lista_procesos_new->mutex);
+PCB *desencolar_generico(list_struct_t *cola, int index){
+    pthread_mutex_lock(cola->mutex);
+    PCB *pcb = list_remove(cola->lista, index);
+    pthread_mutex_unlock(cola->mutex);
     return pcb;
 }
 /// @brief Encola de lista_procesos_new
-void encolar_cola_new(PCB *pcb){
+/// @param pcb 
+/// @param index 0 para inicio de lista, -1 para final
+void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index){
+    pthread_mutex_lock(cola->mutex);
+    list_add_in_index(cola->lista, index, pcb);
+    pthread_mutex_unlock(cola->mutex);
+    sem_post(cola->sem);
+    return;
+}
+int cola_new_buscar_smallest(){
     pthread_mutex_lock(lista_procesos_new->mutex);
-    list_add_in_index(lista_procesos_new->lista, 0, pcb);
-    pthread_mutex_unlock(lista_procesos_new->mutex);
-    sem_post(lista_procesos_new->sem);
-    return;
-}
-void encolar_cola_ready(PCB *pcb){
-    pthread_mutex_lock(lista_procesos_ready->mutex);
-    list_add_in_index(lista_procesos_ready->lista, -1, pcb);
-    pthread_mutex_unlock(lista_procesos_ready->mutex);
-    // sem_post(lista_procesos_ready->sem); por ahora creo que no hace falta
-    return;
-}
-void encolar_cola_new_ordenado_smallerFirst(PCB * pcb){
+    if (list_is_empty(lista_procesos_new->lista)){
+        return -1;
+    }
+    t_list_iterator * iterator = list_iterator_create(lista_procesos_new->lista);
+    PCB *pcb;
+    PCB *pcb_smallest = (PCB*)list_iterator_next(iterator);
     int index = 0;
-    PCB *pcb_aux;
-    
-    t_list_iterator *iterator = list_iterator_create(lista_procesos_new->lista);
-    while(list_iterator_has_next(iterator)){
-        pcb_aux = list_iterator_next(iterator);
-        index = list_iterator_index(iterator);
-        if (pcb->memoria_necesaria < pcb_aux->memoria_necesaria){
-            pthread_mutex_lock(lista_procesos_new->mutex);
-            list_add_in_index(lista_procesos_new->lista, index, pcb);
-            pthread_mutex_unlock(lista_procesos_new->mutex);
-            return;
+    while (list_iterator_has_next(iterator)){
+        pcb = (PCB*)list_iterator_next(iterator);
+        if (pcb->memoria_necesaria <= pcb_smallest->memoria_necesaria){
+            pcb_smallest = pcb;
+            index = list_iterator_index(iterator);
         }
     }
-    return;
+    pthread_mutex_unlock(lista_procesos_new->mutex);
+
+    return index;
 }
-t_peticion_largoPlazo * inicializarPeticionLargoPlazo(){
-    t_peticion_largoPlazo * peticion = malloc(sizeof(t_peticion_largoPlazo));
+int cola_fallidos_buscar_smallest(){
+    pthread_mutex_lock(lista_procesos_new_fallidos->mutex);
+    if (list_is_empty(lista_procesos_new_fallidos->lista)){
+        pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
+        return -1;
+    }
+    t_list_iterator * iterator = list_iterator_create(lista_procesos_new_fallidos->lista);
+    PCB *pcb;
+    PCB *pcb_smallest = (PCB*)list_iterator_next(iterator);
+    int index = 0;
+    while (list_iterator_has_next(iterator)){
+        pcb = (PCB*)list_iterator_next(iterator);
+        if (pcb->memoria_necesaria <= pcb_smallest->memoria_necesaria){
+            pcb_smallest = pcb;
+            index = list_iterator_index(iterator);
+        }
+    }
+    pthread_mutex_unlock(lista_procesos_new->mutex);
+
+    return index;
+}
+/// @param pid 
+/// @param cola -> list_struct_t generico
+/// @return index
+int buscar_en_cola_por_pid(list_struct_t * cola, int pid_buscado){
+
+    pthread_mutex_lock(cola->mutex);
+    if (list_is_empty(cola->lista)){
+        return -1;
+    }
+    t_list_iterator * iterator = list_iterator_create(cola->lista);
+    PCB *pcb;
+    int index = 0;
+    while (list_iterator_has_next(iterator)){
+        pcb = (PCB*)list_iterator_next(iterator);
+        if (pcb->pid == pid_buscado){
+            index = list_iterator_index(iterator);
+            break;
+        }
+    }
+    pthread_mutex_unlock(cola->mutex);
+
+    return index;
+}
+t_peticion_memoria * inicializarPeticionMemoria(){
+    t_peticion_memoria * peticion = malloc(sizeof(t_peticion_memoria));
     peticion->peticion_finalizada = inicializarSem(0);
 
     return peticion;
 }
-void liberar_peticionLargoPlazo(t_peticion_largoPlazo * peticion){
+
+t_peticion_io * inicializarPeticionIO(){
+    t_peticion_io * peticion = malloc(sizeof(t_peticion_io));
+    peticion->peticion_finalizada = inicializarSem(0);
+    return peticion;
+}
+void liberar_peticion_memoria(t_peticion_memoria * peticion){
     sem_destroy(peticion->peticion_finalizada);
     free(peticion);
 }

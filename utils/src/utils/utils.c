@@ -98,10 +98,6 @@
         //limpia la lista y devuelve ok = 0 si cod_op == OK
         protocolo_socket cod_op = recibir_operacion(socket_cliente); //limpia el codigo de operacion
         
-        if (cod_op != OK){
-            log_error(logger, "Se recibio cod_op distinto de OK");
-            return cod_op;
-        }
         t_list* valores = recibir_paquete(socket_cliente);
 
         t_list_iterator *iterator = list_iterator_create(valores);
@@ -114,6 +110,12 @@
         }
         list_iterator_destroy(iterator);
         list_destroy(valores);
+
+        if (cod_op != OK){
+            log_error(logger, "Se recibio cod_op distinto de OK");
+            return cod_op;
+        }
+
         return 0;
         //
     }
@@ -266,7 +268,7 @@ list_struct_t * inicializarLista(){
 
     lista->sem = inicializarSem(0);
 
-    log_debug(logger, "Se creo un list_struct nuevo");
+    //log_debug(logger, "Se creo un list_struct nuevo");
     return lista;
 
 }
@@ -274,4 +276,31 @@ sem_t *inicializarSem(int initial_value){
     sem_t * semaforo = malloc(sizeof(sem_t));
     sem_init(semaforo, 0, initial_value);
     return semaforo;
+}
+pthread_cond_t *inicializarCond(){
+    pthread_cond_t * semaforo = malloc(sizeof(pthread_cond_t));
+    pthread_cond_init(semaforo, NULL);
+    return semaforo;
+}
+pthread_mutex_t *inicializarMutex(){
+    pthread_mutex_t * semaforo = malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(semaforo, NULL);
+    return semaforo;
+}
+void esperar_flag_global(int * flag, pthread_mutex_t *mutex, pthread_cond_t *cond){
+    
+    pthread_mutex_lock(mutex);
+    while (!*flag) {
+        pthread_cond_wait(cond, mutex);
+    }
+    pthread_mutex_unlock(mutex);
+
+}
+
+void destrabar_flag_global(int *flag, pthread_mutex_t *mutex, pthread_cond_t *cond){
+    
+    pthread_mutex_lock(mutex);
+    *flag = 1;
+    pthread_cond_broadcast(cond);
+    pthread_mutex_unlock(mutex);
 }

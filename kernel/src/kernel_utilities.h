@@ -3,11 +3,7 @@
 
 #include <kernel.h>
 #include <utils/utils.h>
-#include <largoplazo.h>
-#include <cortoplazo.h>
-
 #include <pcb.h>
-
 
 //elemento de la lista de peticiones para Kernel Largo plazo
 typedef struct 
@@ -16,30 +12,48 @@ typedef struct
     PCB *proceso;
     sem_t * peticion_finalizada;
     bool respuesta_exitosa;
-}t_peticion_largoPlazo;
+    
+}t_peticion_memoria;
+
+typedef struct 
+{
+    PCB *proceso;
+    int tiempo;
+    char * nombre;
+    sem_t * peticion_finalizada;
+    bool respuesta_exitosa;
+    
+}t_peticion_io;
 
 typedef struct
 {
     int socket;
-    t_peticion_largoPlazo *peticion;
+    t_peticion_memoria *peticion;
 
-}t_args_peticion_largoPlazo;
+}t_args_peticion_memoria;
+
+#include <largoplazo.h>
+#include <cortoplazo.h>
+#include <medianoplazo.h>
+#include <peticiones_io.h>
+#include <peticiones_memoria.h>
+
+
 
 void inicializarKernel();
 void *server_mh_cpu(void *args);
-void *server_mh_io(void *args);
 void inicializarSemaforos();
 void inicializarListasKernel();
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char *string);
 enum_algoritmo_cortoPlazo alg_cortoPlazo_from_string(char *string);
-bool encolarPeticionLargoPlazo(PCB *pcb);
-void encolarPeticionMemoria(t_peticion_largoPlazo *peticion);
-PCB *desencolar_cola_new(int index);
-void encolar_cola_new(PCB *pcb);
-void encolar_cola_ready(PCB *pcb);
-void encolar_cola_new_ordenado_smallerFirst(PCB *pcb);
-t_peticion_largoPlazo *inicializarPeticionLargoPlazo();
-void liberar_peticionLargoPlazo(t_peticion_largoPlazo *peticion);
+PCB *desencolar_generico(list_struct_t * cola, int index);
+int cola_new_buscar_smallest();
+int cola_fallidos_buscar_smallest();
+int buscar_en_cola_por_pid(list_struct_t *cola, int pid_buscado);
+void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index);
+t_peticion_memoria *inicializarPeticionMemoria();
+t_peticion_io *inicializarPeticionIO();
+void liberar_peticion_memoria(t_peticion_memoria *peticion);
 void levantarConfig();
 
 #endif

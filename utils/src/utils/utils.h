@@ -36,25 +36,62 @@ typedef struct list_struct{
     sem_t *sem;
 }list_struct_t;
 
+typedef enum { //tipo_de_acceso
+    LECTURA_AC,
+    ESCRITURA_AC,
+}acceso_t ;
+
 enum protocolo_socket
 {
     OK,
     NOMBRE_IO,
     DORMIR_IO,
     PROCESS_CREATE_MEM,
-    DISPATCH__CPU
+    PROCESS_CREATE_MEM_FAIL,
+    PROCESS_EXIT_MEM,
+    SUSP_MEM,
+    SUSP_MEM_ERROR,
+    DUMP_MEM,
+    DUMP_MEM_ERROR,
+    UNSUSPEND_MEM,
+    UNSUSPEND_MEM_ERROR,
+    DESALOJO_CPU,
+    DISPATCH_CPU,
+    INTERRUPT_CPU,
+    MOTIVO_DEVOLUCION_CPU,
+    PROCESS_EXIT_CPU,
+    PROCESS_INIT_CPU,
+    DUMP_MEM_CPU,
+    IO_CPU,
+    READ_MEM,
+    ACCEDER_A_TDP,
+    DEVOLVER_MARCO, //para cuando se ejecuta ACCEDER_A_TDP (consultar, si es así esto)
+    ACCEDER_A_ESPACIO_USUARIO,
+    DEVOLVER_VALOR,
+    LEER_PAG_COMPLETA,
+    DEVOLVER_PAGINA,
+    ACTUALIZAR_PAG_COMPLETA,
+    PEDIR_INSTRUCCIONES,
+    OBTENER_INSTRUCCION,
+    DEVOLVER_INSTRUCCION,
+    PEDIR_INSTRUCCION,
+    ENVIAR_VALORES,
 };
 typedef enum protocolo_socket protocolo_socket;
+
 
 enum enum_algoritmo_largoPlazo
 {
     LPL_FIFO,
+    LPL_SMALL,
 };
 typedef enum enum_algoritmo_largoPlazo enum_algoritmo_largoPlazo;
 
 enum enum_algoritmo_cortoPlazo
 {
     CPL_FIFO,
+    CPL_SJF,
+    CPL_SJF_CD
 };
 typedef enum enum_algoritmo_cortoPlazo enum_algoritmo_cortoPlazo;
 
@@ -77,16 +114,18 @@ extern t_log* logger;
     int iniciar_servidor(char *puerto);
     int esperar_cliente(int socket_servidor);
     int recibir_operacion(int socket_cliente);
-    void* recibir_buffer(int* size, int socket_cliente);
+    void *recibir_buffer(int *size, int socket_cliente);
     t_list* recibir_paquete(int socket_cliente);
-    void* serializar_paquete(t_paquete* paquete, int bytes);
+    int recibir_paquete_ok(int socket_cliente);
+    void *serializar_paquete(t_paquete *paquete, int bytes);
     int crear_conexion(char* ip, char* puerto);
     void crear_buffer(t_paquete* paquete);
     t_paquete* crear_paquete(protocolo_socket cod_op); 
     t_paquete* crear_paquete_ok(void); 
     void agregar_a_paquete(t_paquete* paquete, void* valor, int tamanio);
     void enviar_paquete(t_paquete* paquete, int socket_cliente);
-    void eliminar_paquete(t_paquete* paquete);
+    void enviar_paquete_ok(int socket_cliente);
+    void eliminar_paquete(t_paquete *paquete);
     void liberar_conexion(int socket_cliente);
     
 //socket
@@ -98,5 +137,11 @@ extern t_log* logger;
     list_struct_t * inicializarLista();
 
     sem_t *inicializarSem(int initial_value);
+
+    pthread_cond_t *inicializarCond();
+
+    pthread_mutex_t *inicializarMutex();
+    void destrabar_flag_global(int *flag, pthread_mutex_t *mutex, pthread_cond_t *cond);
+    void esperar_flag_global(int *flag, pthread_mutex_t *mutex, pthread_cond_t *cond);
 
 #endif

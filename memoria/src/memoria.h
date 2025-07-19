@@ -1,34 +1,20 @@
 #ifndef MEMORIA_MAIN_
 #define MEMORIA_MAIN_
 
-#include <memoria_utilities.h>
+// #include <memoria_utilities.h>
 #include <utils/utils.h>
 #include <commons/log.h>
 #include <commons/config.h>
 #include <errno.h>
 #include "../../kernel/src/pcb.h"
 #include <sys/stat.h>
+#include <stdbool.h> //para poder usar variables de tipo 'bool' 
+#include <sys/time.h>
 
-//COMUNICACION CON KERNEL y CPU
-enum comu_cpu{
-    ACCEDER_A_TDP,
-    ACCEDER_A_ESPACIO_USUARIO,
-    LEER_PAG_COMPLETA,
-    ACTUALIZAR_PAG_COMPLETA,
-    MEMORY_DUMP,
-    PEDIR_INSTRUCCIONES,
-    OBTENER_INSTRUCCION,
-    DEVOLVER_INSTRUCCION,
-}typedef comu_cpu;
+void inicializarMemoria();
 
-enum comu_kernel{
-    INICIALIZAR_PROCESO,
-    SUSPENDER_PROCESO,
-    DESSUPENDER_PROCESO,
-    FINALIZAR_PROCESO
-}typedef comu_kernel;
 
-typedef struct {
+typedef struct t_metricas{
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas
     int cant_instr_sol; //cantidad de instrucciones solicitadas
     int cant_bajadas_swap; //cantidad de bajadas a SWAP
@@ -37,72 +23,50 @@ typedef struct {
     int cant_escrituras; //cantidad de escrituras de memoria
 }t_metricas;
 
-typedef struct{
+typedef struct t_memoria{
     void* espacio;
-    t_list *tabla_paginas;
-    t_metricas metricas;
+    t_list *tablas_por_proceso; //cambio nombre de tabla_paginas a tablas_por_proceso | Lista de t_tabla_proceso*
+    bool* bitmap_marcos;       //bitmap de marcos ocupados
+    int cantidad_marcos;      //total marcos disponibles
+    t_list* metadata_swap;   //lista de t_swap*
 }t_memoria;
 
-typedef struct {
-    int nivel;
-    int primer_index;
-    int ultimo_index;
-    int presente; // 0 1
-    t_memoria *puntero_a_memoria;
-    int es_ultima;
-}t_tabla_paginas;
-
-typedef struct {
-    int direccion;
-    t_tabla_paginas *puntero_a_tabla;
-    int cantidad_tablas;
-    t_tabla_paginas tabla_siguiente;
-}t_puntero_tabla_paginas;
-
-char* crear_directorio(char* ruta_a_agregar);
+// Agrego estructura para asociar tablas con procesos
+typedef struct t_tabla_proceso{
+    int pid;
+    struct Tabla_Principal* tabla_principal;
+    t_list* instrucciones;
+    t_metricas metricas; //metricas por proceso!!!
+    int cantidad_paginas;
+}t_tabla_proceso;
 
 
-// typedef struct{
-//     void* espacio;
-//     t_list *tabla_paginas;
-//     t_metricas metricas;
-// }t_memoria;
+char* crear_directorio();
 
-// typedef struct {
-//     int nivel;
-//     t_list *tabla_paginas;
-// }t_tabla_paginas;
+/* ------- TDP ------- */
 
-// typedef struct {
-//     int nivel;
-//     t_list *tabla;
-// }t_tabla_paginas_ultimo_nivel;
+typedef struct Tabla_Principal{
+    struct Tabla_Nivel** niveles; 
+}Tabla_Principal; //tabla_global
 
-// typedef struct {
-//     int pid;
-//     bool asignado;
-//     int direccion;
-// }entrada_ultimo_nivel;
+typedef struct Tabla_Nivel{
+    int paginas_contenidas;
+    int esta_presente; //bool
+    int es_ultimo_nivel; //bool
+    union{
+        struct Tabla_Nivel **sgte_nivel; 
+        int marco; //si es ultimo nivel
+    };
+}Tabla_Nivel;
 
 
+/* ------- SWAP ------- */
 
-// N=3
-// c_entradas=5
+typedef struct t_swap{
+    int  pid;
+    int pagina_inicio;     //nro. pagina en archivo swap
+    int cantidad_paginas; //cant. paginas que se guardaron
+}t_swap;
 
-// 2 | 4 | 3 | 1 | 30
-
-// t_list * tabla_global;
-
-// tabla_nivel_1 = list_get(tabla_global->tabla_paginas, 2);
-
-// tabla_nivel_2 = list_get(tabla_nivel_1->tabla_paginas, 4);
-
-// ...
-
-// t_tabla_paginas_ultimo_nivel * tabla = list_get(
-
-// list_add(tabla->tabla, 0)
-// list_add(tabla->tabla, 10)
-// list_add(tabla->tabla, 20)
 
 #endif
