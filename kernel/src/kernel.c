@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
     pthread_t tid_server_mh_io;
     pthread_t tid_largoplazo;
     pthread_t tid_peticiones_memoria;
+    pthread_t tid_mediano_plazo;
     
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
@@ -47,7 +48,8 @@ int main(int argc, char* argv[]) {
     // Al final, lo manejamos con el flag_all_start y las funciones de esperar y destrabar
     pthread_create(&tid_largoplazo, NULL, largoPlazo, NULL);
     pthread_create(&tid_peticiones_memoria, NULL, administrador_peticiones_memoria, NULL);
-    
+    pthread_create(&tid_mediano_plazo, NULL, medianoplazo, NULL);
+
     
     
     //enter to continue:

@@ -249,7 +249,7 @@ void * cpu(void* args){
                     char * valor_a_escribir = list_remove(paquete_recv,0);
 
                     log_debug(logger, "MEM: Voy a escribir '%s' en DF %d", valor_a_escribir, dir_fisica);
-                    log_debug(logger, "MEM: Longitud del string a escribir: %s", strlen(valor_a_escribir));
+                    log_debug(logger, "MEM: Longitud del string a escribir: %d", strlen(valor_a_escribir));
 
                     memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir));
 
@@ -653,27 +653,36 @@ int cargar_archivo_dump(int pid){
 
 //Guarda TODAS las páginas reservadas del proceso, incluso si la 
 //página no está presente, escribe ceros
-void dump_tabla_nivel_completo(FILE* f, Tabla_Nivel** niveles, int nivel_actual){
-    for(int i = 0; i < entradas_por_tabla; i++){
-        Tabla_Nivel* entrada = niveles[i];
-        if(entrada == NULL){ //si falta la entrada, igual "reserva" espacio con ceros
+void dump_tabla_nivel_completo(FILE *f, Tabla_Nivel **niveles, int nivel_actual)
+{
+    for (int i = 0; i < entradas_por_tabla; i++)
+    {
+        Tabla_Nivel *entrada = niveles[i];
+        if (entrada == NULL)
+        { // si falta la entrada, igual "reserva" espacio con ceros
             char buffer_ceros[tam_pagina];
             memset(buffer_ceros, 0, tam_pagina);
-            fwrite(buffer_ceros,1,tam_pagina,f);
+            fwrite(buffer_ceros, 1, tam_pagina, f);
             continue;
         }
 
-        if(entrada->es_ultimo_nivel){
-            if(entrada->marco != -1 && entrada->esta_presente){
+        if (entrada->es_ultimo_nivel)
+        {
+            if (entrada->esta_presente)
+            {
                 int offset = entrada->marco * tam_pagina;
-                fwrite((char*)memoria_principal.espacio + offset, 1, tam_pagina,f);
-            }else{ //pagina no presente o sin marco
-                char buffer_ceros[tam_pagina];
-                memset(buffer_ceros,0,tam_pagina);
-                fwrite(buffer_ceros,1,tam_pagina,f);
+                fwrite(memoria_principal.espacio + offset, 1, tam_pagina, f);
+                log_debug(logger, "[Dump] Nivel %d - Entrada %d - Marco %d - Pagina presente", nivel_actual, i, entrada->marco);
             }
-        }else{//siguiente nivel
-            dump_tabla_nivel_completo(f,entrada->sgte_nivel, nivel_actual + 1);
+            else
+            {
+                char buffer_ceros[tam_pagina];
+                memset(buffer_ceros, 0, tam_pagina);
+                fwrite(buffer_ceros, 1, tam_pagina, f);
+                log_debug(logger, "[Dump] Nivel %d - Entrada %d - Pagina ausente", nivel_actual, i);
+            }
+        }else{ // siguiente nivel
+            dump_tabla_nivel_completo(f, entrada->sgte_nivel, nivel_actual + 1);
         }
     }
 }

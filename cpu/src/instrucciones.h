@@ -90,7 +90,7 @@ void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina);
 int reemplazo_clock();
 int reemplazo_clock_M();
 int avanzar_puntero(int index);
-void escribir_cache_en_memoria(cache_t entrada);
+void escribir_en_memoria(cache_t entrada);
 void limpiar_cache_de_proceso(int pid_a_eliminar);
 
 
