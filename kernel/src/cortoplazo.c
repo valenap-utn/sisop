@@ -11,7 +11,7 @@ extern list_struct_t *lista_sockets_cpu_libres;
 extern list_struct_t *lista_sockets_cpu_ocupados;
 extern list_struct_t *lista_sockets_io;
 
-extern sem_t * sem_desencolado;
+extern sem_t * sem_syscall;
 
 t_dictionary *diccionario_cpu_pcb;
 
@@ -125,8 +125,6 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             char * path = list_remove(paquete_respuesta, 0);
             int tamaño = *(int*)list_remove(paquete_respuesta, 0);
             
-            actualizar_estimacion(pcb);
-
             // vuelve a READY - reencolado por desalojo
             cambiar_estado(pcb, READY);
             encolar_cola_generico(lista_procesos_ready, pcb, -1);
@@ -142,8 +140,6 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
-            actualizar_estimacion(pcb);
-
             DUMP_MEMORY(pcb);
 
             break;
@@ -158,8 +154,6 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             char * nombre_io = list_remove(paquete_respuesta, 0);
             int tiempo = *(int *)list_remove(paquete_respuesta, 0);
 
-            actualizar_estimacion(pcb);
-
             IO_syscall(pcb, nombre_io, tiempo);
 
             break;
@@ -168,6 +162,10 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
             list_destroy(paquete_respuesta);
             break;
+    }
+
+    if(motivo != DESALOJO_CPU){
+        sem_post(sem_syscall);
     }
 }
 
@@ -243,12 +241,12 @@ void cortoPlazoSJF(t_socket_cpu *socket_cpu) {
 void actualizar_estimacion(PCB *pcb) {
     
     // actualiza tiempo real de ejecucion
-    struct timespec tiempo_fin_rafaga;
+    // struct timespec tiempo_fin_rafaga;
     
-    // med de rafaga real
-    clock_gettime(CLOCK_MONOTONIC, &tiempo_fin_rafaga);
-    long duracion_rafaga = diff_in_milliseconds(pcb->timestamp_ultimo_estado, tiempo_fin_rafaga);
-    pcb->rafaga_real_anterior = duracion_rafaga;
+    // // med de rafaga real
+    // clock_gettime(CLOCK_MONOTONIC, &tiempo_fin_rafaga);
+    // long duracion_rafaga = diff_in_milliseconds(pcb->timestamp_ultimo_estado, tiempo_fin_rafaga);
+    // pcb->rafaga_real_anterior = duracion_rafaga;
     
     extern double alfa;
 
@@ -257,6 +255,8 @@ void actualizar_estimacion(PCB *pcb) {
 
     // saco estimacion nueva
     pcb->estimacion_rafaga = alfa * rafaga_real + (1 - alfa) * estimacion_anterior;
+
+    log_debug(logger, "Estimacion actualizada: %s", string_itoa(pcb->estimacion_rafaga));
 }
 
 void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
@@ -287,18 +287,18 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 
         if (hay_proceso_en_exec) {
             PCB *pcb_exec = list_get(lista_procesos_exec->lista, 0); // unico proc en EXEC
-            log_debug(logger, "Lista de exec: %d elementos", list_size(lista_procesos_exec->lista));
             pthread_mutex_unlock(lista_procesos_exec->mutex);
 
             // comparar estimaciones
-            if (pcb_ready->estimacion_rafaga <= pcb_exec->estimacion_rafaga) {
+            log_debug(logger, "%d ready: %s, %d exec: %s", pcb_ready->pid, string_itoa(pcb_ready->estimacion_rafaga), pcb_exec->pid, string_itoa(pcb_exec->estimacion_rafaga));
+            if (pcb_ready->estimacion_rafaga < pcb_exec->estimacion_rafaga) {
                 log_info(logger, "## (%d) - Desalojo: menor estimación que PID %d", pcb_ready->pid, pcb_exec->pid);
-                desencolar_generico(lista_procesos_exec, 0);
                 enviar_interrupcion(socket_cpu, pcb_ready->pid, pcb_ready->pc);
                 encolar_cola_generico(lista_procesos_exec, pcb_ready, -1);
                 cambiar_estado(pcb_ready, EXEC);
             }else {
                 encolar_cola_generico(lista_procesos_ready, pcb_ready, -1);
+                sem_wait(sem_syscall);
             }
         } else {
             pthread_mutex_unlock(lista_procesos_exec->mutex);
@@ -307,8 +307,8 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 
             log_info(logger, "## (%d) - Planificado por SJF con desalojo", pcb_ready->pid);
 
-            // inicio de rafaga
-            clock_gettime(CLOCK_MONOTONIC, &pcb_ready->timestamp_ultimo_estado);
+            // // inicio de rafaga
+            // clock_gettime(CLOCK_MONOTONIC, &pcb_ready->timestamp_ultimo_estado);
 
             enviar_a_cpu_dispatch(pcb_ready, socket_cpu);
             cambiar_estado(pcb_ready, EXEC);
@@ -320,24 +320,31 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 void *waiter_devoluciones_cpu(void * args){
     
     t_socket_cpu * socket_cpu = (t_socket_cpu *)args;
+    struct timespec inicio_rafaga;
+    PCB * pcb;
 
     while(true){
 
         sem_wait(lista_procesos_exec->sem);
-
-        pthread_mutex_lock(lista_procesos_exec->mutex);
-        PCB * pcb_actual = list_get(lista_procesos_exec->lista, 0);
         
-        esperar_respuesta_cpu(pcb_actual, socket_cpu);
-        list_remove(lista_procesos_exec->lista, 0);
+        pcb = list_get(lista_procesos_exec->lista, 0);
+        
+        clock_gettime(CLOCK_MONOTONIC, &inicio_rafaga);
+
+        esperar_respuesta_cpu(pcb, socket_cpu);
+        
+        pthread_mutex_lock(lista_procesos_exec->mutex);
+        if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+            log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
+        }
         pthread_mutex_unlock(lista_procesos_exec->mutex);
 
-
+        //
         struct timespec fin_rafaga;
         clock_gettime(CLOCK_MONOTONIC, &fin_rafaga);
 
-        pcb_actual->rafaga_real_anterior = diff_in_milliseconds(pcb_actual->timestamp_ultimo_estado, fin_rafaga);
-        actualizar_estimacion(pcb_actual);
+        pcb->rafaga_real_anterior = diff_in_milliseconds(inicio_rafaga, fin_rafaga);
+        actualizar_estimacion(pcb);
 
 
     }

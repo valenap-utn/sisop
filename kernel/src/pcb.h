@@ -31,6 +31,7 @@ typedef struct{
     long mt[7];
     t_estado estado;
     struct timespec timestamp_ultimo_estado;
+    struct timespec timestamp_ultimo_exec;
     double estimacion_rafaga;
     double rafaga_real_anterior;
 }PCB;
