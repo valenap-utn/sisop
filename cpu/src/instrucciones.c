@@ -289,6 +289,9 @@ void Check_Int(){
         enviar_paquete(paquete_send, socket_interrupt);
         eliminar_paquete(paquete_send);
         sem_wait(sem_dispatch);
+    }else if (interrupcion->tipo == DESALOJO_I){
+        enviar_paquete(paquete_send, socket_interrupt);
+        eliminar_paquete(paquete_send);
     }
 
     free(interrupcion);
