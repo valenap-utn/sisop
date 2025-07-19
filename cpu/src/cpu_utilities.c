@@ -25,6 +25,7 @@ char * ip_memoria;
 int entradas_tlb;
 char* reemplazo_tlb;
 TLB_t* TLB_tabla = NULL;
+int fifo_index, reloj_lru;
 
 
 /* ------ CACHÉ ------ */
@@ -74,8 +75,14 @@ void inicializarCpu(char *nombreCpuLog){
     if(entradas_tlb > 0){
         TLB_tabla = malloc(sizeof(TLB_t) * entradas_tlb);
         for(int i = 0; i < entradas_tlb; i++){
+            TLB_tabla[i].pid = -1;
+            TLB_tabla[i].pagina = -1;
+            TLB_tabla[i].marco = -1;
             TLB_tabla[i].ocupado = false;
+            TLB_tabla[i].timestamp = 0;
         }
+        fifo_index = 0;
+        reloj_lru = 0;
     }
 
     //CACHÉ

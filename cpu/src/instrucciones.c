@@ -15,8 +15,8 @@ extern int entradas_tlb;
 extern char * reemplazo_tlb;
 extern TLB_t * TLB_tabla;
 
-int reloj_lru = 0;
-int fifo_index = 0;
+extern int reloj_lru;
+extern int fifo_index;
 
 // int cant_ocupada_TLB = 0;
  
@@ -302,7 +302,7 @@ void write_(int dir_logica , char * datos){
     traducir_DL(dir_logica,&nro_pagina,&offset);
 
     int marco = obtener_marco(pid,nro_pagina,offset);
-    // int dir_fisica = obtener_DF(marco,offset);
+    int dir_fisica = obtener_DF(marco,offset);
 
     log_debug(logger, "Ejecutando WRITE: dir_logica=%d, valor=%s", dir_logica, datos);
 
@@ -312,8 +312,30 @@ void write_(int dir_logica , char * datos){
         marco_actual_cache = marco;
 
         escribir_en_cache(pid,datos,nro_pagina);
+    }else {
 
-        return;
+        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
+
+        t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+        int tam = tam_pag;
+        int tipo_de_acceso = ESCRITURA_AC;
+
+        agregar_a_paquete(paquete_send, &pid , sizeof(int));
+        agregar_a_paquete(paquete_send, &tam , sizeof(int));
+        agregar_a_paquete(paquete_send, &dir_fisica , sizeof(int));
+        agregar_a_paquete(paquete_send, &tipo_de_acceso , sizeof(int));
+        agregar_a_paquete(paquete_send, datos , strlen(datos)+1);
+
+
+        enviar_paquete(paquete_send, socket_memoria);
+        eliminar_paquete(paquete_send);
+
+        protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
+        if(cod_op != OK){
+            log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
+        }
+
+        log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",pid, nro_pagina, marco);
     }
 };
 
@@ -505,6 +527,15 @@ int get_timestamp() {
 }
 
 void agregar_a_tlb(int pid_actual, int pagina, int marco){
+    //Si ya existe => actualizar
+    for(int i = 0; i < entradas_tlb;i++){
+        if(TLB_tabla[i].ocupado && TLB_tabla[i].pid == pid_actual && TLB_tabla[i].pagina == pagina){
+            TLB_tabla[i].marco = marco;
+            TLB_tabla[i].timestamp = get_timestamp();
+            return;
+        }
+    }
+
     // Buscar espacio libre
     for (int i = 0; i < entradas_tlb; i++) {
         if (!TLB_tabla[i].ocupado) {
@@ -611,7 +642,7 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
 
     //Si la victima está modificada => escribir en memoria
     if(cache[victima].modificado){
-        escribir_cache_en_memoria(cache[victima]);
+        escribir_en_memoria(cache[victima]);
     }
     free(cache[victima].contenido);
 
@@ -669,7 +700,7 @@ int avanzar_puntero(int index){
 
 
 // + funciones auxiliares para caché
-void escribir_cache_en_memoria(cache_t entrada){
+void escribir_en_memoria(cache_t entrada){
     //Obtenemos marco y dir_fisica para escribir en memoria
     int marco = obtener_marco(entrada.pid,entrada.nro_pagina,0);
     int dir_fisica = obtener_DF(marco, 0); // Offset = 0 , porque escribimos la página entera
@@ -703,7 +734,7 @@ void limpiar_cache_de_proceso(int pid_a_eliminar){
     for(int i = 0; i < entradas_cache ; i++){
         if(cache[i].ocupado && cache[i].pid == pid_a_eliminar){
             if(cache[i].modificado){
-                escribir_cache_en_memoria(cache[i]);
+                escribir_en_memoria(cache[i]);
             }
             cache[i].ocupado = 0;
             cache[i].uso = 0;
