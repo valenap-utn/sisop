@@ -34,6 +34,7 @@ typedef struct
 
 #include <largoplazo.h>
 #include <cortoplazo.h>
+#include <medianoplazo.h>
 #include <peticiones_io.h>
 #include <peticiones_memoria.h>
 
