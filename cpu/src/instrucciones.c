@@ -348,13 +348,12 @@ void read_(int dir_logica , int tamanio){
 
     //Consultamos la Caché
     if(entradas_cache > 0 && buscar_en_cache(pid,nro_pagina,&valor)){
-        log_info(logger,"PID: <%d> - Cache Hit - Pagina: <%d>", pid, nro_pagina);
+        log_info(logger,"\033[34mPID: <%d> - Cache Hit - Pagina: <%d>\033", pid, nro_pagina);
         log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%s>", pid, dir_logica, valor);
         free(valor);
         return;
     }
-
-    log_info(logger,"PID: <%d> - Cache Miss - Pagina: <%d>", pid, nro_pagina);
+    if (entradas_cache > 0 )log_info(logger,"\033[31mPID: <%d> - Cache Miss - Pagina: <%d>\033", pid, nro_pagina);
 
     //Obtenemos marco desde TLB
     int marco = obtener_marco(pid,nro_pagina,offset);
@@ -461,10 +460,10 @@ int obtener_marco(int pid, int nro_pagina,int offset){
     if (entradas_tlb > 0) {
         int marco = buscar_en_tlb(pid, nro_pagina);
         if (marco != -1) {
-            log_info(logger, "TLB HIT - PID <%d> - Página <%d> - Marco <%d>", pid, nro_pagina, marco);
+            log_info(logger, "\033[34mTLB HIT - PID <%d> - Página <%d> - Marco <%d> \033", pid, nro_pagina, marco);
             return marco;
         } else {
-            log_info(logger, "TLB MISS - PID <%d> - Página <%d>", pid, nro_pagina);
+            log_info(logger, "\033[31mTLB MISS - PID <%d> - Página <%d> \033", pid, nro_pagina);
         }
     }
 
