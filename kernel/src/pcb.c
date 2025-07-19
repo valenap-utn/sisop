@@ -49,6 +49,9 @@ void cambiar_estado(PCB *pcb, t_estado estadoNuevo){
     }
     
     pcb->timestamp_ultimo_estado = time_now;
+    if(pcb->estado == EXEC){
+        pcb->timestamp_ultimo_exec = time_now;
+    }
     pcb->estado = estadoNuevo;
     pcb->me[estadoNuevo] +=1;
 

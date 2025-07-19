@@ -285,7 +285,7 @@ void Check_Int(){
 
     vaciar_cola_interrupcion(cola_interrupciones);
     
-    if(interrupcion->tipo != DISPATCH_CPU_I){
+    if((interrupcion->tipo != DISPATCH_CPU_I)&&(interrupcion->tipo != DESALOJO_I)){
         enviar_paquete(paquete_send, socket_interrupt);
         eliminar_paquete(paquete_send);
         sem_wait(sem_dispatch);

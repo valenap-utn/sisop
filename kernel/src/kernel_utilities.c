@@ -27,7 +27,7 @@ extern t_dictionary *diccionario_cpu_pcb;
 
 //semaforos auxiliares
 sem_t * sem_memoria_liberada;
-sem_t * sem_desencolado;
+sem_t * sem_syscall;
 
 //condiciones globales
 pthread_cond_t * cond_susp_ready_empty;
@@ -134,7 +134,7 @@ void inicializarSemaforos(){
 
     mutex_pid_mayor = inicializarMutex();
 
-    sem_desencolado = inicializarSem(0);
+    sem_syscall = inicializarSem(1);
 
 
     return;    
