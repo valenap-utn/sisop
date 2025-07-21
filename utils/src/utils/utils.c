@@ -95,29 +95,30 @@
     /// @return 0->ok, cod_op si es distinto de OK
     int recibir_paquete_ok(int socket_cliente)
     { 
-        //limpia la lista y devuelve ok = 0 si cod_op == OK
-        protocolo_socket cod_op = recibir_operacion(socket_cliente); //limpia el codigo de operacion
+        protocolo_socket cod_op = recibir_operacion(socket_cliente);
         
-        t_list* valores = recibir_paquete(socket_cliente);
+        if (cod_op != OK) {
+            log_error(logger, "Se recibió cod_op distinto de OK o conexión cerrada (cod_op = %d)", cod_op);
 
-        t_list_iterator *iterator = list_iterator_create(valores);
-        char *valor_recibido;
-        while(list_iterator_has_next(iterator)){
-            valor_recibido = list_iterator_next(iterator);
-            list_iterator_remove(iterator);
-            
-            free(valor_recibido);
-        }
-        list_iterator_destroy(iterator);
-        list_destroy(valores);
+            // consumir y liberar si aún así llega un paquete con basura
+            t_list* basura = recibir_paquete(socket_cliente);
+            if (basura != NULL) {
+                list_destroy_and_destroy_elements(basura, free);
+            }
 
-        if (cod_op != OK){
-            log_error(logger, "Se recibio cod_op distinto de OK");
             return cod_op;
         }
 
+        // Si es OK, limpiamos los valores
+        t_list* valores = recibir_paquete(socket_cliente);
+        if (valores == NULL) {
+            log_warning(logger, "No se recibieron valores tras OK, lista vacía o error en paquete");
+            return cod_op; // sigue siendo 0 (OK), pero se loguea
+        }
+
+        list_destroy_and_destroy_elements(valores, free);
+
         return 0;
-        //
     }
 
     void* serializar_paquete(t_paquete* paquete, int bytes)
