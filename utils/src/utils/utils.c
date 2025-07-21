@@ -92,7 +92,7 @@
 
     /// @brief Recibe un paquete de OK, en casos donde no se envie informacion valiosa. Limpia la lista para evitar errores
     /// @param socket_cliente 
-    /// @return 0->ok, cod_op si es distinto de OK
+    /// @return 0->ok, cod_op si es distinto de OK o se cerro la conexion
     int recibir_paquete_ok(int socket_cliente)
     { 
         protocolo_socket cod_op = recibir_operacion(socket_cliente);
