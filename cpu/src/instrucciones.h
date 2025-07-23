@@ -86,12 +86,13 @@ void limpiar_entradas_tlb(int pid_a_eliminar);
 
 //CACHÉ
 int buscar_en_cache(int pid_actual, int nro_pagina, char **contenido_out);
-void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina);
+void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina, int fue_escritura);
 int reemplazo_clock();
 int reemplazo_clock_M();
 int avanzar_puntero(int index);
 void escribir_en_memoria(cache_t entrada);
 void limpiar_cache_de_proceso(int pid_a_eliminar);
 
+void dump_estado_cache();
 
 #endif

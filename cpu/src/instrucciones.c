@@ -311,7 +311,7 @@ void write_(int dir_logica , char * datos){
         pagina_actual_cache = nro_pagina;
         marco_actual_cache = marco;
 
-        escribir_en_cache(pid,datos,nro_pagina);
+        escribir_en_cache(pid,datos,nro_pagina,1);
     }else {
 
         log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
@@ -385,7 +385,7 @@ void read_(int dir_logica , int tamanio){
     log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, valor);
 
     //Actualizamos la caché
-    if(entradas_cache > 0)escribir_en_cache(pid,valor,nro_pagina);
+    if(entradas_cache > 0)escribir_en_cache(pid,valor,nro_pagina,0);
 
     free(valor);
 
@@ -626,7 +626,7 @@ int buscar_en_cache(int pid_actual, int nro_pagina, char** contenido_out){
     return 0;
 }
 
-void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
+void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina, int fue_escritura){
     if(entradas_cache <= 0)return;
 
     //Verificamos, si ya existe => modificamos
@@ -638,7 +638,10 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
             cache[i].contenido = strdup(nuevo_valor);
 
             cache[i].uso = 1;
-            cache[i].modificado = 1;
+
+            cache[i].modificado = fue_escritura ? 1 : 0;
+
+            // dump_estado_cache();
 
             return;
         }
@@ -648,9 +651,12 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
     for(int i = 0 ; i < entradas_cache ; i++){
         if(!cache[i].ocupado){
             usleep(retardo_cache * 1000);
-            cache[i] = (cache_t){pid_actual,nro_pagina,strdup(nuevo_valor),1,1,1};
+            cache[i] = (cache_t){pid_actual,nro_pagina,strdup(nuevo_valor),1,1,fue_escritura ? 1 : 0};
 
             log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
+
+            // dump_estado_cache();
+
             return;
         }
     }
@@ -667,10 +673,12 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
 
     //Reemplazamos
     usleep(retardo_cache * 1000);
-    cache[victima] = (cache_t){pid_actual, nro_pagina,strdup(nuevo_valor),1,1,1};
+    cache[victima] = (cache_t){pid_actual, nro_pagina,strdup(nuevo_valor),1,1,fue_escritura ? 1 : 0};
 
     log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
     
+    // dump_estado_cache();
+
     return;
 }
 
@@ -715,6 +723,27 @@ int reemplazo_clock_M(){
 int avanzar_puntero(int index){
     puntero_cache = (index + 1) % entradas_cache;
     return index;
+}
+
+void dump_estado_cache() {
+    log_debug(logger, "\n---------------------- CACHE ACTUAL ----------------------");
+    for (int i = 0; i < entradas_cache; i++) {
+        if (cache[i].ocupado) {
+            log_debug(logger,
+                "Entrada %d: PID=%d Página=%d Contenido=\"%s\" Uso=%d Modificado=%d",
+                i,
+                cache[i].pid,
+                cache[i].nro_pagina,
+                cache[i].contenido,
+                cache[i].uso,
+                cache[i].modificado
+            );
+        } else {
+            log_debug(logger, "Entrada %d: libre", i);
+        }
+    }
+    log_debug(logger, "Puntero (CLOCK): %d", puntero_cache);
+    log_debug(logger, "----------------------------------------------------------\n");
 }
 
 
