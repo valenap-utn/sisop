@@ -674,6 +674,8 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina){
 
     log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
     
+    dump_estado_cache();
+
     return;
 }
 
@@ -718,6 +720,27 @@ int reemplazo_clock_M(){
 int avanzar_puntero(int index){
     puntero_cache = (index + 1) % entradas_cache;
     return index;
+}
+
+void dump_estado_cache() {
+    log_debug(logger, "\n---------------------- CACHE ACTUAL ----------------------");
+    for (int i = 0; i < entradas_cache; i++) {
+        if (cache[i].ocupado) {
+            log_debug(logger,
+                "Entrada %d: PID=%d Página=%d Contenido=\"%s\" Uso=%d Modificado=%d",
+                i,
+                cache[i].pid,
+                cache[i].nro_pagina,
+                cache[i].contenido,
+                cache[i].uso,
+                cache[i].modificado
+            );
+        } else {
+            log_debug(logger, "Entrada %d: libre", i);
+        }
+    }
+    log_debug(logger, "Puntero (CLOCK): %d", puntero_cache);
+    log_debug(logger, "----------------------------------------------------------\n");
 }
 
 
