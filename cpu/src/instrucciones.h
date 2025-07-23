@@ -93,6 +93,5 @@ int avanzar_puntero(int index);
 void escribir_en_memoria(cache_t entrada);
 void limpiar_cache_de_proceso(int pid_a_eliminar);
 
-void dump_estado_cache();
 
 #endif

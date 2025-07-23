@@ -7,10 +7,6 @@ extern list_struct_t *lista_procesos_susp_block;
 extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_sockets_io;
 
-extern int flag_pcbrunning;
-extern pthread_cond_t *cond_pcb;
-extern pthread_mutex_t *mutex_pcb;
-
 extern int tiempo_suspension;
 
 void *server_mh_io(void *args){
@@ -91,12 +87,10 @@ void * thread_io(void * args){
             pthread_mutex_lock(lista_procesos_block->mutex);
             if(list_remove_element(lista_procesos_block->lista, proceso_aux)){
                 PROCESS_EXIT(proceso_aux);
-                destrabar_flag_global(&flag_pcbrunning, mutex_pcb, cond_pcb);
             }
             //si esta en susp_block
             else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
                 PROCESS_EXIT(proceso_aux);
-                destrabar_flag_global(&flag_pcbrunning, mutex_pcb, cond_pcb);
             }pthread_mutex_unlock(lista_procesos_block->mutex);
 
             liberar_socket_io(socket_io);

@@ -4,14 +4,6 @@
 extern t_log *logger;
 extern t_config *config;
 
-extern int flag_pcbrunning;
-extern pthread_cond_t *cond_pcb;
-extern pthread_mutex_t *mutex_pcb;
-
-extern int flag_syscall;
-extern pthread_cond_t *cond_syscall;
-extern pthread_mutex_t *mutex_syscall;
-
 int pid_actual;
 
 extern int estimacion_inicial;
