@@ -168,6 +168,87 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
         sem_post(sem_syscall);
     }
 }
+void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
+    protocolo_socket motivo;
+    
+    log_info(logger, "Esperando motivo de devolucion de CPU");
+    motivo = recibir_operacion(socket_cpu->interrupt);
+
+    t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
+
+    switch (motivo) {
+
+        case PROCESS_EXIT_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS EXIT", pcb->pid);
+            
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            PROCESS_EXIT(pcb);
+
+            break;
+
+        case DESALOJO_CPU:
+            
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            cambiar_estado(pcb, READY);
+            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
+            break;
+
+        case PROCESS_INIT_CPU:
+            log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS INIT", pcb->pid);
+
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            char * path = list_remove(paquete_respuesta, 0);
+            int tamaño = *(int*)list_remove(paquete_respuesta, 0);
+            
+            // vuelve a READY - reencolado por desalojo
+            cambiar_estado(pcb, READY);
+            encolar_cola_generico(lista_procesos_ready, pcb, -1);
+
+            PROCESS_CREATE(path, tamaño);
+
+            break;
+
+        case DUMP_MEM_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: DUMP MEMORY", pcb->pid);
+
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            DUMP_MEMORY(pcb);
+
+            break;
+
+        case IO_CPU:
+
+            log_info(logger, "## (PID: %d) - Solicitó syscall: IO", pcb->pid);
+
+            pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
+
+            char * nombre_io = list_remove(paquete_respuesta, 0);
+            int tiempo = *(int *)list_remove(paquete_respuesta, 0);
+
+            IO_syscall(pcb, nombre_io, tiempo);
+
+            break;
+
+        default:
+            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
+            list_destroy(paquete_respuesta);
+            break;
+    }
+
+    if(motivo != DESALOJO_CPU){
+        sem_post(sem_syscall);
+    }
+}
 
 int buscar_indice_proceso_menor_estimacion() {
     pthread_mutex_lock(lista_procesos_ready->mutex);
@@ -331,7 +412,7 @@ void *waiter_devoluciones_cpu(void * args){
         
         clock_gettime(CLOCK_MONOTONIC, &inicio_rafaga);
 
-        esperar_respuesta_cpu(pcb, socket_cpu);
+        esperar_respuesta_cpu_sjf(pcb, socket_cpu);
         
         pthread_mutex_lock(lista_procesos_exec->mutex);
         if(!list_remove_element(lista_procesos_exec->lista, pcb)){
