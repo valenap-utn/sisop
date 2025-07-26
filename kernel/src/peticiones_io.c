@@ -92,7 +92,7 @@ void * thread_io(void * args){
             else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
                 PROCESS_EXIT(proceso_aux);
             }pthread_mutex_unlock(lista_procesos_block->mutex);
-
+            sem_post(lista_procesos_ready->sem);
             liberar_socket_io(socket_io);
             pthread_mutex_lock(lista_sockets_io->mutex);
             list_remove_element(lista_sockets_io->lista, socket_io);

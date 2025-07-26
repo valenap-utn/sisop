@@ -4,7 +4,6 @@
 t_log *logger;
 t_config *config;
 
-extern t_dictionary *diccionario_cpu_pcb;
 
 int flag_all_start = 0; 
 

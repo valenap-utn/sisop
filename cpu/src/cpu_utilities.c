@@ -162,7 +162,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 				paquete = recibir_paquete(socket_dispatch);
 				pid_aux = *(int *)list_remove(paquete, 0);
                 pc_aux = *(int *)list_remove(paquete, 0);
-				log_info(logger, "El pid a ejecutar es: %d", pid_aux);
+				log_info(logger, "El pid a ejecutar es: %d, pc: %d", pid_aux, pc_aux);
 				list_destroy(paquete);
                 interrupcion = malloc(sizeof(interrupcion_t));
 
@@ -184,7 +184,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 				paquete = recibir_paquete(socket_dispatch);
 				pid_aux = *(int *)list_remove(paquete, 0);
                 pc_aux = *(int *)list_remove(paquete, 0);
-				log_info(logger, "El pid a ejecutar es: %d", pid_aux);
+				log_info(logger, "El pid a ejecutar es: %d, pc: %d", pid_aux, pc_aux);
 				list_destroy(paquete);
                 interrupcion = malloc(sizeof(interrupcion_t));
 
@@ -239,9 +239,7 @@ interrupcion_t * desencolar_interrupcion_generico(list_struct_t * cola){
         return NULL;
     }
     interrupcion_t * interrupcion = list_remove(cola->lista, 0);
-    if(list_is_empty(cola->lista)){
-        flag_hay_interrupcion = false;
-    }
+    flag_hay_interrupcion = false;
     pthread_mutex_unlock(cola->mutex);
 
     return interrupcion;

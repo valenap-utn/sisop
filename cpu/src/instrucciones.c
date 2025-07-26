@@ -228,8 +228,10 @@ void Check_Int(){
     
 
     pthread_mutex_lock(cola_interrupciones->mutex);
+    log_debug(logger, "elementos de la lista: %d, tipo int: %d", list_size(cola_interrupciones->lista), interrupcion->tipo);
     if(!list_is_empty(cola_interrupciones->lista)&&((interrupcion->tipo == DISPATCH_CPU_I)||(interrupcion->tipo == DESALOJO_I))){
         pc--;
+        log_debug(logger, "llegaron 2 interrupciones juntas. Atiendo: %d", interrupcion->tipo);
     }
     pthread_mutex_unlock(cola_interrupciones->mutex);
 
@@ -243,10 +245,11 @@ void Check_Int(){
 
         case DESALOJO_I:
             paquete_send = crear_paquete(DESALOJO_CPU);
-            agregar_a_paquete (paquete_send, &interrupcion->pid, sizeof(int));
+            agregar_a_paquete (paquete_send, &pid, sizeof(int));
             agregar_a_paquete (paquete_send, &pc, sizeof(int));
             pc = interrupcion->pc;
             pid = interrupcion->pid;
+            log_debug(logger, "entre a checkint Desalojo");
         break;
             
         case IO_I:
@@ -256,6 +259,7 @@ void Check_Int(){
             agregar_a_paquete (paquete_send, &pc, sizeof(int));
             agregar_a_paquete (paquete_send, interrupcion->paramstring, strlen(interrupcion->paramstring)+1);
             agregar_a_paquete (paquete_send, &interrupcion->param1, sizeof(int));
+            log_debug(logger, "sale el pid %d con pc %d", pid, pc);
         break;
 
         case INIT_PROC_I:
@@ -285,7 +289,7 @@ void Check_Int(){
 
     vaciar_cola_interrupcion(cola_interrupciones);
     
-    if((interrupcion->tipo != DISPATCH_CPU_I)&&(interrupcion->tipo != DESALOJO_I)){
+    if((interrupcion->tipo != DISPATCH_CPU_I)){
         enviar_paquete(paquete_send, socket_interrupt);
         eliminar_paquete(paquete_send);
         sem_wait(sem_dispatch);

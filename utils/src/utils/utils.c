@@ -97,8 +97,13 @@
     { 
         protocolo_socket cod_op = recibir_operacion(socket_cliente);
         
+        if(cod_op == -1){
+            log_error(logger, "Conexión cerrada (cod_op = %d)", cod_op);
+            return cod_op;
+        }
+
         if (cod_op != OK) {
-            log_error(logger, "Se recibió cod_op distinto de OK o conexión cerrada (cod_op = %d)", cod_op);
+            log_error(logger, "Se recibió cod_op distinto de OK (cod_op = %d)", cod_op);
 
             // consumir y liberar si aún así llega un paquete con basura
             t_list* basura = recibir_paquete(socket_cliente);
@@ -118,7 +123,7 @@
 
         list_destroy_and_destroy_elements(valores, free);
 
-        return 0;
+        return cod_op;
     }
 
     void* serializar_paquete(t_paquete* paquete, int bytes)

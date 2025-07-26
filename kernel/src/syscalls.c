@@ -111,6 +111,7 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
 
     if(index == -1){
         PROCESS_EXIT(pcb);
+        sem_post(lista_procesos_ready->sem);
         return;
     }
 
@@ -120,6 +121,7 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
 
     encolar_cola_generico(lista_procesos_block, pcb, -1);
     cambiar_estado(pcb, BLOCK);
+    sem_post(lista_procesos_ready->sem);
 
     return;
 }
