@@ -439,3 +439,10 @@ void enviar_interrupcion(t_socket_cpu *socket_cpu, int pid, int pc) {
     enviar_paquete(paquete, socket_cpu->dispatch);
     eliminar_paquete(paquete);
 }
+
+//------------------------------SRT-------------------------------
+
+// Guardar el timestamp actual en el PCB, indicando cuándo empieza a ejecutarse.
+void iniciar_medicion_rafaga(PCB *pcb) {
+    clock_gettime(CLOCK_MONOTONIC, &pcb->timestamp_ultimo_estado);
+}
