@@ -461,3 +461,37 @@ void finalizar_medicion_y_actualizar_estimacion(PCB *pcb) {
     pcb->estimacion_rafaga = alfa * duracion_real + (1 - alfa) * estimacion_anterior;
 }
 
+// Versión nueva de waiter_devoluciones_cpu
+void *waiter_devoluciones_cpu_v2(void *args) {
+    t_socket_cpu *socket_cpu = (t_socket_cpu *)args;
+
+    while (true) {
+        // Espera que haya un proceso en EXEC (solo uno en SRT)
+        sem_wait(lista_procesos_exec->sem);
+
+        pthread_mutex_lock(lista_procesos_exec->mutex);
+        PCB *pcb = list_get(lista_procesos_exec->lista, 0);  // único proceso en EXEC
+        pthread_mutex_unlock(lista_procesos_exec->mutex);
+
+        if (pcb == NULL) {
+            log_error(logger, "ERROR: Proceso en EXEC es NULL");
+            continue;
+        }
+
+        // Inicia la medición de la ráfaga
+        iniciar_medicion_rafaga(pcb);
+
+        // Espera la respuesta de la CPU (syscall, exit, desalojo, etc.)
+        esperar_respuesta_cpu_sjf(pcb, socket_cpu);
+
+        // Remueve el proceso de EXEC si sigue estando ahí
+        pthread_mutex_lock(lista_procesos_exec->mutex);
+        if (!list_remove_element(lista_procesos_exec->lista, pcb)) {
+            log_error(logger, "No se pudo remover pid %d de EXEC", pcb->pid);
+        }
+        pthread_mutex_unlock(lista_procesos_exec->mutex);
+
+        // Finaliza la medición y actualiza la estimación de ráfaga
+        finalizar_medicion_y_actualizar_estimacion(pcb);
+    }
+}

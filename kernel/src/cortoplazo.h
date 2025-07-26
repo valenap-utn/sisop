@@ -32,5 +32,6 @@ void manejo_respuesta_desalojo(t_socket_cpu *socket_cpu);
 //---------------------------SRT---------------------------------
 void iniciar_medicion_rafaga(PCB *pcb);
 void finalizar_medicion_y_actualizar_estimacion(PCB *pcb);
+void *waiter_devoluciones_cpu_v2(void *args);
 
 #endif
