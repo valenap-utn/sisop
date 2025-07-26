@@ -211,6 +211,7 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
 
             pthread_mutex_unlock(lista_procesos_exec->mutex);
+
             cambiar_estado(pcb, READY);
             encolar_cola_generico(lista_procesos_ready, pcb, -1);
 
@@ -232,7 +233,7 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
             log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-            
+            pthread_mutex_unlock(lista_procesos_exec->mutex);
 
             // vuelve a READY - reencolado por desalojo
             cambiar_estado(pcb, READY);
@@ -256,7 +257,7 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
             log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-            
+            pthread_mutex_unlock(lista_procesos_exec->mutex);
 
             DUMP_MEMORY(pcb);
 
@@ -279,7 +280,7 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
             log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-            
+            pthread_mutex_unlock(lista_procesos_exec->mutex);
 
             IO_syscall(pcb, nombre_io, tiempo);
 
