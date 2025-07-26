@@ -204,7 +204,7 @@ void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index){
             index = list_iterator_index(iterator)+1;
             list_iterator_destroy(iterator);
         }
-        }
+    }
     
     
     list_add_in_index(cola->lista, index, pcb);

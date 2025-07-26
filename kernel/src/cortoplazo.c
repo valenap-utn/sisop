@@ -185,7 +185,7 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS EXIT", pcb->pid);
             
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
-            
+
             pthread_mutex_lock(lista_procesos_exec->mutex);
             if(!list_remove_element(lista_procesos_exec->lista, pcb)){
                log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
@@ -429,7 +429,22 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
                 pthread_mutex_unlock(mutex_waiter);
             }else {
                 pthread_mutex_lock(lista_procesos_ready->mutex);
-                list_add_in_index(lista_procesos_ready->lista, -1, pcb_ready);
+
+                //hago esta asquerosidad para agregar al final de la lista
+                int index_aux = 0;
+                if (list_is_empty(lista_procesos_ready->lista)){
+                    index_aux = 0;
+                }else{
+                    PCB * pcb_aux;
+                    t_list_iterator *iterator = list_iterator_create(lista_procesos_ready->lista);
+                    while(list_iterator_has_next(iterator)){
+                        pcb_aux = list_iterator_next(iterator);
+                    }
+                    index_aux = list_iterator_index(iterator)+1;
+                    list_iterator_destroy(iterator);
+                }
+
+                list_add_in_index(lista_procesos_ready->lista, index_aux, pcb_ready);
                 pthread_mutex_unlock(lista_procesos_ready->mutex);
                 pthread_mutex_unlock(mutex_waiter);
             }

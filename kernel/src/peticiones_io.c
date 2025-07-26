@@ -197,7 +197,21 @@ void encolar_cola_blocked(list_struct_t *cola, elemento_cola_blocked_io *elem){
 
     pthread_mutex_lock(cola->mutex);
 
-    list_add_in_index(cola->lista, -1, elem);
+    int index_aux = 0;
+    if (list_is_empty(cola->lista)){
+        index_aux = 0;
+    }else{
+        elemento_cola_blocked_io * elem_aux;
+        t_list_iterator *iterator = list_iterator_create(cola->lista);
+        while(list_iterator_has_next(iterator)){
+            elem_aux = list_iterator_next(iterator);
+        }
+        index_aux = list_iterator_index(iterator)+1;
+        list_iterator_destroy(iterator);
+    }
+
+
+    list_add_in_index(cola->lista, index_aux, elem);
     sem_post(cola->sem);
 
     pthread_mutex_unlock(cola->mutex);
