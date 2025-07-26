@@ -5,6 +5,8 @@ extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_sockets_io;
 
+extern enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
+
 extern sem_t *sem_memoria_liberada;
 
 void PROCESS_CREATE(char *path, int tam_proceso) {
@@ -111,7 +113,7 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
 
     if(index == -1){
         PROCESS_EXIT(pcb);
-        sem_post(lista_procesos_ready->sem);
+        if(algoritmo_cortoPlazo == CPL_SJF_CD){sem_post(lista_procesos_ready->sem);}
         return;
     }
 
@@ -121,7 +123,7 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
 
     encolar_cola_generico(lista_procesos_block, pcb, -1);
     cambiar_estado(pcb, BLOCK);
-    sem_post(lista_procesos_ready->sem);
-
+    if(algoritmo_cortoPlazo == CPL_SJF_CD){sem_post(lista_procesos_ready->sem);}
+    
     return;
 }
