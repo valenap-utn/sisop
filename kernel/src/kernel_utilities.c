@@ -189,7 +189,20 @@ PCB *desencolar_generico(list_struct_t *cola, int index){
 /// @param pcb 
 /// @param index 0 para inicio de lista, -1 para final
 void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index){
+    
     pthread_mutex_lock(cola->mutex);
+    //esto cambia index al real index del ultimo elemento, ya que list_add_in_index -1 no lo pone al final, vaya a saber quien porque. La documentacion de list.h no explica esto
+    if (index == -1){
+        PCB * pcb_aux;
+        t_list_iterator *iterator = list_iterator_create(cola->lista);
+        while(list_iterator_has_next(iterator)){
+            pcb_aux = list_iterator_next(iterator);
+        }
+        index = list_iterator_index(iterator)+1;
+        list_iterator_destroy(iterator);
+    }
+    
+    
     list_add_in_index(cola->lista, index, pcb);
     pthread_mutex_unlock(cola->mutex);
     sem_post(cola->sem);

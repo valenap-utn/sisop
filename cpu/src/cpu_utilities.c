@@ -228,9 +228,33 @@ void *conexion_cliente_memoria(void *args){
 
 void encolar_interrupcion_generico(list_struct_t * cola, interrupcion_t * interrupcion, int index){
     pthread_mutex_lock(cola->mutex);
+    
+    //esto cambia index al real index del ultimo elemento, ya que list_add_in_index -1 no lo pone al final, vaya a saber quien porque. La documentacion de list.h no explica esto
+    if (index == -1){
+        interrupcion_t * int_aux;
+        t_list_iterator *iterator = list_iterator_create(cola->lista);
+        while(list_iterator_has_next(iterator)){
+            int_aux = list_iterator_next(iterator);
+        }
+        index = list_iterator_index(iterator)+1;
+        list_iterator_destroy(iterator);
+    }
+
     list_add_in_index(cola->lista, index, interrupcion);
+    
     pthread_mutex_unlock(cola->mutex);
     flag_hay_interrupcion = true;
+    log_debug(logger, "Se encolo una interrupcion del tipo %d en el lugar %d", interrupcion->tipo, index);
+
+    interrupcion_t *interrupcion_iterator;
+    t_list_iterator * iterator = list_iterator_create(cola->lista);
+    while (list_iterator_has_next(iterator)){
+        interrupcion_iterator = list_iterator_next(iterator);
+        log_debug(logger, "interrupcion->tipo: %d", interrupcion_iterator->tipo);
+    }
+
+    list_iterator_destroy(iterator);
+
 }
 interrupcion_t * desencolar_interrupcion_generico(list_struct_t * cola){
     

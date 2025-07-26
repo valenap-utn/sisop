@@ -479,7 +479,7 @@ void io(char * Dispositivo, int tiempo){ // (Dispositivo, Tiempo)  ESTA LA HACE 
     interrupcion->paramstring = Dispositivo;
     interrupcion->param1 = tiempo;
 
-    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, 1);
 };
 void init_proc(char * archivo, int tamaño){ //(Archivo de instrucciones, Tamaño) ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
@@ -487,19 +487,19 @@ void init_proc(char * archivo, int tamaño){ //(Archivo de instrucciones, Tamañ
     interrupcion->paramstring = archivo;
     interrupcion->param1 = tamaño;
 
-    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, 1);
 };
 void dump_memory(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
     interrupcion->tipo = DUMP_MEMORY_I;
 
-    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, 1);
 };
 void exit_(){ // ESTA LA HACE EL KERNEL, ACA ES REPRESENTATIVO
     interrupcion_t * interrupcion = malloc(sizeof(interrupcion_t));
     interrupcion->tipo = EXIT_I;
     
-    encolar_interrupcion_generico(cola_interrupciones, interrupcion, -1);
+    encolar_interrupcion_generico(cola_interrupciones, interrupcion, 1);
 };
 
 void Actualizar_pc(){
