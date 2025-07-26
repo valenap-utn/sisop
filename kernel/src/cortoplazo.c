@@ -185,6 +185,15 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             log_info(logger, "## (PID: %d) - Solicitó syscall: PROCESS EXIT", pcb->pid);
             
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
+            
+            pthread_mutex_lock(lista_procesos_exec->mutex);
+            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+               log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
+            }
+            log_debug(logger, "se remueve de exec: %d", pcb->pid);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
+            pthread_mutex_unlock(lista_procesos_exec->mutex);
+
             PROCESS_EXIT(pcb);
 
             break;
@@ -194,6 +203,14 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
+            pthread_mutex_lock(lista_procesos_exec->mutex);
+            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+               log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
+            }
+            log_debug(logger, "se remueve de exec: %d", pcb->pid);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
+
+            pthread_mutex_unlock(lista_procesos_exec->mutex);
             cambiar_estado(pcb, READY);
             encolar_cola_generico(lista_procesos_ready, pcb, -1);
 
@@ -208,6 +225,15 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             char * path = list_remove(paquete_respuesta, 0);
             int tamaño = *(int*)list_remove(paquete_respuesta, 0);
             
+
+            pthread_mutex_lock(lista_procesos_exec->mutex);
+            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+               log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
+            }
+            log_debug(logger, "se remueve de exec: %d", pcb->pid);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
+            
+
             // vuelve a READY - reencolado por desalojo
             cambiar_estado(pcb, READY);
             encolar_cola_generico(lista_procesos_ready, pcb, -1);
@@ -223,6 +249,15 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
+
+            pthread_mutex_lock(lista_procesos_exec->mutex);
+            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+               log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
+            }
+            log_debug(logger, "se remueve de exec: %d", pcb->pid);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
+            
+
             DUMP_MEMORY(pcb);
 
             break;
@@ -237,9 +272,16 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             char * nombre_io = list_remove(paquete_respuesta, 0);
             int tiempo = *(int *)list_remove(paquete_respuesta, 0);
 
-            log_debug(logger, "arranca IO en syscalls.c");
+
+            pthread_mutex_lock(lista_procesos_exec->mutex);
+            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+               log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
+            }
+            log_debug(logger, "se remueve de exec: %d", pcb->pid);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
+            
+
             IO_syscall(pcb, nombre_io, tiempo);
-            log_debug(logger, "termina IO en syscalls.c");
 
             break;
 
@@ -424,14 +466,7 @@ void *waiter_devoluciones_cpu(void * args){
 
         esperar_respuesta_cpu_sjf(pcb, socket_cpu);
         
-        pthread_mutex_lock(lista_procesos_exec->mutex);
-        if(!list_remove_element(lista_procesos_exec->lista, pcb)){
-            log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
-        }
-        log_debug(logger, "se remueve de exec: %d", pcb->pid);
-        log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-        pthread_mutex_unlock(lista_procesos_exec->mutex);
-
+        
         pthread_mutex_unlock(mutex_waiter);
         //
         struct timespec fin_rafaga;
