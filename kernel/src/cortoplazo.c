@@ -446,3 +446,18 @@ void enviar_interrupcion(t_socket_cpu *socket_cpu, int pid, int pc) {
 void iniciar_medicion_rafaga(PCB *pcb) {
     clock_gettime(CLOCK_MONOTONIC, &pcb->timestamp_ultimo_estado);
 }
+
+// Calcular cuánto tiempo ejecutó realmente el proceso y actualizar la estimación.
+void finalizar_medicion_y_actualizar_estimacion(PCB *pcb) {
+    struct timespec fin_rafaga;
+    clock_gettime(CLOCK_MONOTONIC, &fin_rafaga);
+
+    long duracion_real = diff_in_milliseconds(pcb->timestamp_ultimo_estado, fin_rafaga);
+    pcb->rafaga_real_anterior = duracion_real;
+
+    extern double alfa;
+    double estimacion_anterior = pcb->estimacion_rafaga;
+
+    pcb->estimacion_rafaga = alfa * duracion_real + (1 - alfa) * estimacion_anterior;
+}
+
