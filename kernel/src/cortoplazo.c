@@ -49,17 +49,17 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
         sem_wait(lista_procesos_ready->sem);
 
         pthread_mutex_lock(lista_procesos_ready->mutex);
-        PCB *pcb = list_remove(lista_procesos_ready->lista, 0);
-        pthread_mutex_unlock(lista_procesos_ready->mutex);
-
-        log_info(logger, "## (%d) - Planificado por FIFO", pcb->pid);
-        
-        enviar_a_cpu_dispatch(pcb, socket_cpu);
-
-        cambiar_estado(pcb, EXEC);
-
-        esperar_respuesta_cpu(pcb, socket_cpu);
-
+        PCB* pcb = NULL;
+        if (list_is_empty(lista_procesos_ready->lista)) {
+            log_warning(logger, "No se pudo remover PCB: la lista de procesos READY está vacía.");
+        } else {
+            pcb = list_remove(lista_procesos_ready->lista, 0);
+            pthread_mutex_unlock(lista_procesos_ready->mutex);
+            log_info(logger, "## (%d) - Planificado por FIFO", pcb->pid);
+            enviar_a_cpu_dispatch(pcb, socket_cpu);
+            cambiar_estado(pcb, EXEC);
+            esperar_respuesta_cpu(pcb, socket_cpu);
+        }
     }
 
 }

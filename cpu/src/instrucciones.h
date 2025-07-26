@@ -47,6 +47,7 @@ typedef struct cache_t{
 
 
 void noop();
+char* leer_valor_actual(int dir_logica, int tamanio);
 void write_(int dir_logica, char *datos);
 void read_(int dir_logica , int tamanio);
 void goto_(int nuevo_pc);

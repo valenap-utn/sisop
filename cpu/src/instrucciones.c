@@ -300,48 +300,119 @@ void Check_Int(){
 
 };
 
+char* leer_valor_actual(int dir_logica, int tamanio) {
+    int nro_pagina;
+    int offset;
+    traducir_DL(dir_logica, &nro_pagina, &offset);
+
+    char* valor;
+
+    // Buscar en caché
+    if (entradas_cache > 0 && buscar_en_cache(pid, nro_pagina, &valor)) {
+        return strdup(valor); // copia para que quien llama pueda liberar
+    }
+
+    int marco = obtener_marco(pid, nro_pagina, offset);
+    int dir_fisica = obtener_DF(marco, offset);
+
+    // Solicita lectura a memoria
+    t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+    acceso_t tipo_de_acceso = LECTURA_AC;
+
+    agregar_a_paquete(paquete_send, &pid, sizeof(int));
+    agregar_a_paquete(paquete_send, &tamanio, sizeof(int));
+    agregar_a_paquete(paquete_send, &dir_fisica, sizeof(int));
+    agregar_a_paquete(paquete_send, &tipo_de_acceso, sizeof(int));
+
+    enviar_paquete(paquete_send, socket_memoria);
+    eliminar_paquete(paquete_send);
+
+    protocolo_socket cod_op = recibir_operacion(socket_memoria);
+    if (cod_op != DEVOLVER_VALOR) {
+        log_error(logger, "No se pudo obtener el valor desde memoria");
+        return NULL;
+    }
+
+    t_list* respuesta = recibir_paquete(socket_memoria);
+    valor = list_remove(respuesta, 0);
+    list_destroy_and_destroy_elements(respuesta, free);
+
+    return valor; // ¡el que llama debe hacer free!
+}
+
+
 void write_(int dir_logica , char * datos){
     int nro_pagina;
-    int offset; //como se obtiene el offset aca? no entiendo
-    traducir_DL(dir_logica,&nro_pagina,&offset);
+    int offset;
 
-    int marco = obtener_marco(pid,nro_pagina,offset);
-    int dir_fisica = obtener_DF(marco,offset);
+    traducir_DL(dir_logica, &nro_pagina, &offset);
+    int marco = obtener_marco(pid, nro_pagina, offset);
+    int dir_fisica_inicio_pagina = obtener_DF(marco, 0); // leemos desde el inicio de la página
 
     log_debug(logger, "Ejecutando WRITE: dir_logica=%d, valor=%s", dir_logica, datos);
 
-    //Actualizar caché (si hay)
+    // Paso 1: Leer contenido actual de la página
+    t_paquete* paquete_lectura = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+    int tam_lectura = tam_pag;
+    acceso_t tipo_lectura = LECTURA_AC;
+
+    agregar_a_paquete(paquete_lectura, &pid, sizeof(int));
+    agregar_a_paquete(paquete_lectura, &tam_lectura, sizeof(int));
+    agregar_a_paquete(paquete_lectura, &dir_fisica_inicio_pagina, sizeof(int));
+    agregar_a_paquete(paquete_lectura, &tipo_lectura, sizeof(int));
+
+    enviar_paquete(paquete_lectura, socket_memoria);
+    eliminar_paquete(paquete_lectura);
+
+    protocolo_socket cod_op_lectura = recibir_operacion(socket_memoria);
+    if(cod_op_lectura != DEVOLVER_VALOR){
+        log_error(logger,"No se pudo leer la página antes de escribir.");
+        return;
+    }
+
+    t_list* respuesta = recibir_paquete(socket_memoria);
+    char* valor_actual = list_remove(respuesta, 0);
+    list_destroy_and_destroy_elements(respuesta, free);
+
+    // Paso 2: Modificar contenido parcial
+    memcpy(valor_actual + offset, datos, strlen(datos));  // ✅ Copia parcial sin pasarse
+
+    // Paso 3: Actualizar caché si corresponde
     if(entradas_cache > 0){
         pagina_actual_cache = nro_pagina;
         marco_actual_cache = marco;
+        escribir_en_cache(pid, valor_actual, nro_pagina, 1);
+    } else {
+        // Paso 4: Escribir el contenido modificado a memoria
+        int dir_fisica = obtener_DF(marco, 0); // escribir desde el inicio de página
+        int tam_escritura = tam_pag;
+        acceso_t tipo_escritura = ESCRITURA_AC;
 
-        escribir_en_cache(pid,datos,nro_pagina,1);
-    }else {
+        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, valor_actual);
 
-        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
+        t_paquete* paquete_escritura = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+        agregar_a_paquete(paquete_escritura, &pid, sizeof(int));
+        agregar_a_paquete(paquete_escritura, &tam_escritura, sizeof(int));
+        agregar_a_paquete(paquete_escritura, &dir_fisica, sizeof(int));
+        agregar_a_paquete(paquete_escritura, &tipo_escritura, sizeof(int));
+        agregar_a_paquete(paquete_escritura, valor_actual, strlen(valor_actual) + 1);  // incluye '\0'
 
-        t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
-        int tam = tam_pag;
-        int tipo_de_acceso = ESCRITURA_AC;
-
-        agregar_a_paquete(paquete_send, &pid , sizeof(int));
-        agregar_a_paquete(paquete_send, &tam , sizeof(int));
-        agregar_a_paquete(paquete_send, &dir_fisica , sizeof(int));
-        agregar_a_paquete(paquete_send, &tipo_de_acceso , sizeof(int));
-        agregar_a_paquete(paquete_send, datos , strlen(datos)+1);
-
-
-        enviar_paquete(paquete_send, socket_memoria);
-        eliminar_paquete(paquete_send);
+        enviar_paquete(paquete_escritura, socket_memoria);
+        eliminar_paquete(paquete_escritura);
 
         protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
         if(cod_op != OK){
-            log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
+            log_error(logger,"No se pudo escribir la página modificada.");
         }
 
-        log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",pid, nro_pagina, marco);
+        log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>", pid, nro_pagina, marco);
     }
-};
+
+    free(valor_actual);
+}
+
+
+
 
 void read_(int dir_logica , int tamanio){
     int nro_pagina;
@@ -359,11 +430,9 @@ void read_(int dir_logica , int tamanio){
     }
     if (entradas_cache > 0 )log_info(logger,"\033[31mPID: <%d> - Cache Miss - Pagina: <%d>\033", pid, nro_pagina);
 
-    //Obtenemos marco desde TLB
     int marco = obtener_marco(pid,nro_pagina,offset);
     int dir_fisica = obtener_DF(marco,offset);
 
-    //Enviamos a memoria
     t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
     acceso_t tipo_de_acceso = LECTURA_AC;
 
@@ -385,15 +454,12 @@ void read_(int dir_logica , int tamanio){
     valor = list_remove(respuesta,0);
     list_destroy_and_destroy_elements(respuesta, free);
 
-
     log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, valor);
 
-    //Actualizamos la caché
-    if(entradas_cache > 0)escribir_en_cache(pid,valor,nro_pagina,0);
+    if(entradas_cache > 0) escribir_en_cache(pid,valor,nro_pagina,0);
 
     free(valor);
-
-};
+}
 
 void noop(){
     log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: NOOP :",pid);
