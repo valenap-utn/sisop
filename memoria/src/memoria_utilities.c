@@ -234,11 +234,10 @@ void * cpu(void* args){
                 t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
 
                 if(tipo_acceso == LECTURA_AC){ //lectura
-                    char * valor = malloc(tamanio+1);
-                    memcpy(valor, memoria_principal.espacio + dir_fisica, tamanio);
+                    int valor = *(int*)(memoria_principal.espacio + dir_fisica);
 
                     paquete_send = crear_paquete(DEVOLVER_VALOR);
-                    agregar_a_paquete(paquete_send,valor,tamanio);
+                    agregar_a_paquete(paquete_send,&valor,sizeof(int));
                     enviar_paquete(paquete_send,conexion);
 
                     log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
@@ -250,9 +249,9 @@ void * cpu(void* args){
                     char * valor_a_escribir = list_remove(paquete_recv,0);
 
                     log_debug(logger, "MEM: Voy a escribir '%s' en DF %d", valor_a_escribir, dir_fisica);
-                    log_debug(logger, "MEM: Longitud del string a escribir: %d", tamanio);
+                    log_debug(logger, "MEM: Longitud del string a escribir: %d", strlen(valor_a_escribir));
 
-                    memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,tamanio);
+                    memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir));
 
                     enviar_paquete_ok(conexion);
 
@@ -321,7 +320,6 @@ void * cpu(void* args){
                 }
 
                 void* datos = list_remove(paquete_recv,0);
-                log_debug(logger, "Pagina updateada: %s", (char*)datos);
                 memcpy(memoria_principal.espacio + dir_fisica, datos, tam_pagina); //escribo sobre el espacio de usuario
                 free(datos);
 
@@ -695,11 +693,10 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
 
     if (contar_marcos_libres() < paginas_necesarias) return -1;
 
-    t_tabla_proceso* nueva_tabla = malloc(sizeof(t_tabla_proceso));
+    t_tabla_proceso* nueva_tabla = calloc(1,sizeof(t_tabla_proceso));
     nueva_tabla->pid = pid;
     nueva_tabla->tabla_principal = crear_tabla_principal(paginas_necesarias);
     nueva_tabla->cantidad_paginas = paginas_necesarias;
-
     if (nueva_tabla->tabla_principal == NULL) {
         log_error(logger, "Error al crear tabla principal");
         free(nueva_tabla);
