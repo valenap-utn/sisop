@@ -344,72 +344,45 @@ char* leer_valor_actual(int dir_logica, int tamanio) {
 void write_(int dir_logica , char * datos){
     int nro_pagina;
     int offset;
+    traducir_DL(dir_logica,&nro_pagina,&offset);
 
-    traducir_DL(dir_logica, &nro_pagina, &offset);
-    int marco = obtener_marco(pid, nro_pagina, offset);
-    int dir_fisica_inicio_pagina = obtener_DF(marco, 0); // leemos desde el inicio de la página
+    int marco = obtener_marco(pid,nro_pagina,offset);
+    int dir_fisica = obtener_DF(marco,offset);
 
-    log_debug(logger, "Ejecutando WRITE: dir_logica=%d, valor=%s", dir_logica, datos);
+    log_debug(logger, "Ejecutando WRITE: dir_logica=%d, valor=%s OFFSET=%d", dir_logica, datos, offset);
 
-    // Paso 1: Leer contenido actual de la página
-    t_paquete* paquete_lectura = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
-    int tam_lectura = tam_pag;
-    acceso_t tipo_lectura = LECTURA_AC;
-
-    agregar_a_paquete(paquete_lectura, &pid, sizeof(int));
-    agregar_a_paquete(paquete_lectura, &tam_lectura, sizeof(int));
-    agregar_a_paquete(paquete_lectura, &dir_fisica_inicio_pagina, sizeof(int));
-    agregar_a_paquete(paquete_lectura, &tipo_lectura, sizeof(int));
-
-    enviar_paquete(paquete_lectura, socket_memoria);
-    eliminar_paquete(paquete_lectura);
-
-    protocolo_socket cod_op_lectura = recibir_operacion(socket_memoria);
-    if(cod_op_lectura != DEVOLVER_VALOR){
-        log_error(logger,"No se pudo leer la página antes de escribir.");
-        return;
-    }
-
-    t_list* respuesta = recibir_paquete(socket_memoria);
-    char* valor_actual = list_remove(respuesta, 0);
-    list_destroy_and_destroy_elements(respuesta, free);
-
-    // Paso 2: Modificar contenido parcial
-    memcpy(valor_actual + offset, datos, strlen(datos));  // ✅ Copia parcial sin pasarse
-
-    // Paso 3: Actualizar caché si corresponde
+    //Actualizar caché (si hay)
     if(entradas_cache > 0){
         pagina_actual_cache = nro_pagina;
         marco_actual_cache = marco;
-        escribir_en_cache(pid, valor_actual, nro_pagina, 1);
-    } else {
-        // Paso 4: Escribir el contenido modificado a memoria
-        int dir_fisica = obtener_DF(marco, 0); // escribir desde el inicio de página
-        int tam_escritura = tam_pag;
-        acceso_t tipo_escritura = ESCRITURA_AC;
 
-        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, valor_actual);
+        escribir_en_cache(pid,datos,nro_pagina,1,(uint8_t)offset);
+    }else {
 
-        t_paquete* paquete_escritura = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
-        agregar_a_paquete(paquete_escritura, &pid, sizeof(int));
-        agregar_a_paquete(paquete_escritura, &tam_escritura, sizeof(int));
-        agregar_a_paquete(paquete_escritura, &dir_fisica, sizeof(int));
-        agregar_a_paquete(paquete_escritura, &tipo_escritura, sizeof(int));
-        agregar_a_paquete(paquete_escritura, valor_actual, strlen(valor_actual) + 1);  // incluye '\0'
+        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
 
-        enviar_paquete(paquete_escritura, socket_memoria);
-        eliminar_paquete(paquete_escritura);
+        t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
+        int tam = tam_pag;
+        int tipo_de_acceso = ESCRITURA_AC;
+
+        agregar_a_paquete(paquete_send, &pid , sizeof(int));
+        agregar_a_paquete(paquete_send, &tam , sizeof(int));
+        agregar_a_paquete(paquete_send, &dir_fisica , sizeof(int));
+        agregar_a_paquete(paquete_send, &tipo_de_acceso , sizeof(int));
+        agregar_a_paquete(paquete_send, datos , strlen(datos));
+
+
+        enviar_paquete(paquete_send, socket_memoria);
+        eliminar_paquete(paquete_send);
 
         protocolo_socket cod_op = recibir_paquete_ok(socket_memoria);
         if(cod_op != OK){
-            log_error(logger,"No se pudo escribir la página modificada.");
+            log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
         }
 
-        log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>", pid, nro_pagina, marco);
+        log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",pid, nro_pagina, marco);
     }
-
-    free(valor_actual);
-}
+};
 
 
 
@@ -456,7 +429,7 @@ void read_(int dir_logica , int tamanio){
 
     log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, valor);
 
-    if(entradas_cache > 0) escribir_en_cache(pid,valor,nro_pagina,0);
+    if(entradas_cache > 0) escribir_en_cache(pid,valor,nro_pagina,0,0);
 
     free(valor);
 }
@@ -696,17 +669,19 @@ int buscar_en_cache(int pid_actual, int nro_pagina, char** contenido_out){
     return 0;
 }
 
-void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina, int fue_escritura){
+void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina, int fue_escritura, uint8_t offset){
     if(entradas_cache <= 0)return;
 
     //Verificamos, si ya existe => modificamos
     for(int i = 0; i < entradas_cache; i++){
         if(cache[i].pid == pid_actual && cache[i].nro_pagina == nro_pagina && cache[i].ocupado){
             usleep(retardo_cache * 1000);
-
-            free(cache[i].contenido);
-            cache[i].contenido = strdup(nuevo_valor);
-
+            if(cache[i].contenido==NULL)
+            {
+                cache[i].contenido=malloc(tam_pag);
+            }
+            //cache[i].contenido = strdup(nuevo_valor);
+            memcpy(cache[i].contenido+offset,nuevo_valor,strlen(nuevo_valor));
             cache[i].uso = 1;
 
             cache[i].modificado = fue_escritura ? 1 : 0;
@@ -721,7 +696,18 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina, int f
     for(int i = 0 ; i < entradas_cache ; i++){
         if(!cache[i].ocupado){
             usleep(retardo_cache * 1000);
-            cache[i] = (cache_t){pid_actual,nro_pagina,strdup(nuevo_valor),1,1,fue_escritura ? 1 : 0};
+            //cache[i] = (cache_t){pid_actual,nro_pagina,NULL,1,1,fue_escritura ? 1 : 0};
+            cache[i].pid=pid_actual;
+            cache[i].nro_pagina=nro_pagina;
+            cache[i].ocupado=1;
+            cache[i].uso=1;
+            cache[i].modificado=fue_escritura ? 1 : 0;
+            if(cache[i].contenido==NULL)
+            {
+                cache[i].contenido=malloc(tam_pag);
+            }
+            
+            memcpy(cache[i].contenido+offset,nuevo_valor,strlen(nuevo_valor));
 
             log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
 
@@ -739,13 +725,24 @@ void escribir_en_cache(int pid_actual, char * nuevo_valor, int nro_pagina, int f
     if(cache[victima].modificado){
         escribir_en_memoria(cache[victima]);
     }
-    free(cache[victima].contenido);
+    cache[victima].contenido=NULL;
 
     //Reemplazamos
     usleep(retardo_cache * 1000);
-    cache[victima] = (cache_t){pid_actual, nro_pagina,strdup(nuevo_valor),1,1,fue_escritura ? 1 : 0};
-
+    
+    //cache[victima] = (cache_t){pid_actual, nro_pagina,NULL,1,1,fue_escritura ? 1 : 0};
+    cache[victima].pid=pid_actual;
+    cache[victima].nro_pagina=nro_pagina;
+    cache[victima].ocupado=1;
+    cache[victima].uso=1;
+    cache[victima].modificado=fue_escritura ? 1 : 0;
+    if(cache[victima].contenido==NULL)
+    {
+        cache[victima].contenido=malloc(tam_pag);
+    }
+    memcpy(cache[victima].contenido+offset,nuevo_valor,strlen(nuevo_valor));
     log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
+    
     
     // dump_estado_cache();
 

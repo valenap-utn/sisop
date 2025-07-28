@@ -25,7 +25,7 @@ void inicializarMemoria(){
     
     inicializarListasMemoria();
     crear_directorio();
-
+    crear_directorioSWAP();
     inicializar_mem_prin();
 
     pthread_t tid_cpu;
