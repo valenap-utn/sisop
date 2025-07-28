@@ -112,6 +112,7 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
     int index = buscar_io(nombre_io);
 
     if(index == -1){
+        log_info(logger, "No se encontro dispositivo IO para %d", pcb->pid);
         PROCESS_EXIT(pcb);
         if(algoritmo_cortoPlazo == CPL_SJF_CD){sem_post(lista_procesos_ready->sem);}
         return;

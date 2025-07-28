@@ -195,6 +195,7 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             pthread_mutex_unlock(lista_procesos_exec->mutex);
 
             PROCESS_EXIT(pcb);
+            sem_post(lista_procesos_ready->sem);
 
             break;
 
@@ -422,6 +423,37 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
             // comparar estimaciones
             log_debug(logger, "%d ready: %s, %d exec: %s", pcb_ready->pid, string_itoa(pcb_ready->estimacion_rafaga), pcb_exec->pid, string_itoa(pcb_exec->estimacion_rafaga));
             if (pcb_ready->estimacion_rafaga < pcb_exec->estimacion_rafaga) {
+                if(pcb_ready->pid == pcb_exec->pid){
+                    log_error(logger, "el proceso esta duplicado: %d", pcb_ready->pid);
+                }
+                
+                //si hay una interrupcion anterior pendiente (2 IOs terminaron a la vez)
+                pthread_mutex_lock(lista_procesos_exec->mutex);
+                if (list_size(lista_procesos_exec->lista)>1){
+                    pthread_mutex_lock(lista_procesos_ready->mutex);
+
+                    log_debug(logger, "Llego una interrupcion cuando habia una pendiente, cancelando interrupcion pid: %d", pcb_ready->pid);
+                    int index_aux = 0;
+                    if (list_is_empty(lista_procesos_ready->lista)){
+                        index_aux = 0;
+                    }else{
+                        PCB * pcb_aux;
+                        t_list_iterator *iterator = list_iterator_create(lista_procesos_ready->lista);
+                        while(list_iterator_has_next(iterator)){
+                            pcb_aux = list_iterator_next(iterator);
+                        }
+                        index_aux = list_iterator_index(iterator)+1;
+                        list_iterator_destroy(iterator);
+                    }
+
+                    list_add_in_index(lista_procesos_ready->lista, index_aux, pcb_ready);
+                    pthread_mutex_unlock(lista_procesos_ready->mutex);
+                    pthread_mutex_unlock(mutex_waiter);
+                    pthread_mutex_unlock(lista_procesos_exec->mutex);
+                    continue;
+                }
+
+                pthread_mutex_unlock(lista_procesos_exec->mutex);
                 log_info(logger, "## (%d) - Desalojado por algoritmo SJF/SRT", pcb_exec->pid);
                 log_debug(logger, "(%d) - Entro por interrupt, pc: %d", pcb_ready->pid, pcb_ready->pc);
                 enviar_interrupcion(socket_cpu, pcb_ready->pid, pcb_ready->pc);
