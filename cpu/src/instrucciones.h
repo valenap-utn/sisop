@@ -87,7 +87,9 @@ void limpiar_entradas_tlb(int pid_a_eliminar);
 
 //CACHÉ
 int buscar_en_cache(int pid_actual, int nro_pagina, char **contenido_out);
-void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina, int fue_escritura, uint8_t offset);
+void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina, int fue_escritura, uint8_t offset, int dif_fisica);
+char * obtener_pagina(int pid, int dir_fisica);
+void actualizar_pagina(cache_t entrada);
 int reemplazo_clock();
 int reemplazo_clock_M();
 int avanzar_puntero(int index);

@@ -234,10 +234,11 @@ void * cpu(void* args){
                 t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
 
                 if(tipo_acceso == LECTURA_AC){ //lectura
-                    int valor = *(int*)(memoria_principal.espacio + dir_fisica);
+                    char * valor = malloc(tamanio+1);
+                    memcpy(valor, memoria_principal.espacio + dir_fisica, tamanio);
 
                     paquete_send = crear_paquete(DEVOLVER_VALOR);
-                    agregar_a_paquete(paquete_send,&valor,sizeof(int));
+                    agregar_a_paquete(paquete_send,valor,tamanio);
                     enviar_paquete(paquete_send,conexion);
 
                     log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
@@ -249,9 +250,9 @@ void * cpu(void* args){
                     char * valor_a_escribir = list_remove(paquete_recv,0);
 
                     log_debug(logger, "MEM: Voy a escribir '%s' en DF %d", valor_a_escribir, dir_fisica);
-                    log_debug(logger, "MEM: Longitud del string a escribir: %d", strlen(valor_a_escribir));
+                    log_debug(logger, "MEM: Longitud del string a escribir: %d", tamanio);
 
-                    memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir));
+                    memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,tamanio);
 
                     enviar_paquete_ok(conexion);
 
@@ -320,6 +321,7 @@ void * cpu(void* args){
                 }
 
                 void* datos = list_remove(paquete_recv,0);
+                log_debug(logger, "Pagina updateada: %s", (char*)datos);
                 memcpy(memoria_principal.espacio + dir_fisica, datos, tam_pagina); //escribo sobre el espacio de usuario
                 free(datos);
 

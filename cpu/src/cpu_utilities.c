@@ -92,6 +92,7 @@ void inicializarCpu(char *nombreCpuLog){
             cache[i].ocupado = 0;
             cache[i].uso = 0;
             cache[i].modificado = 0;
+            cache[i].contenido = NULL;
         }
         puntero_cache = 0;
     }
