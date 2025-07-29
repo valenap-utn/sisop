@@ -73,17 +73,6 @@ void inicializar_mem_prin(){
     memoria_principal.metadata_swap = list_create();
 }
 
-/*
-void *conexion_server_cpu(void *args){
-    int server_cpu = iniciar_servidor(puerto_cpu);
-    log_info(logger, "Servidor listo para recibir al cliente CPU");
-    socket_cliente_cpu = esperar_cliente(server_cpu);
-   	close(server_cpu);
-	close(socket_cliente_cpu);
-    pthread_exit(EXIT_SUCCESS);
-}
-*/
-
 void *conexion_server_cpu(void *args) {
     
     int server_cpu = iniciar_servidor(puerto_cpu);
@@ -251,8 +240,29 @@ void * cpu(void* args){
                     log_debug(logger, "MEM: Voy a escribir '%s' en DF %d", valor_a_escribir, dir_fisica);
                     log_debug(logger, "MEM: Longitud del string a escribir: %d", strlen(valor_a_escribir));
 
-                    memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir));
+                    // memcpy(memoria_principal.espacio + dir_fisica,valor_a_escribir,strlen(valor_a_escribir));
 
+                    void* destino = memoria_principal.espacio + dir_fisica;
+
+                    int offset = dir_fisica % tam_pagina;
+
+                    if (offset == 0) {
+                        memset(destino, 0, tam_pagina);  // limpieza total si empieza en offset 0
+                        log_debug(logger, "MEM: Escritura desde offset 0 → se limpia página completa");
+                    }
+
+                    int len = strlen(valor_a_escribir);
+                    memcpy(destino, valor_a_escribir, len);
+
+                    // ⚠️ Limpieza *parcial* del resto de la página después del string
+                    int max_erase = tam_pagina - offset - len;
+                    if (max_erase > 0) {
+                        memset(destino + len, 0, max_erase);
+                        log_debug(logger, "MEM: Escritura parcial → se limpian %d bytes restantes", max_erase);
+                    }
+
+                    log_debug(logger, "MEM: Longitud del string a escribir: %d", len);
+                    
                     enviar_paquete_ok(conexion);
 
                     log_info(logger,"## PID: <%d> - <Escritura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
@@ -668,6 +678,7 @@ void dump_tabla_nivel_completo(FILE *f, Tabla_Nivel **niveles, int nivel_actual)
 
         if (entrada->es_ultimo_nivel)
         {
+            log_debug(logger, "[Dump] Verificando presencia de página en Nivel %d - Entrada %d: presente = %d", nivel_actual, i, entrada->esta_presente);
             if (entrada->esta_presente)
             {
                 int offset = entrada->marco * tam_pagina;
@@ -881,6 +892,16 @@ void suspender_proceso(int pid){
         fseek(f,offset_en_bytes + i * tam_pagina, SEEK_SET);
         fwrite(origen,1,tam_pagina,f);
         liberar_marco(marco);
+
+        Tabla_Nivel* entrada = buscar_entrada_por_indice(proceso->tabla_principal, i);
+        if (!entrada) {
+            log_error(logger, "PID %d - No se encontró entrada de tabla para página lógica %d", pid, i);
+        } else {
+            log_debug(logger, "PID %d - Página lógica %d marcada como ausente (marco %d)", pid, i, marco);
+            entrada->esta_presente = false;
+            entrada->marco = -1;
+        }
+
     }
 
     t_swap* nueva_entrada = malloc(sizeof(t_swap));
@@ -955,6 +976,7 @@ bool des_suspender_proceso(int pid){
         fread(destino,1,tam_pagina,f);
 
         marcar_marco_en_tabla(proceso->tabla_principal,i,marco);
+        log_debug(logger, "PID %d - Página lógica %d restaurada al marco %d", pid, i, marco);
     }
 
     //Si todo fue bien => elimino entrada de swap
@@ -1074,3 +1096,18 @@ void marcar_marco_en_tabla(Tabla_Principal* tabla,int nro_pagina_logica,int marc
     actual->esta_presente = true;
 }
 
+
+
+//FUNCIONES PARA ARREGLAR COSITAS 
+
+Tabla_Nivel* buscar_entrada_por_indice(Tabla_Principal* tabla, int nro_pagina_logica) {
+    int indices[cant_niveles];
+    obtener_indices_por_nivel(nro_pagina_logica, indices);
+
+    Tabla_Nivel* actual = tabla->niveles[indices[0]];
+    for (int i = 1; i < cant_niveles; i++) {
+        if (!actual || !actual->sgte_nivel) return NULL;
+        actual = actual->sgte_nivel[indices[i]];
+    }
+    return actual;
+}

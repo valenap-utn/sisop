@@ -57,5 +57,7 @@ void eliminar_de_lista_por_criterio(int pid, t_list* lista, bool(*criterio)(void
 bool criterio_para_swap(void* elemento,int pid);
 bool criterio_para_proceso(void* elemento, int pid);
 
+Tabla_Nivel* buscar_entrada_por_indice(Tabla_Principal* tabla, int nro_pagina_logica);
+
 
 #endif
