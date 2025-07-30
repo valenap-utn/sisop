@@ -103,7 +103,7 @@ void * thread_io(void * args){
             else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
                 PROCESS_EXIT(proceso_aux);
             }pthread_mutex_unlock(lista_procesos_block->mutex);
-            if(algoritmo_cortoPlazo == CPL_SJF_CD){
+            if((algoritmo_cortoPlazo == CPL_SJF_CD) || (algoritmo_cortoPlazo == CPL_SJF)){
 
                 sem_post(lista_procesos_ready->sem);
             }
@@ -123,7 +123,7 @@ void * thread_io(void * args){
                     PROCESS_EXIT(aux_blocked->pcb);
                 }
                 pthread_mutex_unlock(lista_procesos_block->mutex);
-                if(algoritmo_cortoPlazo == CPL_SJF_CD){
+                if((algoritmo_cortoPlazo == CPL_SJF_CD) || (algoritmo_cortoPlazo == CPL_SJF)){
 
                     sem_post(lista_procesos_ready->sem);
                 }
