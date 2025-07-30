@@ -412,11 +412,9 @@ void peticion_kernel(int socket_kernel){
 
             log_debug(logger, "Nombre de archivo recibido para PID %d: %s", pid, nombreArchivo);
 
-            if(hay_espacio_en_mem(tamanio)){
-                if(inicializar_proceso(pid,tamanio,nombreArchivo) == 0){
-                    enviar_paquete_ok(socket_kernel);
-                    log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
-                } else log_error(logger,"Error al inicializar estructuras para el PID %d",pid);
+            if (inicializar_proceso(pid, tamanio, nombreArchivo) == 0) {
+                enviar_paquete_ok(socket_kernel);
+                log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
             } else {
                 log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
                 t_paquete * paquete_error = crear_paquete(PROCESS_CREATE_MEM_FAIL);
@@ -476,7 +474,7 @@ void peticion_kernel(int socket_kernel){
             paquete_recv = recibir_paquete(socket_kernel);
             pid = *(int*)list_remove(paquete_recv,0);
 
-            finalizar_proceso(pid);
+            finalizar_proceso(pid); 
 
             enviar_paquete_ok(socket_kernel);
 
@@ -510,12 +508,12 @@ void peticion_kernel(int socket_kernel){
 }
 
 //funcion para calcular el espacio en memoria
-int hay_espacio_en_mem(int tamanio_proceso) {
-    int paginas_necesarias = (tamanio_proceso + tam_pagina - 1) / tam_pagina;
-    int marcos_libres = contar_marcos_libres();
+// int hay_espacio_en_mem(int tamanio_proceso) {
+//     int paginas_necesarias = (tamanio_proceso + tam_pagina - 1) / tam_pagina;
+//     int marcos_libres = contar_marcos_libres();
 
-    return (paginas_necesarias <= marcos_libres);
-}
+//     return (paginas_necesarias <= marcos_libres);
+// }
 
 //Para cargar instrucciones desde path de config en nuevo_proceso->instrucciones
 t_list* cargar_instrucciones_desde_archivo(char* path) {
@@ -713,11 +711,50 @@ int inicializar_proceso(int pid, int tamanio, char* nombreArchivo) {
         free(nueva_tabla);
         return -1;
     }
+
+    //Reservamos marcos y marcamos en tabla
+    t_list* marcos_reservados = list_create();
+
+    for (int i = 0; i < paginas_necesarias; i++){
+        int marco = asignar_marco_libre();
+        if(marco == -1){
+            log_error(logger,"Error al reservar marxo para pǻgina %d  del proceso %d",i,pid);
+
+            //rollback
+            for(int j = 0; j < list_size(marcos_reservados);j++){
+                int* m = list_get(marcos_reservados,j);
+                liberar_marco(*m);
+                free(m);
+            }
+            list_destroy(marcos_reservados);
+
+            liberar_tabla_principal(nueva_tabla->tabla_principal);
+            free(nueva_tabla);
+            return -1;
+        }
+
+        //Asigno en tabla
+        marcar_marco_en_tabla(nueva_tabla->tabla_principal, i , marco);
+
+        int* marco_ptr = malloc(sizeof(int));
+        *marco_ptr = marco;
+        list_add(marcos_reservados,marco_ptr);
+    }
+
+    list_destroy_and_destroy_elements(marcos_reservados,free);
+
     char *path_completo = malloc(strlen(path_instrucciones) + strlen(nombreArchivo) + 1);
     sprintf(path_completo, "%s%s", path_instrucciones, nombreArchivo);
     nueva_tabla->instrucciones = cargar_instrucciones_desde_archivo(path_completo);
     if (nueva_tabla->instrucciones == NULL) {
         log_error(logger, "Error al cargar instrucciones del proceso %d", pid);
+        
+        // liberar marcos si hubo error
+        for (int i = 0; i < paginas_necesarias; i++) {
+            int marco = obtener_marco_por_indice(nueva_tabla->tabla_principal, i);
+            if (marco != -1) liberar_marco(marco);
+        }
+        
         liberar_tabla_principal(nueva_tabla->tabla_principal);
         free(nueva_tabla);
         return -1;
@@ -867,6 +904,25 @@ void suspender_proceso(int pid){
         return;
     }
 
+    //Traemos a memoria las páginas ausentes antes de suspender
+    // for (int i = 0; i < proceso->cantidad_paginas; i++) {
+    //     int marco_actual = obtener_marco_por_indice(proceso->tabla_principal, i);
+    //     if (marco_actual == -1) {
+    //         int marco_nuevo = asignar_marco_libre();
+    //         if (marco_nuevo == -1) {
+    //             log_error(logger, "No hay marcos disponibles para cargar página %d del PID %d antes de suspender", i, pid);
+    //             continue;
+    //         }
+
+    //         void* pagina_en_mem = memoria_principal.espacio + marco_nuevo * tam_pagina;
+    //         memset(pagina_en_mem, 0, tam_pagina);  // inicializa en 0 por defecto
+
+    //         marcar_marco_en_tabla(proceso->tabla_principal, i, marco_nuevo);
+
+    //         log_debug(logger, "PID %d - Página lógica %d cargada en marco %d (forzada antes de suspender)", pid, i, marco_nuevo);
+    //     }
+    // }
+
     FILE* f = fopen(path_swapfile, "rb+");
     if (f == NULL) {
         f = fopen(path_swapfile, "wb+");
@@ -947,6 +1003,14 @@ bool des_suspender_proceso(int pid){
         return false;
     }
 
+    int libres = contar_marcos_libres();
+    log_debug(logger, "PID %d necesita %d páginas. Marcos libres: %d", pid, entrada->cantidad_paginas, libres);
+    if (libres < entrada->cantidad_paginas) {
+        log_error(logger, "No hay suficientes marcos para des-suspender PID %d", pid);
+        fclose(f);
+        return false;
+    }
+
     //Backup de marcos asingados por si hay que hacer rollback
     t_list* marcos_asignados = list_create();
 
@@ -999,6 +1063,15 @@ void finalizar_proceso(int pid){
         return;
     }
 
+    //Libero marcos ocupados por el proceso
+    for(int i = 0; i < proceso->cantidad_paginas; i++){
+        int marco = obtener_marco_por_indice(proceso->tabla_principal, i);
+        if(marco != -1){
+            liberar_marco(marco);
+            log_debug(logger, "Liberado marco %d del PID %d", marco, pid);
+        }
+    }
+
     //Métricas 
     log_info(logger,"## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>",pid,proceso->metricas.cant_accesos_tdp);
     log_info(logger,"Inst.Sol.: <%d>",proceso->metricas.cant_instr_sol);
@@ -1016,6 +1089,8 @@ void finalizar_proceso(int pid){
     eliminar_de_lista_por_criterio(pid,memoria_principal.tablas_por_proceso,criterio_para_proceso,free); //libera proceso
 
     log_info(logger,"## PID: <%d> - Proceso finalizado y recursos liberados",pid);
+
+    log_debug(logger, "Cantidad de marcos libres tras EXIT: %d", contar_marcos_libres());
 }
 
 //funciones auxiliares - swap
@@ -1097,8 +1172,6 @@ void marcar_marco_en_tabla(Tabla_Principal* tabla,int nro_pagina_logica,int marc
 }
 
 
-
-//FUNCIONES PARA ARREGLAR COSITAS 
 
 Tabla_Nivel* buscar_entrada_por_indice(Tabla_Principal* tabla, int nro_pagina_logica) {
     int indices[cant_niveles];
