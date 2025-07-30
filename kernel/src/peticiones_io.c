@@ -107,6 +107,28 @@ void * thread_io(void * args){
 
                 sem_post(lista_procesos_ready->sem);
             }
+
+            t_list_iterator * iterator = list_iterator_create(socket_io->cola_blocked->lista);
+            elemento_cola_blocked_io * aux_blocked;
+            while (list_iterator_has_next(iterator)){
+                aux_blocked = list_iterator_next(iterator);
+                //si esta en block:
+                pthread_mutex_lock(lista_procesos_block->mutex);
+                
+                if(list_remove_element(lista_procesos_block->lista, aux_blocked->pcb)){
+                    PROCESS_EXIT(aux_blocked->pcb);
+                }
+                //si esta en susp_block
+                else if(list_remove_element(lista_procesos_susp_block->lista, aux_blocked->pcb)){
+                    PROCESS_EXIT(aux_blocked->pcb);
+                }
+                pthread_mutex_unlock(lista_procesos_block->mutex);
+                if(algoritmo_cortoPlazo == CPL_SJF_CD){
+
+                    sem_post(lista_procesos_ready->sem);
+                }
+            }
+
             liberar_socket_io(socket_io);
             pthread_mutex_lock(lista_sockets_io->mutex);
             list_remove_element(lista_sockets_io->lista, socket_io);

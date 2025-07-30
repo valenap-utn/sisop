@@ -18,7 +18,7 @@ extern list_struct_t *lista_peticiones_io_pendientes;
 extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_new_fallidos;
 extern list_struct_t *lista_procesos_ready;
-extern list_struct_t *lista_procesos_exec;
+extern list_struct_t *lista_exec;
 extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_procesos_susp_block;
@@ -143,7 +143,7 @@ void inicializarListasKernel(){
     lista_procesos_new = inicializarLista();
     lista_procesos_new_fallidos = inicializarLista();
     lista_procesos_ready = inicializarLista();
-    lista_procesos_exec = inicializarLista();
+    lista_exec = inicializarLista();
     lista_procesos_block = inicializarLista();
     lista_procesos_susp_ready = inicializarLista();
     lista_procesos_susp_block = inicializarLista();

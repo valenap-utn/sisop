@@ -9,6 +9,7 @@
 void *cortoPlazo(void *args);
 
 void cortoPlazoFifo(t_socket_cpu *socket_cpu);
+void enviar_a_cpu_dispatch_srt(PCB *pcb, t_socket_cpu *socket_cpu, list_struct_t * lista_exec);
 void cortoPlazoSJF(t_socket_cpu *socket_cpu);
 void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu);
 
@@ -22,7 +23,7 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu);
 
 void esperar_respuesta_cpu(PCB *pcb, t_socket_cpu *socket_cpu);
 
-void esperar_respuesta_cpu_sjf(PCB *pcb, t_socket_cpu *socket_cpu);
+void esperar_respuesta_cpu_sjf(PCB *pcb, t_socket_cpu *socket_cpu, list_struct_t *lista_exec);
 
 void esperar_respuesta_cp_desalojo(PCB *pcb, t_socket_cpu *socket_cpu);
 
@@ -33,5 +34,12 @@ void manejo_respuesta_desalojo(t_socket_cpu *socket_cpu);
 void iniciar_medicion_rafaga(PCB *pcb);
 void finalizar_medicion_y_actualizar_estimacion(PCB *pcb);
 void *waiter_devoluciones_cpu_v2(void *args);
+
+typedef struct 
+{
+    t_socket_cpu * socket;
+    list_struct_t * lista_exec;
+    
+}t_waiter_args;
 
 #endif

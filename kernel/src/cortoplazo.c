@@ -6,7 +6,7 @@ extern t_log *logger;
 extern int flag_all_start;
 
 extern list_struct_t *lista_procesos_ready;
-extern list_struct_t *lista_procesos_exec;
+extern list_struct_t *lista_exec;
 extern list_struct_t *lista_sockets_cpu_libres;
 extern list_struct_t *lista_sockets_cpu_ocupados;
 extern list_struct_t *lista_sockets_io;
@@ -63,6 +63,25 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
     }
 
 }
+void enviar_a_cpu_dispatch_srt(PCB *pcb, t_socket_cpu *socket_cpu, list_struct_t * lista_exec) {
+
+    t_paquete *paquete = crear_paquete(DISPATCH_CPU);
+    agregar_a_paquete(paquete, &(pcb->pid), sizeof(int));
+    agregar_a_paquete(paquete, &(pcb->pc), sizeof(int));
+
+    
+
+    enviar_paquete(paquete, socket_cpu->dispatch);
+
+    recibir_paquete_ok(socket_cpu->interrupt);
+
+    log_info(logger, "## (%d) - Enviado a CPU con PC=%d", pcb->pid, pcb->pc);
+
+    eliminar_paquete(paquete);
+
+    encolar_cola_generico(lista_exec, pcb, 0);
+
+}
 
 void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
 
@@ -80,7 +99,7 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
 
     eliminar_paquete(paquete);
 
-    encolar_cola_generico(lista_procesos_exec, pcb, 0);
+    encolar_cola_generico(lista_exec, pcb, 0);
 
 }
 
@@ -168,7 +187,7 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
         sem_post(sem_syscall);
     }
 }
-void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
+void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu, list_struct_t * lista_exec){
     protocolo_socket motivo;
     
     log_info(logger, "Esperando motivo de devolucion de CPU");
@@ -186,13 +205,13 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
 
-            pthread_mutex_lock(lista_procesos_exec->mutex);
-            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+            pthread_mutex_lock(lista_exec->mutex);
+            if(!list_remove_element(lista_exec->lista, pcb)){
                log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
-            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-            pthread_mutex_unlock(lista_procesos_exec->mutex);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_exec->lista));
+            pthread_mutex_unlock(lista_exec->mutex);
 
             PROCESS_EXIT(pcb);
             sem_post(lista_procesos_ready->sem);
@@ -204,14 +223,14 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             pcb->pid = *(int*)list_remove(paquete_respuesta, 0);
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
-            pthread_mutex_lock(lista_procesos_exec->mutex);
-            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+            pthread_mutex_lock(lista_exec->mutex);
+            if(!list_remove_element(lista_exec->lista, pcb)){
                log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
-            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_exec->lista));
 
-            pthread_mutex_unlock(lista_procesos_exec->mutex);
+            pthread_mutex_unlock(lista_exec->mutex);
 
             cambiar_estado(pcb, READY);
             encolar_cola_generico(lista_procesos_ready, pcb, -1);
@@ -228,13 +247,13 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             int tamaño = *(int*)list_remove(paquete_respuesta, 0);
             
 
-            pthread_mutex_lock(lista_procesos_exec->mutex);
-            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+            pthread_mutex_lock(lista_exec->mutex);
+            if(!list_remove_element(lista_exec->lista, pcb)){
                log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
-            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-            pthread_mutex_unlock(lista_procesos_exec->mutex);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_exec->lista));
+            pthread_mutex_unlock(lista_exec->mutex);
 
             // vuelve a READY - reencolado por desalojo
             cambiar_estado(pcb, READY);
@@ -252,13 +271,13 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             pcb->pc = *(int*)list_remove(paquete_respuesta, 0);
 
 
-            pthread_mutex_lock(lista_procesos_exec->mutex);
-            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+            pthread_mutex_lock(lista_exec->mutex);
+            if(!list_remove_element(lista_exec->lista, pcb)){
                log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
-            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-            pthread_mutex_unlock(lista_procesos_exec->mutex);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_exec->lista));
+            pthread_mutex_unlock(lista_exec->mutex);
 
             DUMP_MEMORY(pcb);
 
@@ -275,13 +294,13 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu){
             int tiempo = *(int *)list_remove(paquete_respuesta, 0);
 
 
-            pthread_mutex_lock(lista_procesos_exec->mutex);
-            if(!list_remove_element(lista_procesos_exec->lista, pcb)){
+            pthread_mutex_lock(lista_exec->mutex);
+            if(!list_remove_element(lista_exec->lista, pcb)){
                log_error(logger, "No se pudo remover pid %d de exec", pcb->pid);
             }
             log_debug(logger, "se remueve de exec: %d", pcb->pid);
-            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_procesos_exec->lista));
-            pthread_mutex_unlock(lista_procesos_exec->mutex);
+            log_debug(logger, "elementos en exec despues de remover: %d", list_size(lista_exec->lista));
+            pthread_mutex_unlock(lista_exec->mutex);
 
             IO_syscall(pcb, nombre_io, tiempo);
 
@@ -390,8 +409,15 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 
     mutex_waiter = inicializarMutex();
 
+    list_struct_t * lista_procesos_exec_srt = inicializarLista();
+ 
+    t_waiter_args * args = malloc(sizeof(t_waiter_args *));
+
+    args->lista_exec = lista_procesos_exec_srt;
+    args->socket = socket_cpu;
+
     pthread_t tid_waiter;
-    pthread_create(&tid_waiter, NULL, waiter_devoluciones_cpu, (void*)socket_cpu);
+    pthread_create(&tid_waiter, NULL, waiter_devoluciones_cpu, (void*)args);
     pthread_detach(tid_waiter);
 
     
@@ -410,13 +436,13 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 
         // hay proceso ejecutando?
         pthread_mutex_lock(mutex_waiter);
-        pthread_mutex_lock(lista_procesos_exec->mutex);
-        bool hay_proceso_en_exec = !list_is_empty(lista_procesos_exec->lista);
+        pthread_mutex_lock(lista_procesos_exec_srt->mutex);
+        bool hay_proceso_en_exec = !list_is_empty(lista_procesos_exec_srt->lista);
         
 
         if (hay_proceso_en_exec) {
-            PCB *pcb_exec = list_get(lista_procesos_exec->lista, 0); // unico proc en EXEC
-            pthread_mutex_unlock(lista_procesos_exec->mutex);
+            PCB *pcb_exec = list_get(lista_procesos_exec_srt->lista, 0); // unico proc en EXEC
+            pthread_mutex_unlock(lista_procesos_exec_srt->mutex);
             
 
 
@@ -428,8 +454,8 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
                 }
                 
                 //si hay una interrupcion anterior pendiente (2 IOs terminaron a la vez)
-                pthread_mutex_lock(lista_procesos_exec->mutex);
-                if (list_size(lista_procesos_exec->lista)>1){
+                pthread_mutex_lock(lista_procesos_exec_srt->mutex);
+                if (list_size(lista_procesos_exec_srt->lista)>1){
                     pthread_mutex_lock(lista_procesos_ready->mutex);
 
                     log_debug(logger, "Llego una interrupcion cuando habia una pendiente, cancelando interrupcion pid: %d", pcb_ready->pid);
@@ -449,15 +475,15 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
                     list_add_in_index(lista_procesos_ready->lista, index_aux, pcb_ready);
                     pthread_mutex_unlock(lista_procesos_ready->mutex);
                     pthread_mutex_unlock(mutex_waiter);
-                    pthread_mutex_unlock(lista_procesos_exec->mutex);
+                    pthread_mutex_unlock(lista_procesos_exec_srt->mutex);
                     continue;
                 }
 
-                pthread_mutex_unlock(lista_procesos_exec->mutex);
+                pthread_mutex_unlock(lista_procesos_exec_srt->mutex);
                 log_info(logger, "## (%d) - Desalojado por algoritmo SJF/SRT", pcb_exec->pid);
                 log_debug(logger, "(%d) - Entro por interrupt, pc: %d", pcb_ready->pid, pcb_ready->pc);
                 enviar_interrupcion(socket_cpu, pcb_ready->pid, pcb_ready->pc);
-                encolar_cola_generico(lista_procesos_exec, pcb_ready, -1);
+                encolar_cola_generico(lista_procesos_exec_srt, pcb_ready, -1);
                 cambiar_estado(pcb_ready, EXEC);
                 pthread_mutex_unlock(mutex_waiter);
             }else {
@@ -482,14 +508,14 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
                 pthread_mutex_unlock(mutex_waiter);
             }
         } else {
-            pthread_mutex_unlock(lista_procesos_exec->mutex);
+            pthread_mutex_unlock(lista_procesos_exec_srt->mutex);
             pthread_mutex_unlock(mutex_waiter);
 
             // no hay proc en EXEC entonces lo saco de ready y lo mando
 
             log_debug(logger, "(%d) - enviado a Dispatch", pcb_ready->pid);
 
-            enviar_a_cpu_dispatch(pcb_ready, socket_cpu);
+            enviar_a_cpu_dispatch_srt(pcb_ready, socket_cpu, lista_procesos_exec_srt);
             cambiar_estado(pcb_ready, EXEC);
 
             sem_post(lista_procesos_ready->sem);
@@ -500,19 +526,22 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
 
 void *waiter_devoluciones_cpu(void * args){
     
-    t_socket_cpu * socket_cpu = (t_socket_cpu *)args;
+    t_waiter_args * argumentos = args;
+    
+    t_socket_cpu * socket_cpu = argumentos->socket;
+    list_struct_t * lista_exec = argumentos->lista_exec;
     struct timespec inicio_rafaga;
     PCB * pcb;
 
     while(true){
 
-        sem_wait(lista_procesos_exec->sem);
+        sem_wait(lista_exec->sem);
         
-        pcb = list_get(lista_procesos_exec->lista, 0);
+        pcb = list_get(lista_exec->lista, 0);
         
         clock_gettime(CLOCK_MONOTONIC, &inicio_rafaga);
 
-        esperar_respuesta_cpu_sjf(pcb, socket_cpu);
+        esperar_respuesta_cpu_sjf(pcb, socket_cpu, lista_exec);
         
         
         pthread_mutex_unlock(mutex_waiter);
@@ -555,39 +584,4 @@ void finalizar_medicion_y_actualizar_estimacion(PCB *pcb) {
     double estimacion_anterior = pcb->estimacion_rafaga;
 
     pcb->estimacion_rafaga = alfa * duracion_real + (1 - alfa) * estimacion_anterior;
-}
-
-// Versión nueva de waiter_devoluciones_cpu
-void *waiter_devoluciones_cpu_v2(void *args) {
-    t_socket_cpu *socket_cpu = (t_socket_cpu *)args;
-
-    while (true) {
-        // Espera que haya un proceso en EXEC (solo uno en SRT)
-        sem_wait(lista_procesos_exec->sem);
-
-        pthread_mutex_lock(lista_procesos_exec->mutex);
-        PCB *pcb = list_get(lista_procesos_exec->lista, 0);  // único proceso en EXEC
-        pthread_mutex_unlock(lista_procesos_exec->mutex);
-
-        if (pcb == NULL) {
-            log_error(logger, "ERROR: Proceso en EXEC es NULL");
-            continue;
-        }
-
-        // Inicia la medición de la ráfaga
-        iniciar_medicion_rafaga(pcb);
-
-        // Espera la respuesta de la CPU (syscall, exit, desalojo, etc.)
-        esperar_respuesta_cpu_sjf(pcb, socket_cpu);
-
-        // Remueve el proceso de EXEC si sigue estando ahí
-        pthread_mutex_lock(lista_procesos_exec->mutex);
-        if (!list_remove_element(lista_procesos_exec->lista, pcb)) {
-            log_error(logger, "No se pudo remover pid %d de EXEC", pcb->pid);
-        }
-        pthread_mutex_unlock(lista_procesos_exec->mutex);
-
-        // Finaliza la medición y actualiza la estimación de ráfaga
-        finalizar_medicion_y_actualizar_estimacion(pcb);
-    }
 }
