@@ -128,7 +128,11 @@ void peticion_kernel(t_args_peticion_memoria *args_peticion) {
             agregar_a_paquete(send_protocolo, (void *)&peticion->proceso->pid, sizeof(int));
             log_debug(logger, "Se envia un proceso a suspend pid: %d", peticion->proceso->pid);
             enviar_paquete(send_protocolo, socket);
-            peticion->respuesta_exitosa = true;
+            if(recibir_paquete_ok(socket)){
+                peticion->respuesta_exitosa = true;
+                sem_post(peticion->peticion_finalizada);
+            }
+            
             break;
             
         case UNSUSPEND_MEM:

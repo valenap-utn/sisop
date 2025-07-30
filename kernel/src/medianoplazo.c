@@ -7,6 +7,11 @@ extern list_struct_t *lista_procesos_ready;
 
 extern sem_t *sem_memoria_liberada;
 
+//condiciones globales
+extern pthread_cond_t * cond_susp_ready_empty;
+extern int susp_ready_empty;
+extern pthread_mutex_t * mutex_susp_ready_empty;
+
 
 void * medianoplazo(void * args){
       
@@ -21,6 +26,11 @@ void * medianoplazo(void * args){
             encolar_cola_generico(lista_procesos_susp_ready, pcb, 0);
             sem_wait(sem_memoria_liberada);
         }
+        pthread_mutex_lock(lista_procesos_susp_ready->mutex);
+        if(list_is_empty(lista_procesos_susp_ready->lista)){
+            destrabar_flag_global(&susp_ready_empty, mutex_susp_ready_empty, cond_susp_ready_empty);
+        }
+        pthread_mutex_unlock(lista_procesos_susp_ready->mutex);
         
     }
 

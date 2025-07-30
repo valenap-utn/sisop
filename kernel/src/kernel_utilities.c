@@ -238,6 +238,7 @@ int cola_fallidos_buscar_smallest(){
         pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
         return -1;
     }
+    pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
     t_list_iterator * iterator = list_iterator_create(lista_procesos_new_fallidos->lista);
     PCB *pcb;
     PCB *pcb_smallest = (PCB*)list_iterator_next(iterator);

@@ -435,6 +435,7 @@ void peticion_kernel(int socket_kernel){
 
             //ACA SE CARGA EN EL ARCHIVO SWAP el contenido de las páginas del proceso que fue suspendido
             suspender_proceso(pid);
+            enviar_paquete_ok(socket_kernel);
 
             // eliminar_paquete(paquete_send_suspencion_proceso);
             list_destroy_and_destroy_elements(paquete_recv,free);

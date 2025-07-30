@@ -11,6 +11,8 @@ extern enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
 
 extern int tiempo_suspension;
 
+extern sem_t *sem_memoria_liberada;
+
 
 
 void *server_mh_io(void *args){
@@ -254,6 +256,8 @@ void * timer_suspend(void * args){
             peticion->proceso = pcb_aux;
             peticion->tipo = SUSP_MEM;
             encolarPeticionMemoria(peticion);
+            sem_wait(peticion->peticion_finalizada);
+            sem_post(sem_memoria_liberada);
             break;
         }
     }
