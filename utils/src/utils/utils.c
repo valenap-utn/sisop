@@ -103,7 +103,7 @@
         }
 
         if (cod_op != OK) {
-            log_error(logger, "Se recibió cod_op distinto de OK (cod_op = %d)", cod_op);
+            log_debug(logger, "Se recibió cod_op distinto de OK (cod_op = %d)", cod_op);
 
             // consumir y liberar si aún así llega un paquete con basura
             t_list* basura = recibir_paquete(socket_cliente);
