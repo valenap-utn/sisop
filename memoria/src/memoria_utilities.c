@@ -16,6 +16,9 @@ t_memoria memoria_principal;
 //variable para manejo de SWAP
 char* path_swapfile;
 
+//variables para retardos
+int retardo_memoria, retardo_swap;
+
 void inicializarMemoria(){
     
     config = config_create("./memoria.config");
@@ -47,10 +50,8 @@ void levantarConfig(){
     current_log_level = log_level_from_string(value);
     printf("%d", current_log_level);
 
-
     tam_memoria = config_get_int_value(config, "TAM_MEMORIA");
     path_instrucciones = config_get_string_value(config, "PATH_INSTRUCCIONES");
-
 
     //Obtengo de config valores para tener en cuenta para TDPs
     tam_pagina = config_get_int_value(config, "TAM_PAGINA");
@@ -60,6 +61,9 @@ void levantarConfig(){
     //Obtengo path para swapfile desde config
     path_swapfile = config_get_string_value(config,"PATH_SWAPFILE");
 
+    //Obtengo retardos desde config
+    retardo_memoria = config_get_int_value(config,"RETARDO_MEMORIA");
+    retardo_swap = config_get_int_value(config,"RETARDO_SWAP");
 
 }
 
@@ -102,8 +106,6 @@ void *conexion_server_cpu(void *args) {
         pthread_detach(tid_cpu_aux);
         socket_nuevo = malloc(sizeof(int));
     }
-    
-    
 
     close(*socket_nuevo);
     close(server_cpu);
@@ -132,9 +134,9 @@ void *conexion_server_kernel(void *args) {
         peticion_kernel(socket_nuevo);
        
     }
-    
-    
 
+    log_info(logger,"## Kernel Conectado - FD del socket: <%d>",socket_nuevo);
+    
     close(socket_nuevo);
     close(server_kernel);
     pthread_exit(NULL);
@@ -155,7 +157,7 @@ void * cpu(void* args){
         peticion = recibir_operacion(conexion);
 
         //retardo para peticiones
-        usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
+        usleep(retardo_memoria * 1000);
 
         int pid;
         int pc;
@@ -254,7 +256,7 @@ void * cpu(void* args){
                     int len = strlen(valor_a_escribir);
                     memcpy(destino, valor_a_escribir, len);
 
-                    // ⚠️ Limpieza *parcial* del resto de la página después del string
+                    //Limpieza parcial del resto de la página después del string
                     int max_erase = tam_pagina - offset - len;
                     if (max_erase > 0) {
                         memset(destino + len, 0, max_erase);
@@ -395,7 +397,7 @@ void peticion_kernel(int socket_kernel){
     peticion = recibir_operacion(socket_kernel);
 
     //retardo para peticiones 
-    usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
+    usleep(retardo_memoria * 1000);
 
     int pid;
     char *nombreArchivo;
@@ -508,13 +510,6 @@ void peticion_kernel(int socket_kernel){
     }
 }
 
-//funcion para calcular el espacio en memoria
-// int hay_espacio_en_mem(int tamanio_proceso) {
-//     int paginas_necesarias = (tamanio_proceso + tam_pagina - 1) / tam_pagina;
-//     int marcos_libres = contar_marcos_libres();
-
-//     return (paginas_necesarias <= marcos_libres);
-// }
 
 //Para cargar instrucciones desde path de config en nuevo_proceso->instrucciones
 t_list* cargar_instrucciones_desde_archivo(char* path) {
@@ -565,7 +560,7 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
 
     for(int nivel = 0; nivel < cant_niveles - 1; nivel++){
         proceso->metricas.cant_accesos_tdp++;
-        usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
+        usleep(retardo_memoria * 1000);
         if(!actual || actual->es_ultimo_nivel){
             log_error(logger,"Error al querer acceder al nivel %d para PID %d",nivel,pid);
             return -1;
@@ -579,7 +574,7 @@ int acceder_a_tdp(int pid, int* indices_por_nivel){
 
     // Acceso a último nivel
     proceso->metricas.cant_accesos_tdp++;
-    usleep(config_get_int_value(config,"RETARDO_MEMORIA")*1000);
+    usleep(retardo_memoria * 1000);
 
     if (actual->marco == -1 || !actual->esta_presente) {
         // On-demand: asignar marco ahora
@@ -905,25 +900,6 @@ void suspender_proceso(int pid){
         return;
     }
 
-    //Traemos a memoria las páginas ausentes antes de suspender
-    // for (int i = 0; i < proceso->cantidad_paginas; i++) {
-    //     int marco_actual = obtener_marco_por_indice(proceso->tabla_principal, i);
-    //     if (marco_actual == -1) {
-    //         int marco_nuevo = asignar_marco_libre();
-    //         if (marco_nuevo == -1) {
-    //             log_error(logger, "No hay marcos disponibles para cargar página %d del PID %d antes de suspender", i, pid);
-    //             continue;
-    //         }
-
-    //         void* pagina_en_mem = memoria_principal.espacio + marco_nuevo * tam_pagina;
-    //         memset(pagina_en_mem, 0, tam_pagina);  // inicializa en 0 por defecto
-
-    //         marcar_marco_en_tabla(proceso->tabla_principal, i, marco_nuevo);
-
-    //         log_debug(logger, "PID %d - Página lógica %d cargada en marco %d (forzada antes de suspender)", pid, i, marco_nuevo);
-    //     }
-    // }
-
     FILE* f = fopen(path_swapfile, "rb+");
     if (f == NULL) {
         f = fopen(path_swapfile, "wb+");
@@ -947,6 +923,9 @@ void suspender_proceso(int pid){
         void* origen = memoria_principal.espacio + (marco * tam_pagina);
 
         fseek(f,offset_en_bytes + i * tam_pagina, SEEK_SET);
+
+        usleep(retardo_swap * 1000);
+
         fwrite(origen,1,tam_pagina,f);
         liberar_marco(marco);
 
@@ -1037,6 +1016,9 @@ bool des_suspender_proceso(int pid){
         list_add(marcos_asignados,m_copia);
 
         fseek(f, (entrada->pagina_inicio + i) * tam_pagina, SEEK_SET);
+
+        usleep(retardo_swap * 1000);
+
         void* destino = memoria_principal.espacio + marco * tam_pagina;
         fread(destino,1,tam_pagina,f);
 
@@ -1074,12 +1056,21 @@ void finalizar_proceso(int pid){
     }
 
     //Métricas 
-    log_info(logger,"## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>",pid,proceso->metricas.cant_accesos_tdp);
-    log_info(logger,"Inst.Sol.: <%d>",proceso->metricas.cant_instr_sol);
-    log_info(logger,"SWAP: <%d>",proceso->metricas.cant_bajadas_swap);
-    log_info(logger,"Mem.Prin.: <%d>",proceso->metricas.cant_subidas_memoria);
-    log_info(logger,"Lec.Mem.: <%d>",proceso->metricas.cant_lecturas);
-    log_info(logger,"Esc.Mem.: <%d>",proceso->metricas.cant_escrituras);
+    // log_info(logger,"## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>",pid,proceso->metricas.cant_accesos_tdp);
+    // log_info(logger,"Inst.Sol.: <%d>",proceso->metricas.cant_instr_sol);
+    // log_info(logger,"SWAP: <%d>",proceso->metricas.cant_bajadas_swap);
+    // log_info(logger,"Mem.Prin.: <%d>",proceso->metricas.cant_subidas_memoria);
+    // log_info(logger,"Lec.Mem.: <%d>",proceso->metricas.cant_lecturas);
+    // log_info(logger,"Esc.Mem.: <%d>",proceso->metricas.cant_escrituras);
+    log_info(logger, "## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>; Inst.Sol.: <%d>; SWAP: <%d>; Mem.Prin.: <%d>; Lec.Mem.: <%d>; Esc.Mem.: <%d>",
+         pid,
+         proceso->metricas.cant_accesos_tdp,
+         proceso->metricas.cant_instr_sol,
+         proceso->metricas.cant_bajadas_swap,
+         proceso->metricas.cant_subidas_memoria,
+         proceso->metricas.cant_lecturas,
+         proceso->metricas.cant_escrituras);
+
 
     liberar_tabla_principal(proceso->tabla_principal);
     
