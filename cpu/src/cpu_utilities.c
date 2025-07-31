@@ -251,15 +251,6 @@ void encolar_interrupcion_generico(list_struct_t * cola, interrupcion_t * interr
     flag_hay_interrupcion = true;
     log_debug(logger, "Se encolo una interrupcion del tipo %d en el lugar %d", interrupcion->tipo, index);
 
-    interrupcion_t *interrupcion_iterator;
-    t_list_iterator * iterator = list_iterator_create(cola->lista);
-    while (list_iterator_has_next(iterator)){
-        interrupcion_iterator = list_iterator_next(iterator);
-        log_debug(logger, "interrupcion->tipo: %d", interrupcion_iterator->tipo);
-    }
-
-    list_iterator_destroy(iterator);
-
 }
 interrupcion_t * desencolar_interrupcion_generico(list_struct_t * cola){
     
