@@ -4,14 +4,6 @@
 extern t_log *logger;
 extern t_config *config;
 
-extern int flag_pcbrunning;
-extern pthread_cond_t *cond_pcb;
-extern pthread_mutex_t *mutex_pcb;
-
-extern int flag_syscall;
-extern pthread_cond_t *cond_syscall;
-extern pthread_mutex_t *mutex_syscall;
-
 int pid_actual;
 
 extern int estimacion_inicial;
@@ -26,12 +18,11 @@ extern list_struct_t *lista_peticiones_io_pendientes;
 extern list_struct_t *lista_procesos_new;
 extern list_struct_t *lista_procesos_new_fallidos;
 extern list_struct_t *lista_procesos_ready;
-extern list_struct_t *lista_procesos_exec;
+extern list_struct_t *lista_exec;
 extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_procesos_susp_block;
 
-extern t_dictionary *diccionario_cpu_pcb;
 
 //semaforos auxiliares
 sem_t * sem_memoria_liberada;
@@ -75,7 +66,6 @@ void inicializarKernel(){
     inicializarSemaforos();
     inicializarListasKernel();
 
-    diccionario_cpu_pcb = dictionary_create();
 
 }
 
@@ -153,7 +143,7 @@ void inicializarListasKernel(){
     lista_procesos_new = inicializarLista();
     lista_procesos_new_fallidos = inicializarLista();
     lista_procesos_ready = inicializarLista();
-    lista_procesos_exec = inicializarLista();
+    lista_exec = inicializarLista();
     lista_procesos_block = inicializarLista();
     lista_procesos_susp_ready = inicializarLista();
     lista_procesos_susp_block = inicializarLista();
@@ -199,7 +189,24 @@ PCB *desencolar_generico(list_struct_t *cola, int index){
 /// @param pcb 
 /// @param index 0 para inicio de lista, -1 para final
 void encolar_cola_generico(list_struct_t *cola, PCB *pcb, int index){
+    
     pthread_mutex_lock(cola->mutex);
+    //esto cambia index al real index del ultimo elemento, ya que list_add_in_index -1 no lo pone al final, vaya a saber quien porque. La documentacion de list.h no explica esto
+    if (index == -1){
+        if (list_is_empty(cola->lista)){
+            index = 0;
+        }else{
+            PCB * pcb_aux;
+            t_list_iterator *iterator = list_iterator_create(cola->lista);
+            while(list_iterator_has_next(iterator)){
+                pcb_aux = list_iterator_next(iterator);
+            }
+            index = list_iterator_index(iterator)+1;
+            list_iterator_destroy(iterator);
+        }
+    }
+    
+    
     list_add_in_index(cola->lista, index, pcb);
     pthread_mutex_unlock(cola->mutex);
     sem_post(cola->sem);
@@ -231,6 +238,7 @@ int cola_fallidos_buscar_smallest(){
         pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
         return -1;
     }
+    pthread_mutex_unlock(lista_procesos_new_fallidos->mutex);
     t_list_iterator * iterator = list_iterator_create(lista_procesos_new_fallidos->lista);
     PCB *pcb;
     PCB *pcb_smallest = (PCB*)list_iterator_next(iterator);

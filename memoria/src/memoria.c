@@ -42,6 +42,32 @@ char* crear_directorio() {
     return ruta;
 }
 
+char* crear_directorioSWAP() {
+    char* swap_path = "./swap/";
+    if (!swap_path) {
+        log_info(logger, "Error: La ruta base es NULL.\n");
+        return NULL;
+    }
+
+    char* ruta = strdup(swap_path);
+    if (!ruta) {
+        log_info(logger, "Error: No se pudo asignar memoria para la ruta del directorio.\n");
+        return NULL;
+    }
+
+    if (mkdir(ruta, 0700) == 0) {
+        log_info(logger,"Directorio '%s' creado correctamente.\n", ruta);
+    } else if (errno == EEXIST) {
+        log_info(logger,"El directorio '%s' ya existe.\n", ruta);
+    } else {
+        log_info(logger,"Error al crear el directorio");
+        free(ruta);
+        return NULL;
+    }
+
+    return ruta;
+}
+
 
 
 

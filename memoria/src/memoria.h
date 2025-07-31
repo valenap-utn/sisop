@@ -12,7 +12,7 @@
 #include <sys/time.h>
 
 void inicializarMemoria();
-
+char* crear_directorioSWAP();
 
 typedef struct t_metricas{
     int cant_accesos_tdp; //cantidad de accesos a tabla de paginas

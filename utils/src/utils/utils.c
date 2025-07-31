@@ -92,32 +92,38 @@
 
     /// @brief Recibe un paquete de OK, en casos donde no se envie informacion valiosa. Limpia la lista para evitar errores
     /// @param socket_cliente 
-    /// @return 0->ok, cod_op si es distinto de OK
+    /// @return 0->ok, cod_op si es distinto de OK o se cerro la conexion
     int recibir_paquete_ok(int socket_cliente)
     { 
-        //limpia la lista y devuelve ok = 0 si cod_op == OK
-        protocolo_socket cod_op = recibir_operacion(socket_cliente); //limpia el codigo de operacion
+        protocolo_socket cod_op = recibir_operacion(socket_cliente);
         
-        t_list* valores = recibir_paquete(socket_cliente);
-
-        t_list_iterator *iterator = list_iterator_create(valores);
-        char *valor_recibido;
-        while(list_iterator_has_next(iterator)){
-            valor_recibido = list_iterator_next(iterator);
-            list_iterator_remove(iterator);
-            
-            free(valor_recibido);
-        }
-        list_iterator_destroy(iterator);
-        list_destroy(valores);
-
-        if (cod_op != OK){
-            log_error(logger, "Se recibio cod_op distinto de OK");
+        if(cod_op == -1){
+            log_error(logger, "Conexión cerrada (cod_op = %d)", cod_op);
             return cod_op;
         }
 
-        return 0;
-        //
+        if (cod_op != OK) {
+            log_debug(logger, "Se recibió cod_op distinto de OK (cod_op = %d)", cod_op);
+
+            // consumir y liberar si aún así llega un paquete con basura
+            t_list* basura = recibir_paquete(socket_cliente);
+            if (basura != NULL) {
+                list_destroy_and_destroy_elements(basura, free);
+            }
+
+            return cod_op;
+        }
+
+        // Si es OK, limpiamos los valores
+        t_list* valores = recibir_paquete(socket_cliente);
+        if (valores == NULL) {
+            log_warning(logger, "No se recibieron valores tras OK, lista vacía o error en paquete");
+            return cod_op; // sigue siendo 0 (OK), pero se loguea
+        }
+
+        list_destroy_and_destroy_elements(valores, free);
+
+        return cod_op;
     }
 
     void* serializar_paquete(t_paquete* paquete, int bytes)

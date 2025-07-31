@@ -76,6 +76,7 @@ enum protocolo_socket
     DEVOLVER_INSTRUCCION,
     PEDIR_INSTRUCCION,
     ENVIAR_VALORES,
+    REACTIVAR_SUSPENDIDOS,
 };
 typedef enum protocolo_socket protocolo_socket;
 

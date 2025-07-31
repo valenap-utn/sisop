@@ -65,6 +65,7 @@ void largoPlazoFifo(){
             if (hay_algo_en_susp_ready()){
                 log_debug(logger, "LPL: se intento darle prioridad a MP");
                 sem_post(sem_memoria_liberada);
+                usleep(1000);
                 sem_wait(sem_memoria_liberada);
                 log_debug(logger, "LPL: se despauso largo plazo luego de dar prioridad a MP");
             }
@@ -116,6 +117,7 @@ void * largoPlazoFallidos(void * args){
         if (hay_algo_en_susp_ready()){
             log_debug(logger, "LPL: se intento darle prioridad a MP");
             sem_post(sem_memoria_liberada);
+            usleep(1000);
             sem_wait(sem_memoria_liberada);
             log_debug(logger, "LPL: se despauso largo plazo luego de dar prioridad a MP");
         }

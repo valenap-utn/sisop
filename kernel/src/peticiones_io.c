@@ -7,11 +7,13 @@ extern list_struct_t *lista_procesos_susp_block;
 extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_sockets_io;
 
-extern int flag_pcbrunning;
-extern pthread_cond_t *cond_pcb;
-extern pthread_mutex_t *mutex_pcb;
+extern enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
 
 extern int tiempo_suspension;
+
+extern sem_t *sem_memoria_liberada;
+
+
 
 void *server_mh_io(void *args){
 
@@ -82,22 +84,50 @@ void * thread_io(void * args){
 
         //arranca el timer de suspend
         pthread_create(&tid_aux, NULL, timer_suspend, (void*)proceso_aux);
-        pthread_detach(tid_aux);
 
         if(recibir_paquete_ok(socket_io->socket)){
             log_error(logger, "El dispositivo IO %s se desconecto prematuramente", socket_io->nombre);
 
+            //finalizar el timer suspend
+            pthread_mutex_lock(lista_procesos_block->mutex);
+            pthread_cancel(tid_aux);
+            pthread_mutex_unlock(lista_procesos_block->mutex);
+
             //si esta en block:
             pthread_mutex_lock(lista_procesos_block->mutex);
+            
             if(list_remove_element(lista_procesos_block->lista, proceso_aux)){
                 PROCESS_EXIT(proceso_aux);
-                destrabar_flag_global(&flag_pcbrunning, mutex_pcb, cond_pcb);
             }
             //si esta en susp_block
             else if(list_remove_element(lista_procesos_susp_block->lista, proceso_aux)){
                 PROCESS_EXIT(proceso_aux);
-                destrabar_flag_global(&flag_pcbrunning, mutex_pcb, cond_pcb);
             }pthread_mutex_unlock(lista_procesos_block->mutex);
+            if((algoritmo_cortoPlazo == CPL_SJF_CD) || (algoritmo_cortoPlazo == CPL_SJF)){
+
+                sem_post(lista_procesos_ready->sem);
+            }
+
+            t_list_iterator * iterator = list_iterator_create(socket_io->cola_blocked->lista);
+            elemento_cola_blocked_io * aux_blocked;
+            while (list_iterator_has_next(iterator)){
+                aux_blocked = list_iterator_next(iterator);
+                //si esta en block:
+                pthread_mutex_lock(lista_procesos_block->mutex);
+                
+                if(list_remove_element(lista_procesos_block->lista, aux_blocked->pcb)){
+                    PROCESS_EXIT(aux_blocked->pcb);
+                }
+                //si esta en susp_block
+                else if(list_remove_element(lista_procesos_susp_block->lista, aux_blocked->pcb)){
+                    PROCESS_EXIT(aux_blocked->pcb);
+                }
+                pthread_mutex_unlock(lista_procesos_block->mutex);
+                if((algoritmo_cortoPlazo == CPL_SJF_CD) || (algoritmo_cortoPlazo == CPL_SJF)){
+
+                    sem_post(lista_procesos_ready->sem);
+                }
+            }
 
             liberar_socket_io(socket_io);
             pthread_mutex_lock(lista_sockets_io->mutex);
@@ -106,6 +136,11 @@ void * thread_io(void * args){
             return (void *)EXIT_FAILURE;
         }else{
             log_info(logger, "## (PID: %d) finalizó IO y pasa a READY", proceso_aux->pid);
+
+            //finalizar el timer suspend
+            pthread_mutex_lock(lista_procesos_block->mutex);
+            pthread_cancel(tid_aux);
+            pthread_mutex_unlock(lista_procesos_block->mutex);
             
             //si esta en block:
             pthread_mutex_lock(lista_procesos_block->mutex);
@@ -148,6 +183,11 @@ void liberar_socket_io(t_socket_io *socket){
 int buscar_io(char * nombre_a_buscar){
 
     pthread_mutex_lock(lista_sockets_io->mutex);
+
+    if(list_is_empty(lista_sockets_io->lista)){
+        pthread_mutex_unlock(lista_sockets_io->mutex);
+        return -1;
+    }
 
     t_list_iterator * iterator = list_iterator_create(lista_sockets_io->lista);
     t_socket_io * socket_io = NULL;
@@ -199,7 +239,21 @@ void encolar_cola_blocked(list_struct_t *cola, elemento_cola_blocked_io *elem){
 
     pthread_mutex_lock(cola->mutex);
 
-    list_add_in_index(cola->lista, -1, elem);
+    int index_aux = 0;
+    if (list_is_empty(cola->lista)){
+        index_aux = 0;
+    }else{
+        elemento_cola_blocked_io * elem_aux;
+        t_list_iterator *iterator = list_iterator_create(cola->lista);
+        while(list_iterator_has_next(iterator)){
+            elem_aux = list_iterator_next(iterator);
+        }
+        index_aux = list_iterator_index(iterator)+1;
+        list_iterator_destroy(iterator);
+    }
+
+
+    list_add_in_index(cola->lista, index_aux, elem);
     sem_post(cola->sem);
 
     pthread_mutex_unlock(cola->mutex);
@@ -224,6 +278,8 @@ void * timer_suspend(void * args){
             peticion->proceso = pcb_aux;
             peticion->tipo = SUSP_MEM;
             encolarPeticionMemoria(peticion);
+            sem_wait(peticion->peticion_finalizada);
+            sem_post(sem_memoria_liberada);
             break;
         }
     }

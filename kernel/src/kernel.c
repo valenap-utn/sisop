@@ -4,7 +4,6 @@
 t_log *logger;
 t_config *config;
 
-extern t_dictionary *diccionario_cpu_pcb;
 
 int flag_all_start = 0; 
 
@@ -17,7 +16,7 @@ list_struct_t *lista_sockets_io;
 list_struct_t *lista_procesos_new;
 list_struct_t *lista_procesos_new_fallidos;
 list_struct_t *lista_procesos_ready;
-list_struct_t *lista_procesos_exec;
+list_struct_t *lista_exec;
 list_struct_t *lista_procesos_block;
 list_struct_t *lista_procesos_susp_ready;
 list_struct_t *lista_procesos_susp_block;
