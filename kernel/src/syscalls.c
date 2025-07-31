@@ -5,6 +5,8 @@ extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_ready;
 extern list_struct_t *lista_sockets_io;
 
+extern list_struct_t *lista_procesos_esperando_io;
+
 extern enum_algoritmo_cortoPlazo algoritmo_cortoPlazo;
 
 extern sem_t *sem_memoria_liberada;
@@ -108,19 +110,10 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
 
     elem_blocked_io->pcb = pcb;
     elem_blocked_io->tiempo = tiempo;
+    elem_blocked_io->nombre_io = nombre_io;
 
-    int index = buscar_io(nombre_io);
-
-    if(index == -1){
-        log_info(logger, "No se encontro dispositivo IO para %d", pcb->pid);
-        PROCESS_EXIT(pcb);
-        if(algoritmo_cortoPlazo == CPL_SJF_CD){sem_post(lista_procesos_ready->sem);}
-        return;
-    }
-
-    t_socket_io *socket_io = get_socket_io(index);
-
-    encolar_cola_blocked(socket_io->cola_blocked, elem_blocked_io);
+    // encola en lista global para que manager_io la asigne
+    encolar_cola_blocked(lista_procesos_esperando_io, elem_blocked_io, false);
 
     encolar_cola_generico(lista_procesos_block, pcb, -1);
     cambiar_estado(pcb, BLOCK);
