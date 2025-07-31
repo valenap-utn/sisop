@@ -29,7 +29,7 @@ void PROCESS_EXIT(PCB *pcb) {
     
     // encolar peticion
     t_peticion_memoria * peticion = inicializarPeticionMemoria();
-    log_info(logger, "## (pid: %d) - Finaliza el proceso", pcb->pid);
+    log_info(logger, "## (PID: %d) - Finaliza el proceso", pcb->pid);
 
     peticion->tipo = PROCESS_EXIT_MEM;
     peticion->proceso = pcb;
@@ -117,6 +117,7 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
 
     encolar_cola_generico(lista_procesos_block, pcb, -1);
     cambiar_estado(pcb, BLOCK);
+    log_info(logger, "## (PID: %d) - Bloqueado por IO: %s", pcb->pid, nombre_io);
     if(algoritmo_cortoPlazo == CPL_SJF_CD){sem_post(lista_procesos_ready->sem);}
     
     return;

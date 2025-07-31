@@ -484,7 +484,7 @@ void cortoPlazoSJFConDesalojo(t_socket_cpu *socket_cpu) {
                 }
 
                 pthread_mutex_unlock(lista_procesos_exec_srt->mutex);
-                log_info(logger, "## (%d) - Desalojado por algoritmo SJF/SRT", pcb_exec->pid);
+                log_info(logger, "## (PID: %d) - Desalojado por algoritmo SJF/SRT", pcb_exec->pid);
                 log_debug(logger, "(%d) - Entro por interrupt, pc: %d", pcb_ready->pid, pcb_ready->pc);
                 enviar_interrupcion(socket_cpu, pcb_ready->pid, pcb_ready->pc);
                 encolar_cola_generico(lista_procesos_exec_srt, pcb_ready, -1);

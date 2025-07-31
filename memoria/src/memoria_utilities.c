@@ -131,11 +131,12 @@ void *conexion_server_kernel(void *args) {
             pthread_exit(NULL);
         }
 
+        log_info(logger,"## Kernel Conectado - FD del socket: %d",socket_nuevo);
         peticion_kernel(socket_nuevo);
        
     }
 
-    log_info(logger,"## Kernel Conectado - FD del socket: <%d>",socket_nuevo);
+    
     
     close(socket_nuevo);
     close(server_kernel);
@@ -231,7 +232,7 @@ void * cpu(void* args){
                     agregar_a_paquete(paquete_send,&valor,sizeof(int));
                     enviar_paquete(paquete_send,conexion);
 
-                    log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
+                    log_info(logger,"## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d",pid,dir_fisica,tamanio);
                     proceso->metricas.cant_lecturas++;
 
                     eliminar_paquete(paquete_send);
@@ -302,7 +303,7 @@ void * cpu(void* args){
                 agregar_a_paquete(paquete_send,contenido_pagina,tam_pagina);
                 enviar_paquete(paquete_send,conexion);
 
-                log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tam_pagina);
+                log_info(logger,"## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d",pid,dir_fisica,tam_pagina);
                 proceso->metricas.cant_lecturas++;
 
                 eliminar_paquete(paquete_send);  
@@ -376,7 +377,7 @@ void * cpu(void* args){
 
                 proceso->metricas.cant_instr_sol++; //creo que esto va acá
 
-                log_info(logger, "## PID: <%d> - Obtener instrucción: <%d> - Instrucción: <INSTRUCCIÓN> <%s>", pid, pc, instruccion);
+                log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s", pid, pc, instruccion);
 
                 eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free); 
@@ -416,7 +417,7 @@ void peticion_kernel(int socket_kernel){
 
             if (inicializar_proceso(pid, tamanio, nombreArchivo) == 0) {
                 enviar_paquete_ok(socket_kernel);
-                log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
+                log_info(logger,"## PID: %d - Proceso Creado - Tamaño: %d", pid,tamanio);
             } else {
                 log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
                 t_paquete * paquete_error = crear_paquete(PROCESS_CREATE_MEM_FAIL);
@@ -498,9 +499,9 @@ void peticion_kernel(int socket_kernel){
                 list_destroy_and_destroy_elements(paquete_recv,free);
                 break;
             }
+            log_info(logger, "## PID: %d - Memory Dump solicitado",pidDump);
             cargar_archivo_dump(pidDump);
-            log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pidDump);
-
+            
             list_destroy_and_destroy_elements(paquete_recv,free);
             enviar_paquete_ok(socket_kernel);
         }    
@@ -640,7 +641,7 @@ int cargar_archivo_dump(int pid){
         return -1;
     }
 
-    log_info(logger, "## PID: <%d> - Memory Dump solicitado en %s", pid, ruta_completa);
+    log_debug(logger, "## PID: <%d> - Memory Dump solicitado en %s", pid, ruta_completa);
     
     // Realizar dump
     Tabla_Nivel** niveles = proceso->tabla_principal->niveles;

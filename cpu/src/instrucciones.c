@@ -101,7 +101,7 @@ char * Fetch(){ // Le pasa la intruccion completa
     enviar_paquete(paquete_send, socket_memoria);
 
     //paquete enviado
-    log_info(logger,"## PID: %d PC: %d- FETCH ",pid,pc);
+    log_info(logger, "## PID: %d - FETCH - Program Counter: %d", pid, pc);
 
     //respuesta DEVOLVER_INSTRUCCION
     protocolo_socket cod_op = recibir_operacion(socket_memoria);
@@ -349,7 +349,9 @@ void write_(int dir_logica , char * datos){
     int marco = obtener_marco(pid,nro_pagina,offset);
     int dir_fisica = obtener_DF(marco,offset);
 
-    log_debug(logger, "Ejecutando WRITE: dir_logica=%d, valor=%s OFFSET=%d", dir_logica, datos, offset);
+    //log_debug(logger, "Ejecutando WRITE: dir_logica=%d, valor=%s OFFSET=%d", dir_logica, datos, offset);
+    log_info(logger, "## PID: %d - Ejecutando: WRITE - direccion logica: %d, datos: %s", pid,dir_logica, datos);
+
 
     //Actualizar caché (si hay)
     if(entradas_cache > 0){
@@ -359,7 +361,7 @@ void write_(int dir_logica , char * datos){
         escribir_en_cache(pid,datos,nro_pagina,1,(uint8_t)offset, dir_fisica);
     }else {
 
-        log_info(logger,"PID: <%d> - Acción: <ESCRIBIR> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, datos);
+        log_info(logger,"PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid, dir_fisica, datos);
 
         t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
         int tam = tam_pag;
@@ -380,7 +382,6 @@ void write_(int dir_logica , char * datos){
             log_error(logger,"No se pudo escribir la página modificada al desalojar la caché");
         }
 
-        log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",pid, nro_pagina, marco);
     }
 };
 
@@ -397,7 +398,7 @@ void read_(int dir_logica , int tamanio){
     //Consultamos la Caché
     if(entradas_cache > 0 && buscar_en_cache(pid,nro_pagina,&valor)){
         log_info(logger,"\033[34mPID: <%d> - Cache Hit - Pagina: <%d>\033", pid, nro_pagina);
-        log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%s>", pid, dir_logica, valor);
+        log_debug(logger, "PID: <%d> - Acción: <LEER> - Dirección Lógica: <%d> - Valor: <%s>", pid, dir_logica, valor);
         free(valor);
         return;
     }
@@ -430,7 +431,7 @@ void read_(int dir_logica , int tamanio){
     list_destroy_and_destroy_elements(respuesta, free);
 
 
-    log_info(logger, "PID: <%d> - Acción: <LEER> - Dirección Física: <%d> - Valor: <%s>", pid, dir_fisica, valor);
+    log_info(logger, "PID: %d - Acción: <LEER> - Dirección Física: %d - Valor: %s", pid, dir_fisica, valor);
 
     //Actualizamos la caché
     if(entradas_cache > 0)escribir_en_cache(pid,valor,nro_pagina, 0, 0, dir_fisica-offset);
@@ -552,7 +553,7 @@ int obtener_marco(int pid, int nro_pagina,int offset){
         agregar_a_tlb(pid, nro_pagina, marco);
     }
 
-    log_info(logger,"PID: <%d> - OBTENER MARCO - Página: <%d> - Marco: <%d>",pid,nro_pagina,marco);
+    log_info(logger,"PID: %d - OBTENER MARCO - Página: %d - Marco: %d",pid,nro_pagina,marco);
 
     return marco;
 }
@@ -701,7 +702,6 @@ void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina, int fu
     for(int i = 0 ; i < entradas_cache ; i++){
         if(!cache[i].ocupado){
             usleep(retardo_cache * 1000);
-            //cache[i] = (cache_t){pid_actual,nro_pagina,NULL,1,1,fue_escritura ? 1 : 0};
             cache[i].pid=pid_actual;
             cache[i].nro_pagina=nro_pagina;
             cache[i].ocupado=1;
@@ -743,10 +743,7 @@ void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina, int fu
     memcpy(cache[victima].contenido+offset,nuevo_valor,strlen(nuevo_valor));
     log_debug(logger, "Escribio en cache %s, cantidad de bytes: %d", nuevo_valor, strlen(nuevo_valor));
     log_debug(logger, ".contenido: %s", cache[victima].contenido);
-    // log_info(logger,"PID: <%d> - Cache Add - Pagina: <%d>", pid_actual, nro_pagina);
-    
-    
-    // dump_estado_cache();
+    log_info(logger,"PID: %d - Cache Add - Pagina: %d", pid_actual, nro_pagina);
 
     return;
 }
@@ -797,7 +794,7 @@ void actualizar_pagina(cache_t entrada){
         return;
     }
 
-    log_info(logger,"PID: <%d> - Memory Update - Página: <%d> - Frame: <%d>",entrada.pid, entrada.nro_pagina, marco);
+    log_info(logger,"PID: %d - Memory Update - Página: %d - Frame: %d",entrada.pid, entrada.nro_pagina, marco);
 
 }
 //Algoritmos de reemplazo

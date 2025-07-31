@@ -181,7 +181,7 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 
             case DESALOJO_CPU:
                 // sem_wait(sem_registros_actualizados);
-				log_info(logger, "Recibí un desalojo de parte de Kernel");
+				log_info(logger, "## Llega interrupción al puerto Interrupt");
 				paquete = recibir_paquete(socket_dispatch);
 				pid_aux = *(int *)list_remove(paquete, 0);
                 pc_aux = *(int *)list_remove(paquete, 0);
