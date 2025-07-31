@@ -18,6 +18,7 @@ list_struct_t *lista_procesos_new_fallidos;
 list_struct_t *lista_procesos_ready;
 list_struct_t *lista_exec;
 list_struct_t *lista_procesos_block;
+list_struct_t *lista_procesos_esperando_io;
 list_struct_t *lista_procesos_susp_ready;
 list_struct_t *lista_procesos_susp_block;
 
@@ -35,12 +36,14 @@ int main(int argc, char* argv[]) {
 
     pthread_t tid_server_mh_cpu;
     pthread_t tid_server_mh_io;
+    pthread_t tid_manager_io;
     pthread_t tid_largoplazo;
     pthread_t tid_peticiones_memoria;
     pthread_t tid_mediano_plazo;
     
     pthread_create(&tid_server_mh_cpu, NULL, server_mh_cpu, NULL);
     pthread_create(&tid_server_mh_io, NULL, server_mh_io, NULL);
+    pthread_create(&tid_manager_io, NULL, manager_io, NULL);
     
     //Al iniciar el proceso Kernel, el algoritmo de Largo Plazo debe estar frenado (estado STOP) y se deberá esperar un ingreso de un Enter por teclado para poder iniciar con la planificación.
     //me imagino que hay que leer teclado aca en main, y arrancar la siguiente linea cuando se presione

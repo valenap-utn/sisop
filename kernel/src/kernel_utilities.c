@@ -23,6 +23,8 @@ extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_procesos_susp_block;
 
+extern list_struct_t *lista_procesos_esperando_io;
+
 
 //semaforos auxiliares
 sem_t * sem_memoria_liberada;
@@ -148,6 +150,7 @@ void inicializarListasKernel(){
     lista_procesos_susp_ready = inicializarLista();
     lista_procesos_susp_block = inicializarLista();
     lista_peticiones_memoria_pendientes = inicializarLista();
+    lista_procesos_esperando_io = inicializarLista();
 
 }
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
