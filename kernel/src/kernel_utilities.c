@@ -113,6 +113,8 @@ void *server_mh_cpu(void *args){
         list_add(lista_sockets_cpu->lista, socket_nuevo);
         pthread_mutex_unlock(lista_sockets_cpu->mutex);
 
+        log_info(logger, "Se conecto un nuevo CPU");
+
         //creamos un nuevo cortoplazo para cada CPU que se conecte
         pthread_create(&tid_nuevo_cortoplazo, NULL, cortoPlazo, (void*)socket_nuevo);
 

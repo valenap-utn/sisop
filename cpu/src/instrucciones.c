@@ -156,17 +156,17 @@ instruccion_t *Decode(char * instr){
                 current_instr->tipo = USUARIO;
         break;
         default:
-             log_info(logger, "Instrucción no reconocida: %s", *current_instr->data);
+             log_error(logger, "Instrucción no reconocida: %s", *current_instr->data);
              exit(EXIT_FAILURE);
                 break;
         }
         if (current_instr->opCode == IO_I || current_instr->opCode == INIT_PROC_I || current_instr->opCode ==  WRITE_I ||  current_instr->opCode ==  READ_I){
             if(!current_instr->data[0] || !current_instr->data[1]){
-                log_info(logger, "Instrucción no tiene los 2 parametros: %s", *current_instr->data);
+                log_error(logger, "Instrucción no tiene los 2 parametros: %s", *current_instr->data);
                 exit(EXIT_FAILURE);
             }
         } else if (current_instr->opCode == GOTO_I && !current_instr->data[0]){
-                log_info(logger, "Instrucción no tiene el parametro: %s", *current_instr->data);
+                log_error(logger, "Instrucción no tiene el parametro: %s", *current_instr->data);
                 exit(EXIT_FAILURE);
         };
         log_debug(logger, "Instrucción Decodiada: %s (%d)  SYSCALL TIPO: %d",current_instr->data[0] ,current_instr->opCode,current_instr->tipo);
@@ -181,7 +181,7 @@ void Execute(instruccion_t *instr){
     for (int i = 1; instr->data[i] != NULL; i++) {
         string_append_with_format(&params_str, "%s ", instr->data[i]);
     }
-    log_info(logger, "## PID: %d - Ejecutando: %s - %s", pid, instr->data[0], params_str);
+    //log_info(logger, "## PID: %d - Ejecutando: %s - %s", pid, instr->data[0], params_str);
     free(params_str);
 
     //---------------
@@ -220,7 +220,7 @@ void Execute(instruccion_t *instr){
                 exit_();
             break;
         default:
-            log_info(logger, "Error al ejecutar la instruccion: %s", *instr->data);
+            log_error(logger, "Error al ejecutar la instruccion: %s", *instr->data);
             exit(EXIT_FAILURE);
             break;
         }
@@ -410,6 +410,8 @@ void read_(int dir_logica , int tamanio){
     int offset;
     traducir_DL(dir_logica,&nro_pagina,&offset);
 
+    log_info(logger, "## PID: %d - Ejecutando: READ - direccion logica: %d, tamaño: %d", pid,dir_logica, tamanio);
+
     char * valor ;
 
     //Consultamos la Caché
@@ -458,13 +460,13 @@ void read_(int dir_logica , int tamanio){
 };
 
 void noop(){
-    log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: NOOP :",pid);
+    log_info(logger, "## PID: %d - Ejecutando: NOOP",pid);
 };
 
 void goto_(int nuevo_pc){
     pc = nuevo_pc;
     pc_actualizado = true;
-    log_info(logger, "Instrucción Ejecutada: ## PID: %d - Ejecutando: GOTO :",pid);
+    log_info(logger, "## PID: %d - Ejecutando: GOTO",pid);
 };
 
 

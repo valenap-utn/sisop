@@ -19,22 +19,22 @@ int main(int argc, char* argv[]) {
 char* crear_directorio() {
     char* dump_path = config_get_string_value(config, "DUMP_PATH");
     if (!dump_path) {
-        log_info(logger, "Error: La ruta base es NULL.\n");
+        log_error(logger, "Error: La ruta base es NULL.\n");
         return NULL;
     }
 
     char* ruta = strdup(dump_path);
     if (!ruta) {
-        log_info(logger, "Error: No se pudo asignar memoria para la ruta del directorio.\n");
+        log_error(logger, "Error: No se pudo asignar memoria para la ruta del directorio.\n");
         return NULL;
     }
 
     if (mkdir(ruta, 0700) == 0) {
-        log_info(logger,"Directorio '%s' creado correctamente.\n", ruta);
+        log_debug(logger,"Directorio '%s' creado correctamente.\n", ruta);
     } else if (errno == EEXIST) {
-        log_info(logger,"El directorio '%s' ya existe.\n", ruta);
+        log_debug(logger,"El directorio '%s' ya existe.\n", ruta);
     } else {
-        log_info(logger,"Error al crear el directorio");
+        log_error(logger,"Error al crear el directorio");
         free(ruta);
         return NULL;
     }
@@ -45,22 +45,22 @@ char* crear_directorio() {
 char* crear_directorioSWAP() {
     char* swap_path = "./swap/";
     if (!swap_path) {
-        log_info(logger, "Error: La ruta base es NULL.\n");
+        log_error(logger, "Error: La ruta base es NULL.\n");
         return NULL;
     }
 
     char* ruta = strdup(swap_path);
     if (!ruta) {
-        log_info(logger, "Error: No se pudo asignar memoria para la ruta del directorio.\n");
+        log_error(logger, "Error: No se pudo asignar memoria para la ruta del directorio.\n");
         return NULL;
     }
 
     if (mkdir(ruta, 0700) == 0) {
-        log_info(logger,"Directorio '%s' creado correctamente.\n", ruta);
+        log_debug(logger,"Directorio '%s' creado correctamente.\n", ruta);
     } else if (errno == EEXIST) {
-        log_info(logger,"El directorio '%s' ya existe.\n", ruta);
+        log_debug(logger,"El directorio '%s' ya existe.\n", ruta);
     } else {
-        log_info(logger,"Error al crear el directorio");
+        log_error(logger,"Error al crear el directorio");
         free(ruta);
         return NULL;
     }

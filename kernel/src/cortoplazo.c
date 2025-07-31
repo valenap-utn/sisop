@@ -55,7 +55,7 @@ void cortoPlazoFifo(t_socket_cpu *socket_cpu) {
         } else {
             pcb = list_remove(lista_procesos_ready->lista, 0);
             pthread_mutex_unlock(lista_procesos_ready->mutex);
-            log_info(logger, "## (%d) - Planificado por FIFO", pcb->pid);
+            log_debug(logger, "## (%d) - Planificado por FIFO", pcb->pid);
             enviar_a_cpu_dispatch(pcb, socket_cpu);
             cambiar_estado(pcb, EXEC);
             esperar_respuesta_cpu(pcb, socket_cpu);
@@ -109,7 +109,7 @@ void enviar_a_cpu_dispatch(PCB *pcb, t_socket_cpu *socket_cpu) {
 void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
     protocolo_socket motivo;
     
-    log_info(logger, "Esperando motivo de devolucion de CPU");
+    log_debug(logger, "Esperando motivo de devolucion de CPU");
     motivo = recibir_operacion(socket_cpu->interrupt);
 
     t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
@@ -182,7 +182,7 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
             break;
 
         default:
-            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
+            log_debug(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
             list_destroy(paquete_respuesta);
             break;
     }
@@ -194,7 +194,7 @@ void esperar_respuesta_cpu(PCB * pcb, t_socket_cpu *socket_cpu){
 void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu, list_struct_t * lista_exec){
     protocolo_socket motivo;
     
-    log_info(logger, "Esperando motivo de devolucion de CPU");
+    log_debug(logger, "Esperando motivo de devolucion de CPU");
     motivo = recibir_operacion(socket_cpu->interrupt);
 
     t_list *paquete_respuesta = recibir_paquete(socket_cpu->interrupt);
@@ -311,7 +311,7 @@ void esperar_respuesta_cpu_sjf(PCB * pcb, t_socket_cpu *socket_cpu, list_struct_
             break;
 
         default:
-            log_info(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
+            log_debug(logger, "Motivo: %d desconocido para el pid %d\n", motivo, pcb->pid);
             list_destroy(paquete_respuesta);
             break;
     }
@@ -363,7 +363,7 @@ void cortoPlazoSJF(t_socket_cpu *socket_cpu) {
         PCB *proceso_seleccionado = list_remove(lista_procesos_ready->lista, indice_proceso_a_planificar);
         pthread_mutex_unlock(lista_procesos_ready->mutex);
 
-        log_info(logger, "## (%d) - Planificado por SJF sin desalojo", proceso_seleccionado->pid);
+        log_debug(logger, "## (%d) - Planificado por SJF sin desalojo", proceso_seleccionado->pid);
 
         // inicio
         struct timespec tiempo_inicio_rafaga;

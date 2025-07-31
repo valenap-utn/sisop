@@ -90,7 +90,7 @@ void *conexion_server_cpu(void *args) {
     int *socket_nuevo = malloc(sizeof(int));
 
 
-    log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente CPU..", puerto_cpu);
+    log_debug(logger, "Servidor escuchando en el puerto %s, esperando cliente CPU..", puerto_cpu);
     while ((*socket_nuevo = esperar_cliente(server_cpu))){
         
         // será error del cliente?
@@ -101,6 +101,7 @@ void *conexion_server_cpu(void *args) {
         }
         
         //MANEJA LAS INSTRUCCIONES
+        log_info(logger, "Se conecto un nuevo CPU");
         pthread_t tid_cpu_aux;
         pthread_create(&tid_cpu_aux, NULL, cpu, (void*)socket_nuevo);
         pthread_detach(tid_cpu_aux);
@@ -121,7 +122,7 @@ void *conexion_server_kernel(void *args) {
     // pthread_t tid_kernel;
 
 
-    log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente kernel..", puerto_kernel);
+    log_debug(logger, "Servidor escuchando en el puerto %s, esperando cliente kernel..", puerto_kernel);
     while ((socket_nuevo = esperar_cliente(server_kernel))){
         
         // será error del cliente?
@@ -1058,13 +1059,6 @@ void finalizar_proceso(int pid){
         }
     }
 
-    //Métricas 
-    // log_info(logger,"## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>",pid,proceso->metricas.cant_accesos_tdp);
-    // log_info(logger,"Inst.Sol.: <%d>",proceso->metricas.cant_instr_sol);
-    // log_info(logger,"SWAP: <%d>",proceso->metricas.cant_bajadas_swap);
-    // log_info(logger,"Mem.Prin.: <%d>",proceso->metricas.cant_subidas_memoria);
-    // log_info(logger,"Lec.Mem.: <%d>",proceso->metricas.cant_lecturas);
-    // log_info(logger,"Esc.Mem.: <%d>",proceso->metricas.cant_escrituras);
     log_info(logger, "## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>; Inst.Sol.: <%d>; SWAP: <%d>; Mem.Prin.: <%d>; Lec.Mem.: <%d>; Esc.Mem.: <%d>",
          pid,
          proceso->metricas.cant_accesos_tdp,

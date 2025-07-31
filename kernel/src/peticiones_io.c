@@ -99,13 +99,12 @@ void *server_mh_io(void *args){
         list_add(lista_sockets_io->lista, socket_nuevo);
         pthread_mutex_unlock(lista_sockets_io->mutex);
 
+        log_info(logger, "Se conecto un nuevo IO %s", nombre_io);
         //destraba el manager_io cuando se agreguen io nuevos
         sem_post(sem_IO_liberado);
 
         // pthread_create(&tid_aux, NULL, thread_io, (void *)socket_nuevo);
         // pthread_detach(tid_aux);
-
-        log_debug(logger, "Se conecto un IO: %s", socket_nuevo->nombre);
 
         socket_nuevo = inicializarSocketIO();
 

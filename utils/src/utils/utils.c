@@ -36,10 +36,8 @@
 
     int esperar_cliente(int socket_servidor)
     {
-        //log_info(logger, "Se rompe cuando espera la nueva conexion");
         int socket_cliente = accept(socket_servidor, NULL, NULL);
-        //log_info(logger, "Se rompe despues del segunda accept");
-        log_info(logger, "Se conecto un cliente!");
+        log_debug(logger, "Se conecto un cliente!");
 
         return socket_cliente;
     }
@@ -160,7 +158,7 @@
 
         if (connect(socket_cliente, server_info->ai_addr, server_info->ai_addrlen)==-1){
             return -1;
-        }else log_info(logger, "Conectado al servidor");
+        }else log_debug(logger, "Conectado al servidor");
 
         freeaddrinfo(server_info);
 
@@ -246,7 +244,7 @@ void leer_consola()
 {
 	char* leido;
 	while(!string_is_empty(leido = readline("> "))){
-        log_info(logger, "%s", leido);
+        log_debug(logger, "%s", leido);
 	}
 	free(leido);
 }
@@ -261,7 +259,7 @@ void terminar_programa(int conexion, t_log* logger, t_config* config)
 }
 
 void iterator(char* value) {
-	log_info(logger,"%s", value);
+	log_debug(logger,"%s", value);
 }
 
 list_struct_t * inicializarLista(){
