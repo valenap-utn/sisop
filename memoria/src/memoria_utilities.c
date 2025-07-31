@@ -913,6 +913,7 @@ void suspender_proceso(int pid){
     int offset_en_paginas = list_size(memoria_principal.metadata_swap);
     int offset_en_bytes = offset_en_paginas * tam_pagina;
 
+    usleep(retardo_swap * 1000);
     for(int i = 0; i < proceso->cantidad_paginas; i++){
         int marco = obtener_marco_por_indice(proceso->tabla_principal, i);
         
@@ -925,7 +926,7 @@ void suspender_proceso(int pid){
 
         fseek(f,offset_en_bytes + i * tam_pagina, SEEK_SET);
 
-        usleep(retardo_swap * 1000);
+        // usleep(retardo_swap * 1000);
 
         fwrite(origen,1,tam_pagina,f);
         liberar_marco(marco);
@@ -995,6 +996,7 @@ bool des_suspender_proceso(int pid){
     //Backup de marcos asingados por si hay que hacer rollback
     t_list* marcos_asignados = list_create();
 
+    usleep(retardo_swap * 1000);
     for(int i = 0; i < entrada->cantidad_paginas ;i++){
         int marco = asignar_marco_libre();
         if(marco == -1){
@@ -1018,7 +1020,7 @@ bool des_suspender_proceso(int pid){
 
         fseek(f, (entrada->pagina_inicio + i) * tam_pagina, SEEK_SET);
 
-        usleep(retardo_swap * 1000);
+        // usleep(retardo_swap * 1000);
 
         void* destino = memoria_principal.espacio + marco * tam_pagina;
         fread(destino,1,tam_pagina,f);

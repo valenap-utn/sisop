@@ -18,7 +18,6 @@ extern TLB_t * TLB_tabla;
 extern int reloj_lru;
 extern int fifo_index;
 
-// int cant_ocupada_TLB = 0;
  
 /* ------ CACHÉ ------ */
 extern int entradas_cache;
@@ -175,6 +174,19 @@ instruccion_t *Decode(char * instr){
 };
 
 void Execute(instruccion_t *instr){
+
+    //Log-----------
+
+    char* params_str = string_new();
+    for (int i = 1; instr->data[i] != NULL; i++) {
+        string_append_with_format(&params_str, "%s ", instr->data[i]);
+    }
+    log_info(logger, "## PID: %d - Ejecutando: %s - %s", pid, instr->data[0], params_str);
+    free(params_str);
+
+    //---------------
+
+
     log_debug(logger, "Instrucción ejecutada: %d INSTRUCCION TIPO: %d", instr->opCode,instr->tipo);
 
     switch (instr->opCode){
@@ -249,6 +261,7 @@ void Check_Int(){
             agregar_a_paquete (paquete_send, &pc, sizeof(int));
             pc = interrupcion->pc;
             pid = interrupcion->pid;
+            limpiar_entradas_tlb(pid);
             log_debug(logger, "entre a checkint Desalojo");
         break;
             
@@ -283,6 +296,10 @@ void Check_Int(){
             log_info(logger, "## PID: %d - Ejecutando: PROCESS_EXIT", pid);
             paquete_send = crear_paquete(PROCESS_EXIT_CPU);
             agregar_a_paquete (paquete_send, &pid, sizeof(int));
+
+            //LIMPIEZAS
+            limpiar_entradas_tlb(pid);
+            limpiar_cache_de_proceso(pid);
         break;
 
     }
@@ -731,10 +748,7 @@ void escribir_en_cache(int pid_actual, char *nuevo_valor, int nro_pagina, int fu
 
     //Reemplazamos
     usleep(retardo_cache * 1000);
-
     
-    
-    //cache[victima] = (cache_t){pid_actual, nro_pagina,NULL,1,1,fue_escritura ? 1 : 0};
     cache[victima].pid=pid_actual;
     cache[victima].nro_pagina=nro_pagina;
     cache[victima].ocupado=1;
@@ -797,6 +811,7 @@ void actualizar_pagina(cache_t entrada){
     log_info(logger,"PID: %d - Memory Update - Página: %d - Frame: %d",entrada.pid, entrada.nro_pagina, marco);
 
 }
+
 //Algoritmos de reemplazo
 //CLOCK
 int reemplazo_clock(){
