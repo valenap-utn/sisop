@@ -11,7 +11,7 @@ typedef struct{
 typedef struct{
     int socket;
     char *nombre;
-    list_struct_t *cola_blocked;
+    int libre;
 }t_socket_io;
 
 

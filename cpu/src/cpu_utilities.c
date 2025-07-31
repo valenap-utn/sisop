@@ -131,7 +131,7 @@ void *conexion_cliente_kernel(void *args){
         
 
 	}while(socket_dispatch == -1);
-    log_info(logger, "Se realizó la conexion con CPU DISPATCH");
+    log_debug(logger, "Se realizó la conexion con CPU DISPATCH");
     //semaforo aca?
 
 	do
@@ -141,8 +141,8 @@ void *conexion_cliente_kernel(void *args){
         
 
 	}while(socket_interrupt == -1);
-    log_info(logger, "Se realizó la conexion con CPU INTERRUPT");
-    //semaforo aca?
+    log_debug(logger, "Se realizó la conexion con CPU INTERRUPT");
+    log_info(logger, "Se realizo la conexion con Kernel");
     return (void *)EXIT_SUCCESS;
 }
 
@@ -159,11 +159,11 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 		switch (cod_op){
 			case DISPATCH_CPU:
                 // sem_wait(sem_registros_actualizados);
-				log_info(logger, "Recibí un pid para ejecutar de parte de Kernel");
+				log_debug(logger, "Recibí un pid para ejecutar de parte de Kernel");
 				paquete = recibir_paquete(socket_dispatch);
 				pid_aux = *(int *)list_remove(paquete, 0);
                 pc_aux = *(int *)list_remove(paquete, 0);
-				log_info(logger, "El pid a ejecutar es: %d, pc: %d", pid_aux, pc_aux);
+				log_debug(logger, "El pid a ejecutar es: %d, pc: %d", pid_aux, pc_aux);
 				list_destroy(paquete);
                 interrupcion = malloc(sizeof(interrupcion_t));
 
@@ -181,11 +181,11 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 
             case DESALOJO_CPU:
                 // sem_wait(sem_registros_actualizados);
-				log_info(logger, "Recibí un desalojo de parte de Kernel");
+				log_info(logger, "## Llega interrupción al puerto Interrupt");
 				paquete = recibir_paquete(socket_dispatch);
 				pid_aux = *(int *)list_remove(paquete, 0);
                 pc_aux = *(int *)list_remove(paquete, 0);
-				log_info(logger, "El pid a ejecutar es: %d, pc: %d", pid_aux, pc_aux);
+				log_debug(logger, "El pid a ejecutar es: %d, pc: %d", pid_aux, pc_aux);
 				list_destroy(paquete);
                 interrupcion = malloc(sizeof(interrupcion_t));
 
@@ -201,11 +201,11 @@ void *conexion_kernel_dispatch(void* arg_kernelD)
 
 				break;
 			case -1:
-				log_info(logger, "el cliente se desconecto. Terminando servidor");
+				log_error(logger, "el cliente se desconecto. Terminando servidor");
 				return (void *)EXIT_FAILURE;
 				break;
 			default:
-				log_info(logger,"Operacion desconocida. No quieras meter la pata");
+				log_error(logger,"Operacion desconocida. No quieras meter la pata");
 				break;
 			}
 		}

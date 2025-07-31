@@ -45,7 +45,7 @@ void cambiar_estado(PCB *pcb, t_estado estadoNuevo){
     if (estadoNuevo != NEW){
         //no hace falta actualizar mt cuando se crea el pcb por primera vez
         pcb->mt[pcb->estado] += tiempo_en_estado;
-        log_info(logger, "## (pid: %d) Pasa del estado %d al estado %d", pcb->pid, pcb->estado, estadoNuevo);
+        log_info(logger, "## (PID: %d) Pasa del estado %d al estado %d", pcb->pid, pcb->estado, estadoNuevo);
     }
     
     pcb->timestamp_ultimo_estado = time_now;

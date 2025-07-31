@@ -90,7 +90,7 @@ void *conexion_server_cpu(void *args) {
     int *socket_nuevo = malloc(sizeof(int));
 
 
-    log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente CPU..", puerto_cpu);
+    log_debug(logger, "Servidor escuchando en el puerto %s, esperando cliente CPU..", puerto_cpu);
     while ((*socket_nuevo = esperar_cliente(server_cpu))){
         
         // será error del cliente?
@@ -101,6 +101,7 @@ void *conexion_server_cpu(void *args) {
         }
         
         //MANEJA LAS INSTRUCCIONES
+        log_info(logger, "Se conecto un nuevo CPU");
         pthread_t tid_cpu_aux;
         pthread_create(&tid_cpu_aux, NULL, cpu, (void*)socket_nuevo);
         pthread_detach(tid_cpu_aux);
@@ -121,7 +122,7 @@ void *conexion_server_kernel(void *args) {
     // pthread_t tid_kernel;
 
 
-    log_info(logger, "Servidor escuchando en el puerto %s, esperando cliente kernel..", puerto_kernel);
+    log_debug(logger, "Servidor escuchando en el puerto %s, esperando cliente kernel..", puerto_kernel);
     while ((socket_nuevo = esperar_cliente(server_kernel))){
         
         // será error del cliente?
@@ -131,11 +132,12 @@ void *conexion_server_kernel(void *args) {
             pthread_exit(NULL);
         }
 
+        log_info(logger,"## Kernel Conectado - FD del socket: %d",socket_nuevo);
         peticion_kernel(socket_nuevo);
        
     }
 
-    log_info(logger,"## Kernel Conectado - FD del socket: <%d>",socket_nuevo);
+    
     
     close(socket_nuevo);
     close(server_kernel);
@@ -231,7 +233,7 @@ void * cpu(void* args){
                     agregar_a_paquete(paquete_send,&valor,sizeof(int));
                     enviar_paquete(paquete_send,conexion);
 
-                    log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tamanio);
+                    log_info(logger,"## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d",pid,dir_fisica,tamanio);
                     proceso->metricas.cant_lecturas++;
 
                     eliminar_paquete(paquete_send);
@@ -302,7 +304,7 @@ void * cpu(void* args){
                 agregar_a_paquete(paquete_send,contenido_pagina,tam_pagina);
                 enviar_paquete(paquete_send,conexion);
 
-                log_info(logger,"## PID: <%d> - <Lectura> - Dir. Física: <%d> - Tamaño: <%d>",pid,dir_fisica,tam_pagina);
+                log_info(logger,"## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d",pid,dir_fisica,tam_pagina);
                 proceso->metricas.cant_lecturas++;
 
                 eliminar_paquete(paquete_send);  
@@ -376,7 +378,7 @@ void * cpu(void* args){
 
                 proceso->metricas.cant_instr_sol++; //creo que esto va acá
 
-                log_info(logger, "## PID: <%d> - Obtener instrucción: <%d> - Instrucción: <INSTRUCCIÓN> <%s>", pid, pc, instruccion);
+                log_info(logger, "## PID: %d - Obtener instrucción: %d - Instrucción: %s", pid, pc, instruccion);
 
                 eliminar_paquete(paquete_send);
                 list_destroy_and_destroy_elements(paquete_recv,free); 
@@ -416,7 +418,7 @@ void peticion_kernel(int socket_kernel){
 
             if (inicializar_proceso(pid, tamanio, nombreArchivo) == 0) {
                 enviar_paquete_ok(socket_kernel);
-                log_info(logger,"## PID: <%d> - Proceso Creado - Tamaño: <%d>", pid,tamanio);
+                log_info(logger,"## PID: %d - Proceso Creado - Tamaño: %d", pid,tamanio);
             } else {
                 log_error(logger,"No se pudo inicializar el proceso %d por falta de memoria",pid);
                 t_paquete * paquete_error = crear_paquete(PROCESS_CREATE_MEM_FAIL);
@@ -498,9 +500,9 @@ void peticion_kernel(int socket_kernel){
                 list_destroy_and_destroy_elements(paquete_recv,free);
                 break;
             }
+            log_info(logger, "## PID: %d - Memory Dump solicitado",pidDump);
             cargar_archivo_dump(pidDump);
-            log_info(logger, "Memory Dump: “## PID: <%d> - Memory Dump solicitado”",pidDump);
-
+            
             list_destroy_and_destroy_elements(paquete_recv,free);
             enviar_paquete_ok(socket_kernel);
         }    
@@ -640,7 +642,7 @@ int cargar_archivo_dump(int pid){
         return -1;
     }
 
-    log_info(logger, "## PID: <%d> - Memory Dump solicitado en %s", pid, ruta_completa);
+    log_debug(logger, "## PID: <%d> - Memory Dump solicitado en %s", pid, ruta_completa);
     
     // Realizar dump
     Tabla_Nivel** niveles = proceso->tabla_principal->niveles;
@@ -912,6 +914,7 @@ void suspender_proceso(int pid){
     int offset_en_paginas = list_size(memoria_principal.metadata_swap);
     int offset_en_bytes = offset_en_paginas * tam_pagina;
 
+    usleep(retardo_swap * 1000);
     for(int i = 0; i < proceso->cantidad_paginas; i++){
         int marco = obtener_marco_por_indice(proceso->tabla_principal, i);
         
@@ -924,7 +927,7 @@ void suspender_proceso(int pid){
 
         fseek(f,offset_en_bytes + i * tam_pagina, SEEK_SET);
 
-        usleep(retardo_swap * 1000);
+        // usleep(retardo_swap * 1000);
 
         fwrite(origen,1,tam_pagina,f);
         liberar_marco(marco);
@@ -994,6 +997,7 @@ bool des_suspender_proceso(int pid){
     //Backup de marcos asingados por si hay que hacer rollback
     t_list* marcos_asignados = list_create();
 
+    usleep(retardo_swap * 1000);
     for(int i = 0; i < entrada->cantidad_paginas ;i++){
         int marco = asignar_marco_libre();
         if(marco == -1){
@@ -1017,7 +1021,7 @@ bool des_suspender_proceso(int pid){
 
         fseek(f, (entrada->pagina_inicio + i) * tam_pagina, SEEK_SET);
 
-        usleep(retardo_swap * 1000);
+        // usleep(retardo_swap * 1000);
 
         void* destino = memoria_principal.espacio + marco * tam_pagina;
         fread(destino,1,tam_pagina,f);
@@ -1055,13 +1059,6 @@ void finalizar_proceso(int pid){
         }
     }
 
-    //Métricas 
-    // log_info(logger,"## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>",pid,proceso->metricas.cant_accesos_tdp);
-    // log_info(logger,"Inst.Sol.: <%d>",proceso->metricas.cant_instr_sol);
-    // log_info(logger,"SWAP: <%d>",proceso->metricas.cant_bajadas_swap);
-    // log_info(logger,"Mem.Prin.: <%d>",proceso->metricas.cant_subidas_memoria);
-    // log_info(logger,"Lec.Mem.: <%d>",proceso->metricas.cant_lecturas);
-    // log_info(logger,"Esc.Mem.: <%d>",proceso->metricas.cant_escrituras);
     log_info(logger, "## PID: <%d> - Proceso Destruido - Métricas - Acc.T.Pag: <%d>; Inst.Sol.: <%d>; SWAP: <%d>; Mem.Prin.: <%d>; Lec.Mem.: <%d>; Esc.Mem.: <%d>",
          pid,
          proceso->metricas.cant_accesos_tdp,

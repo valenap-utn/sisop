@@ -23,6 +23,8 @@ extern list_struct_t *lista_procesos_block;
 extern list_struct_t *lista_procesos_susp_ready;
 extern list_struct_t *lista_procesos_susp_block;
 
+extern list_struct_t *lista_procesos_esperando_io;
+
 
 //semaforos auxiliares
 sem_t * sem_memoria_liberada;
@@ -111,6 +113,8 @@ void *server_mh_cpu(void *args){
         list_add(lista_sockets_cpu->lista, socket_nuevo);
         pthread_mutex_unlock(lista_sockets_cpu->mutex);
 
+        log_info(logger, "Se conecto un nuevo CPU");
+
         //creamos un nuevo cortoplazo para cada CPU que se conecte
         pthread_create(&tid_nuevo_cortoplazo, NULL, cortoPlazo, (void*)socket_nuevo);
 
@@ -148,6 +152,7 @@ void inicializarListasKernel(){
     lista_procesos_susp_ready = inicializarLista();
     lista_procesos_susp_block = inicializarLista();
     lista_peticiones_memoria_pendientes = inicializarLista();
+    lista_procesos_esperando_io = inicializarLista();
 
 }
 enum_algoritmo_largoPlazo alg_largoPlazo_from_string(char * string){
