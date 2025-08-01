@@ -112,13 +112,19 @@ void IO_syscall(PCB *pcb, char * nombre_io, int tiempo) {
     elem_blocked_io->tiempo = tiempo;
     elem_blocked_io->nombre_io = nombre_io;
 
+    //arranca el timer de suspend
+    pthread_create(&elem_blocked_io->tid_suspend, NULL, timer_suspend, (void*)pcb);
+    
     // encola en lista global para que manager_io la asigne
     encolar_cola_blocked(lista_procesos_esperando_io, elem_blocked_io, false);
+    
 
     encolar_cola_generico(lista_procesos_block, pcb, -1);
     cambiar_estado(pcb, BLOCK);
     log_info(logger, "## (PID: %d) - Bloqueado por IO: %s", pcb->pid, nombre_io);
     if(algoritmo_cortoPlazo == CPL_SJF_CD){sem_post(lista_procesos_ready->sem);}
+
+    
     
     return;
 }

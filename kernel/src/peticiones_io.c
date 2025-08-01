@@ -123,7 +123,6 @@ void * thread_io(void * args){
     PCB * proceso_aux;
     elemento_cola_blocked_io * elemento_cola = argumentos->elemento_cola_blocked_io;
     t_paquete * paquete_send;
-    pthread_t tid_aux;
 
     proceso_aux = elemento_cola->pcb;
 
@@ -134,15 +133,12 @@ void * thread_io(void * args){
     enviar_paquete(paquete_send, socket_io->socket);
     log_debug(logger, "Envio pid: %d al IO: %s", elemento_cola->pcb->pid, elemento_cola->nombre_io);
 
-    //arranca el timer de suspend
-    pthread_create(&tid_aux, NULL, timer_suspend, (void*)proceso_aux);
-
     if(recibir_paquete_ok(socket_io->socket)){
         log_error(logger, "El dispositivo IO %s se desconecto prematuramente", socket_io->nombre);
 
         //finalizar el timer suspend
         pthread_mutex_lock(lista_procesos_block->mutex);
-        pthread_cancel(tid_aux);
+        pthread_cancel(elemento_cola->tid_suspend);
         pthread_mutex_unlock(lista_procesos_block->mutex);
 
         //si esta en block:
@@ -171,7 +167,7 @@ void * thread_io(void * args){
 
         //finalizar el timer suspend
         pthread_mutex_lock(lista_procesos_block->mutex);
-        pthread_cancel(tid_aux);
+        pthread_cancel(elemento_cola->tid_suspend);
         pthread_mutex_unlock(lista_procesos_block->mutex);
         
         //si esta en block:
@@ -325,6 +321,7 @@ void * timer_suspend(void * args){
             //pcb sigue en block
             list_iterator_remove(iterator);
             encolar_cola_generico(lista_procesos_susp_block, pcb_aux, -1);
+            cambiar_estado(pcb, SUP_BLOCK);
             peticion->proceso = pcb_aux;
             peticion->tipo = SUSP_MEM;
             encolarPeticionMemoria(peticion);
