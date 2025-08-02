@@ -326,6 +326,7 @@ void * timer_suspend(void * args){
             peticion->tipo = SUSP_MEM;
             encolarPeticionMemoria(peticion);
             sem_wait(peticion->peticion_finalizada);
+            cambiar_estado(pcb_aux, SUP_BLOCK);
             sem_post(sem_memoria_liberada);
             break;
         }
