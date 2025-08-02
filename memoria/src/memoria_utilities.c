@@ -227,10 +227,15 @@ void * cpu(void* args){
                 t_tabla_proceso* proceso = buscar_proceso_por_pid(pid);
 
                 if(tipo_acceso == LECTURA_AC){ //lectura
-                    int valor = *(int*)(memoria_principal.espacio + dir_fisica);
+                    // char* valor = *(int*)(memoria_principal.espacio + dir_fisica);
+                    char* valor = malloc(tamanio+1);
+                    char* aux = "";
+                    memcpy(valor,memoria_principal.espacio + dir_fisica,tamanio);
+                    memcpy(valor+tamanio,aux,1);
+
 
                     paquete_send = crear_paquete(DEVOLVER_VALOR);
-                    agregar_a_paquete(paquete_send,&valor,sizeof(int));
+                    agregar_a_paquete(paquete_send,valor,tamanio);
                     enviar_paquete(paquete_send,conexion);
 
                     log_info(logger,"## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d",pid,dir_fisica,tamanio);
@@ -259,11 +264,11 @@ void * cpu(void* args){
                     memcpy(destino, valor_a_escribir, len);
 
                     //Limpieza parcial del resto de la página después del string
-                    int max_erase = tam_pagina - offset - len;
-                    if (max_erase > 0) {
-                        memset(destino + len, 0, max_erase);
-                        log_debug(logger, "MEM: Escritura parcial → se limpian %d bytes restantes", max_erase);
-                    }
+                    // int max_erase = tam_pagina - offset - len;
+                    // if (max_erase > 0) {
+                    //     memset(destino + len, 0, max_erase);
+                    //     log_debug(logger, "MEM: Escritura parcial → se limpian %d bytes restantes", max_erase);
+                    // }
 
                     log_debug(logger, "MEM: Longitud del string a escribir: %d", len);
                     

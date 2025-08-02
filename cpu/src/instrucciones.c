@@ -381,7 +381,7 @@ void write_(int dir_logica , char * datos){
         log_info(logger,"PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid, dir_fisica, datos);
 
         t_paquete* paquete_send = crear_paquete(ACCEDER_A_ESPACIO_USUARIO);
-        int tam = tam_pag;
+        int tam = strlen(datos);
         int tipo_de_acceso = ESCRITURA_AC;
 
         agregar_a_paquete(paquete_send, &pid , sizeof(int));
