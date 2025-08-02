@@ -8,6 +8,7 @@ typedef struct
     PCB *pcb;
     int tiempo;
     char * nombre_io;
+    pthread_t tid_suspend;
     
 }elemento_cola_blocked_io;
 
